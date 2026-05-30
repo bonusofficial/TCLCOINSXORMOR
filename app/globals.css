@@ -15,19 +15,34 @@
   --font-mono: var(--font-geist-mono);
   --font-heading: 'Anuphan', sans-serif;
 
-  --color-brand-green: #7ACB53;
-  --color-brand-green-600: #5FB23C;
-  --color-brand-green-700: #4A9A2C;
-  --color-brand-green-50: #F1F9EC;
-  --color-brand-green-100: #E2F3D8;
-  --color-brand-leaf-deep: #2E5B1C;
-  --color-brand-ink: #1C2B14;
-  --color-brand-ink-soft: #536048;
-  --color-brand-cream: #FFFDF6;
-  --color-brand-gold: #FFC32B;
-  --color-brand-gold-deep: #F2A40C;
+  /* ── DARK MODE — Brand Greens (Premium Vibrant on Black) ── */
+  --color-brand-green: #39C848;          /* Lime Premium Green — main accent */
+  --color-brand-green-600: #2BAA38;      /* slightly lighter for hover on dark */
+  --color-brand-green-700: #128C2E;      /* deeper emerald */
+  --color-brand-green-50: #0F2118;       /* DARK — subtle green-tinted bg */
+  --color-brand-green-100: #1B3622;      /* DARK — border with subtle green hint */
+  --color-brand-leaf-deep: #0A5A1C;
+  --color-brand-lime: #08EE20;           /* Neon Lime — glow accents */
+  --color-brand-mint: #C7F785;           /* Soft Mint — bright text accents */
+
+  /* ── Surfaces (DARK) ── */
+  --color-brand-paper: #060A07;          /* page background — near-black with green hint */
+  --color-brand-surface: #0E1812;        /* card bg — one shade lighter than paper */
+  --color-brand-surface-soft: #15211A;   /* subtle inset bg / hover */
+
+  /* ── Text (light on dark) ── */
+  --color-brand-ink: #F7FDF7;            /* Warm White — primary text */
+  --color-brand-ink-soft: #B8C5B0;       /* Soft Gray-Green — secondary text */
+  --color-brand-cream: #F7FDF7;          /* warm white */
+  --color-brand-paper-soft: #EDEDED;     /* Soft Gray White — tiny details */
+
+  /* ── Brand Gold (Coin — same, looks great on dark) ── */
+  --color-brand-gold: #FFC928;
+  --color-brand-gold-deep: #F0A800;
+  --color-brand-gold-light: #FFE27A;
+
+  /* ── Accent ── */
   --color-brand-coral: #FF6B5B;
-  --color-brand-paper: #F6FAF2;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -176,10 +191,60 @@
 
 @keyframes ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(122, 203, 83, 0.6);
+    box-shadow: 0 0 0 0 rgba(8, 238, 32, 0.65);
   }
   100% {
-    box-shadow: 0 0 0 12px rgba(122, 203, 83, 0);
+    box-shadow: 0 0 0 14px rgba(8, 238, 32, 0);
+  }
+}
+
+/* Premium glow utilities */
+@keyframes glow-gold {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 226, 122, 0.6), 0 0 18px 4px rgba(240, 168, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 226, 122, 0), 0 0 28px 10px rgba(240, 168, 0, 0.55);
+  }
+}
+
+@keyframes glow-lime {
+  0%, 100% {
+    box-shadow: 0 0 14px 2px rgba(8, 238, 32, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 22px 6px rgba(8, 238, 32, 0.55);
+  }
+}
+
+.animate-glow-gold {
+  animation: glow-gold 2.4s ease-in-out infinite;
+}
+.animate-glow-lime {
+  animation: glow-lime 2.8s ease-in-out infinite;
+}
+.text-glow-green {
+  text-shadow: 0 0 18px rgba(57, 200, 72, 0.45), 0 0 6px rgba(8, 238, 32, 0.35);
+}
+.text-glow-gold {
+  text-shadow: 0 0 18px rgba(255, 201, 40, 0.55), 0 0 6px rgba(255, 226, 122, 0.5);
+}
+
+@keyframes marquee-x {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes marquee-x-reverse {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
   }
 }
 
@@ -207,6 +272,16 @@
 }
 .animate-pulse-ring {
   animation: ring 2s infinite;
+}
+.animate-marquee {
+  animation: marquee-x 45s linear infinite;
+}
+.animate-marquee-reverse {
+  animation: marquee-x-reverse 55s linear infinite;
+}
+.marquee-pause:hover .animate-marquee,
+.marquee-pause:hover .animate-marquee-reverse {
+  animation-play-state: paused;
 }
 
 .reveal {

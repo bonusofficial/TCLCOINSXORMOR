@@ -29,7 +29,7 @@ export default function Footer() {
           {/* Col 1: Brand info */}
           <div className="space-y-4">
             <h3 className="font-display font-black text-2xl tracking-tight leading-none">
-              ORMOR <span className="text-[14px] font-bold block text-brand-gold mt-1 tracking-widest uppercase">TOPUP COINS</span>
+              TCLCOINSXORMOR <span className="text-[14px] font-bold block text-brand-gold mt-1 tracking-widest uppercase">TOPUP COINS</span>
             </h3>
             <p className="text-xs.5 leading-relaxed text-white/80 max-w-[280px] font-medium">
               ระบบรับจองคิวและเติมเงินเหรียญแท้ 100% รวดเร็ว ปลอดภัย และเสถียรที่สุดในอุตสาหกรรม
@@ -85,7 +85,7 @@ export default function Footer() {
                 href="https://line.me/R/ti/p/@ormorcoins"
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-11.5 h-11.5 rounded-xl bg-white/14 text-white flex items-center justify-center hover:bg-white hover:text-brand-green-700 hover:-translate-y-1 transition duration-200"
+                className="w-11.5 h-11.5 rounded-xl bg-brand-surface/14 text-white flex items-center justify-center hover:bg-brand-surface hover:text-brand-green hover:-translate-y-1 transition duration-200"
               >
                 <MessageCircle className="w-5.5 h-5.5 fill-current" />
               </a>
@@ -93,7 +93,7 @@ export default function Footer() {
                 href="https://facebook.com"
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-11.5 h-11.5 rounded-xl bg-white/14 text-white flex items-center justify-center hover:bg-white hover:text-brand-green-700 hover:-translate-y-1 transition duration-200"
+                className="w-11.5 h-11.5 rounded-xl bg-brand-surface/14 text-white flex items-center justify-center hover:bg-brand-surface hover:text-brand-green hover:-translate-y-1 transition duration-200"
               >
                 <svg className="w-5.5 h-5.5 fill-current" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -102,7 +102,7 @@ export default function Footer() {
               <a 
                 href="#"
                 onClick={scrollToTop}
-                className="w-11.5 h-11.5 rounded-xl bg-white/14 text-white flex items-center justify-center hover:bg-brand-gold hover:text-brand-ink hover:-translate-y-1 transition duration-200"
+                className="w-11.5 h-11.5 rounded-xl bg-brand-surface/14 text-white flex items-center justify-center hover:bg-brand-gold hover:text-brand-ink hover:-translate-y-1 transition duration-200"
                 title="Scroll to top"
               >
                 <ArrowUp className="w-5.5 h-5.5" />
@@ -114,7 +114,7 @@ export default function Footer() {
 
         {/* Legal Bottom Bar */}
         <div className="border-t border-white/16 py-5.5 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/70 font-bold">
-          <p>© {new Date().getFullYear()} ORMOR TOPUP COINS. ระบบเติมเหรียญไลน์ ขอสงวนลิขสิทธิ์ทั้งหมด</p>
+          <p>© {new Date().getFullYear()} TCLCOINSXORMOR TOPUP COINS. ระบบเติมเหรียญไลน์ ขอสงวนลิขสิทธิ์ทั้งหมด</p>
           <div className="flex gap-6">
             <a href="#" className="hover:text-brand-gold transition">ข้อกำหนดเงื่อนไขการใช้บริการ</a>
             <a href="#" className="hover:text-brand-gold transition">นโยบายความเป็นส่วนตัว</a>
