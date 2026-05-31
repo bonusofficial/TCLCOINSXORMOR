@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Download,
   ChevronDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { accountsApi } from "@/lib/eden";
@@ -74,6 +75,7 @@ export default function FinancePage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "this_week" | "this_month" | "custom">("all");
   const [selectedSpecificDate, setSelectedSpecificDate] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -98,10 +100,10 @@ export default function FinancePage() {
     load();
   }, [load]);
 
-  // Reset to first page when filter, dateFilter or custom date changes
+  // Reset to first page when filter, dateFilter, custom date or sortOrder changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, dateFilter, selectedSpecificDate]);
+  }, [filter, dateFilter, selectedSpecificDate, sortOrder]);
 
   const handleDelete = async (a: AccountRow) => {
     if (!confirm("ลบรายการนี้?")) return;
@@ -153,6 +155,21 @@ export default function FinancePage() {
     return result;
   }, [items, filter, dateFilter, selectedSpecificDate]);
 
+  // Sort filtered items
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    return arr.sort((a, b) => {
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      if (timeA === timeB) {
+        return sortOrder === "newest"
+          ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      return sortOrder === "newest" ? timeB - timeA : timeA - timeB;
+    });
+  }, [filtered, sortOrder]);
+
   // Handle Export to Excel (CSV with UTF-8 BOM)
   const handleExport = () => {
     const headers = ["วันที่", "รายละเอียด", "ประเภท", "รายรับ (บาท)", "รายจ่าย (บาท)", "บันทึกเมื่อ"];
@@ -181,8 +198,8 @@ export default function FinancePage() {
   // Paginated items
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, currentPage, pageSize]);
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, currentPage, pageSize]);
 
   return (
     <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto">
@@ -304,6 +321,20 @@ export default function FinancePage() {
               className="w-full sm:w-44 flex-shrink-0"
             />
           )}
+
+          {/* Sort Filter */}
+          <div className="relative inline-flex items-center">
+            <ArrowUpDown className="absolute left-3 h-4 w-4 text-brand-ink-soft" />
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-xs font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
+            >
+              <option value="newest">ใหม่ล่าสุด</option>
+              <option value="oldest">เก่าที่สุด</option>
+            </select>
+            <ChevronDown className="absolute right-3 h-4 w-4 text-brand-ink-soft pointer-events-none" />
+          </div>
 
           <button
             onClick={load}

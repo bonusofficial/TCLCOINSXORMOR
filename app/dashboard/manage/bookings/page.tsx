@@ -15,6 +15,7 @@ import {
   X,
   Download,
   ChevronDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { bookingsApi } from "@/lib/eden";
@@ -76,6 +77,7 @@ export default function BookingsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "this_week" | "this_month" | "custom">("all");
   const [selectedSpecificDate, setSelectedSpecificDate] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -98,10 +100,10 @@ export default function BookingsPage() {
     load();
   }, [load]);
 
-  // Reset page when search, statusFilter, dateFilter or custom date changes
+  // Reset page when search, statusFilter, dateFilter, custom date or sortOrder changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, dateFilter, selectedSpecificDate]);
+  }, [search, statusFilter, dateFilter, selectedSpecificDate, sortOrder]);
 
   const handleStatusChange = async (b: Booking, status: string) => {
     setUpdatingId(b.id);
@@ -177,6 +179,16 @@ export default function BookingsPage() {
     });
   }, [items, search, statusFilter, dateFilter, selectedSpecificDate]);
 
+  // Sort filtered items
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    return arr.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return sortOrder === "newest" ? timeB - timeA : timeA - timeB;
+    });
+  }, [filtered, sortOrder]);
+
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
     items.forEach((b) => {
@@ -188,8 +200,8 @@ export default function BookingsPage() {
   // Paginated items
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, currentPage, pageSize]);
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, currentPage, pageSize]);
 
   // Handle Export to Excel (CSV with UTF-8 BOM for Thai character compatibility)
   const handleExport = () => {
@@ -324,6 +336,20 @@ export default function BookingsPage() {
               className="w-full sm:w-44 flex-shrink-0"
             />
           )}
+
+          {/* Sort Filter */}
+          <div className="relative inline-flex items-center">
+            <ArrowUpDown className="absolute left-3 h-4 w-4 text-brand-ink-soft" />
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-sm font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
+            >
+              <option value="newest">ใหม่ล่าสุด</option>
+              <option value="oldest">เก่าที่สุด</option>
+            </select>
+            <ChevronDown className="absolute right-3 h-4 w-4 text-brand-ink-soft pointer-events-none" />
+          </div>
         </div>
 
         {/* Refresh */}
