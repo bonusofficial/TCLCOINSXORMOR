@@ -109,10 +109,10 @@ export default function AuditPage() {
         <button
           onClick={() => load(true)}
           disabled={loading}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50 self-start"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50 text-sm font-bold self-start"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          โหลดใหม่
+          <span>รีเฟรช</span>
         </button>
       </div>
 

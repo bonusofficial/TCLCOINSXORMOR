@@ -17,6 +17,7 @@ import {
   AtSign,
   Phone,
   Coins,
+  Download,
 } from "lucide-react";
 import { usersApi } from "@/lib/eden";
 import { timeAgo } from "@/lib/audit-labels";
@@ -138,6 +139,33 @@ export default function UsersPage() {
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
 
+  // Handle Export to Excel (CSV with UTF-8 BOM)
+  const handleExport = () => {
+    const headers = ["ID", "ชื่อผู้ใช้", "อีเมล", "Username", "บทบาท (Role)", "เบอร์โทรศัพท์", "เครดิต", "สมัครเมื่อ"];
+    const rows = filtered.map(u => [
+      u.id,
+      u.name,
+      u.email,
+      u.username || "—",
+      ROLE_META[normalizeRole(u.role)].label,
+      u.phone || "—",
+      u.credit ?? 0,
+      new Date(u.createdAt).toLocaleString("th-TH")
+    ]);
+    
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `users_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("ส่งออกข้อมูลสำเร็จ", { description: `ดาวน์โหลดเรียบร้อยแล้ว (${filtered.length} รายการ)` });
+  };
+
   return (
     <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto">
       {/* Header */}
@@ -153,6 +181,13 @@ export default function UsersPage() {
             )}
           </p>
         </div>
+        <button
+          onClick={handleExport}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition cursor-pointer self-start"
+        >
+          <Download className="h-4 w-4" />
+          <span>ส่งออก Excel</span>
+        </button>
       </div>
 
       {/* Toolbar */}
@@ -184,9 +219,10 @@ export default function UsersPage() {
         <button
           onClick={load}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50 text-sm font-bold"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <span>รีเฟรช</span>
         </button>
       </div>
 

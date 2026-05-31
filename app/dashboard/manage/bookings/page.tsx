@@ -13,6 +13,7 @@ import {
   Clock,
   Phone,
   X,
+  Download,
 } from "lucide-react";
 import { bookingsApi } from "@/lib/eden";
 import {
@@ -56,10 +57,10 @@ function CopyButton({ value }: { value: string }) {
         toast.success("คัดลอกรหัสแล้ว", { description: value });
         setTimeout(() => setCopied(false), 1500);
       }}
-      title="คัดลอก"
-      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-brand-ink-soft hover:text-brand-green hover:bg-brand-green-50 transition cursor-pointer flex-shrink-0"
+      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-brand-green-100 bg-brand-green-50/50 hover:bg-brand-green hover:border-brand-green text-[10.5px] font-black text-brand-green hover:text-white transition cursor-pointer flex-shrink-0"
     >
-      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
+      <span>{copied ? "คัดลอกแล้ว" : "คัดลอกรหัส"}</span>
     </button>
   );
 }
@@ -71,6 +72,7 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "this_week" | "this_month">("all");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -93,10 +95,10 @@ export default function BookingsPage() {
     load();
   }, [load]);
 
-  // Reset page when search or statusFilter changes
+  // Reset page when search, statusFilter or dateFilter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, dateFilter]);
 
   const handleStatusChange = async (b: Booking, status: string) => {
     setUpdatingId(b.id);
@@ -135,8 +137,29 @@ export default function BookingsPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    
+    // Calculate date boundaries based on local time
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const dayOfWeek = startOfToday.getDay(); // 0 = Sun, 1 = Mon...
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const startOfThisWeek = new Date(startOfToday);
+    startOfThisWeek.setDate(startOfToday.getDate() + diffToMonday);
+    
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
     return items.filter((b) => {
       if (statusFilter && b.status !== statusFilter) return false;
+      
+      // Date filtering logic
+      if (dateFilter !== "all") {
+        const bDate = new Date(b.createdAt);
+        if (dateFilter === "today" && bDate < startOfToday) return false;
+        if (dateFilter === "this_week" && bDate < startOfThisWeek) return false;
+        if (dateFilter === "this_month" && bDate < startOfThisMonth) return false;
+      }
+
       if (!q) return true;
       return (
         b.bookingCode.toLowerCase().includes(q) ||
@@ -145,7 +168,7 @@ export default function BookingsPage() {
         b.phone.includes(q)
       );
     });
-  }, [items, search, statusFilter]);
+  }, [items, search, statusFilter, dateFilter]);
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -161,6 +184,34 @@ export default function BookingsPage() {
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
 
+  // Handle Export to Excel (CSV with UTF-8 BOM for Thai character compatibility)
+  const handleExport = () => {
+    const headers = ["รหัสการจอง", "ชื่อลูกค้า", "เบอร์โทรศัพท์", "ชื่อสินค้า/บริการ", "ราคา", "สถานะ", "วันที่จอง", "เวลาจอง", "วันที่สั่งซื้อ"];
+    const rows = filtered.map(b => [
+      b.bookingCode,
+      b.username,
+      b.phone,
+      b.productName,
+      b.price,
+      b.status,
+      b.bookingDate,
+      b.bookingTime || "—",
+      formatBookingDateTime(b.createdAt)
+    ]);
+    
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `bookings_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("ส่งออกข้อมูลสำเร็จ", { description: `ดาวน์โหลดเรียบร้อยแล้ว (${filtered.length} รายการ)` });
+  };
+
   return (
     <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
@@ -175,6 +226,13 @@ export default function BookingsPage() {
             )}
           </p>
         </div>
+        <button
+          onClick={handleExport}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition cursor-pointer self-start"
+        >
+          <Download className="h-4 w-4" />
+          <span>ส่งออก Excel</span>
+        </button>
       </div>
 
       {/* Status summary chips */}
@@ -211,6 +269,7 @@ export default function BookingsPage() {
 
       {/* Toolbar */}
       <div className="bg-brand-surface border border-brand-green-100 rounded-2xl p-3 mb-4 flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+        {/* Search */}
         <div className="relative flex-1">
           <Search className="absolute top-1/2 left-3 -translate-y-1/2 h-4 w-4 text-brand-ink-soft" />
           <input
@@ -228,12 +287,29 @@ export default function BookingsPage() {
             </button>
           )}
         </div>
+
+        {/* Date Filter */}
+        <div className="relative">
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as any)}
+            className="w-full sm:w-auto inline-flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-sm font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none"
+          >
+            <option value="all">📅 ทั้งหมด (วันที่)</option>
+            <option value="today">📅 วันนี้</option>
+            <option value="this_week">📅 สัปดาห์นี้</option>
+            <option value="this_month">📅 เดือนนี้</option>
+          </select>
+        </div>
+
+        {/* Refresh */}
         <button
           onClick={load}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50 text-sm font-bold"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <span>รีเฟรช</span>
         </button>
       </div>
 

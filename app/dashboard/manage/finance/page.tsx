@@ -14,6 +14,7 @@ import {
   Wallet,
   Save,
   CalendarDays,
+  Download,
 } from "lucide-react";
 import { accountsApi } from "@/lib/eden";
 import {
@@ -69,6 +70,7 @@ export default function FinancePage() {
   const [editing, setEditing] = useState<AccountRow | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "this_week" | "this_month">("all");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -93,10 +95,10 @@ export default function FinancePage() {
     load();
   }, [load]);
 
-  // Reset to first page when filter changes
+  // Reset to first page when filter or dateFilter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter]);
+  }, [filter, dateFilter]);
 
   const handleDelete = async (a: AccountRow) => {
     if (!confirm("ลบรายการนี้?")) return;
@@ -116,9 +118,58 @@ export default function FinancePage() {
   };
 
   const filtered = useMemo(() => {
-    if (filter === "all") return items;
-    return items.filter((a) => a.category === filter);
-  }, [items, filter]);
+    let result = items;
+    if (filter !== "all") {
+      result = result.filter((a) => a.category === filter);
+    }
+    
+    if (dateFilter !== "all") {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      const dayOfWeek = startOfToday.getDay();
+      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const startOfThisWeek = new Date(startOfToday);
+      startOfThisWeek.setDate(startOfToday.getDate() + diffToMonday);
+      
+      const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      result = result.filter((a) => {
+        const rowDate = new Date(a.date);
+        if (dateFilter === "today" && rowDate < startOfToday) return false;
+        if (dateFilter === "this_week" && rowDate < startOfThisWeek) return false;
+        if (dateFilter === "this_month" && rowDate < startOfThisMonth) return false;
+        return true;
+      });
+    }
+    
+    return result;
+  }, [items, filter, dateFilter]);
+
+  // Handle Export to Excel (CSV with UTF-8 BOM)
+  const handleExport = () => {
+    const headers = ["วันที่", "รายละเอียด", "ประเภท", "รายรับ (บาท)", "รายจ่าย (บาท)", "บันทึกเมื่อ"];
+    const rows = filtered.map(a => [
+      fmtDate(a.date),
+      a.description || "—",
+      a.category,
+      a.income,
+      a.expense,
+      fmtDate(a.createdAt)
+    ]);
+    
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `finance_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("ส่งออกข้อมูลสำเร็จ", { description: `ดาวน์โหลดเรียบร้อยแล้ว (${filtered.length} รายการ)` });
+  };
 
   // Paginated items
   const paginatedItems = useMemo(() => {
@@ -140,16 +191,25 @@ export default function FinancePage() {
             )}
           </p>
         </div>
-        <button
-          onClick={() => {
-            setEditing(null);
-            setModalOpen(true);
-          }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition cursor-pointer self-start"
-        >
-          <Plus className="h-4 w-4" strokeWidth={2.5} />
-          เพิ่มรายการ
-        </button>
+        <div className="flex gap-2 self-start">
+          <button
+            onClick={handleExport}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-sm text-brand-green border border-brand-green hover:bg-brand-green-50 transition cursor-pointer"
+          >
+            <Download className="h-4 w-4" />
+            <span>ส่งออก Excel</span>
+          </button>
+          <button
+            onClick={() => {
+              setEditing(null);
+              setModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition cursor-pointer"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+            เพิ่มรายการ
+          </button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -189,28 +249,47 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Filter chips */}
-      <div className="flex gap-1.5 mb-4 bg-brand-surface border border-brand-green-100 rounded-xl p-1 inline-flex">
-        {(["all", "รายรับ", "รายจ่าย"] as const).map((k) => (
-          <button
-            key={k}
-            onClick={() => setFilter(k)}
-            className={`px-4 py-1.5 rounded-lg text-[11.5px] font-extrabold transition cursor-pointer ${
-              filter === k
-                ? "bg-brand-green text-white shadow-sm"
-                : "text-brand-ink-soft hover:text-brand-green"
-            }`}
+      {/* Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4 items-stretch sm:items-center justify-between">
+        {/* Category Filter chips */}
+        <div className="flex gap-1.5 bg-brand-surface border border-brand-green-100 rounded-xl p-1 inline-flex self-start">
+          {(["all", "รายรับ", "รายจ่าย"] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setFilter(k)}
+              className={`px-4 py-1.5 rounded-lg text-[11.5px] font-extrabold transition cursor-pointer ${
+                filter === k
+                  ? "bg-brand-green text-white shadow-sm"
+                  : "text-brand-ink-soft hover:text-brand-green"
+              }`}
+            >
+              {k === "all" ? "ทั้งหมด" : k}
+            </button>
+          ))}
+        </div>
+
+        {/* Date Filter & Refresh */}
+        <div className="flex gap-2 items-center">
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as any)}
+            className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-xs font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none"
           >
-            {k === "all" ? "ทั้งหมด" : k}
+            <option value="all">📅 ทั้งหมด (วันที่)</option>
+            <option value="today">📅 วันนี้</option>
+            <option value="this_week">📅 สัปดาห์นี้</option>
+            <option value="this_month">📅 เดือนนี้</option>
+          </select>
+
+          <button
+            onClick={load}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50 text-xs font-bold"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>รีเฟรช</span>
           </button>
-        ))}
-        <button
-          onClick={load}
-          disabled={loading}
-          className="px-2 py-1.5 rounded-lg text-brand-ink-soft hover:text-brand-green cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-        </button>
+        </div>
       </div>
 
       {loading ? (
