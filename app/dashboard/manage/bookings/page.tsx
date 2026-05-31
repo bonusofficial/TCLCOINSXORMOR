@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import {
   Search,
@@ -65,6 +65,89 @@ function CopyButton({ value }: { value: string }) {
       {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
       <span>{copied ? "คัดลอกแล้ว" : "คัดลอกรหัส"}</span>
     </button>
+  );
+}
+
+function getStatusIcon(status: string, className = "h-3 w-3") {
+  switch (status) {
+    case "รอตรวจสอบ":
+      return <span className="inline-block w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />;
+    case "กำลังดำเนินการ":
+      return <Clock className={`${className} text-sky-500 animate-spin flex-shrink-0`} />;
+    case "สำเร็จ":
+      return <Check className={`${className} text-emerald-600 flex-shrink-0`} strokeWidth={3.5} />;
+    case "ยกเลิก":
+      return <X className={`${className} text-rose-500 flex-shrink-0`} strokeWidth={3.5} />;
+    default:
+      return <span className="inline-block w-2 h-2 rounded-full bg-brand-ink-soft/40 flex-shrink-0" />;
+  }
+}
+
+function StatusSelector({
+  value,
+  onChange,
+  disabled,
+  className = ""
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const sty = statusStyle(value);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  return (
+    <div ref={ref} className={`relative inline-block text-left ${className}`}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        className={`w-full inline-flex items-center justify-between sm:justify-start gap-1.5 text-[11px] font-black py-1.5 px-2.5 rounded-lg cursor-pointer outline-none border transition ${sty.bg} ${sty.text} ring-1 ${sty.ring} hover:opacity-90 disabled:opacity-60`}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          {getStatusIcon(value)}
+          <span>{value}</span>
+        </span>
+        <ChevronDown className="h-3 w-3 opacity-60 flex-shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 sm:left-0 top-full mt-1.5 w-40 bg-brand-surface-soft border border-brand-green-100 rounded-xl shadow-2xl ring-1 ring-brand-green/15 p-1 z-20 animate-in fade-in slide-in-from-top-1 duration-150">
+          {BOOKING_STATUSES.map((s) => {
+            const active = s === value;
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  onChange(s);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-extrabold transition cursor-pointer flex items-center gap-2 ${
+                  active
+                    ? "bg-brand-green-50 text-brand-green"
+                    : "text-brand-ink-soft hover:bg-brand-green-50/60 hover:text-brand-green"
+                }`}
+              >
+                {getStatusIcon(s, "h-3 w-3")}
+                <span>{s}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -279,7 +362,7 @@ export default function BookingsPage() {
                   : "bg-brand-surface text-brand-ink-soft border-brand-green-100"
               }`}
             >
-              <span>{sty.emoji}</span>
+              {getStatusIcon(s, "h-3 w-3")}
               {s} ({stats[s] ?? 0})
             </button>
           );
@@ -427,18 +510,11 @@ export default function BookingsPage() {
                         ฿{Number(b.price).toLocaleString()}
                       </TableCell>
                       <TableCell className="py-3 px-3 text-center">
-                        <select
+                        <StatusSelector
                           value={b.status}
-                          onChange={(e) => handleStatusChange(b, e.target.value)}
+                          onChange={(s) => handleStatusChange(b, s)}
                           disabled={updatingId === b.id}
-                          className={`text-[11px] font-black py-1 px-2 rounded-md cursor-pointer outline-none border ${sty.bg} ${sty.text} ring-1 ${sty.ring} disabled:opacity-60`}
-                        >
-                          {BOOKING_STATUSES.map((s) => (
-                            <option key={s} value={s} className="bg-brand-surface text-brand-ink">
-                              {statusStyle(s).emoji} {s}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </TableCell>
                       <TableCell className="py-3 px-3 text-[11px] font-bold text-brand-ink-soft whitespace-nowrap">
                         {formatBookingDateTime(b.createdAt)}
@@ -480,9 +556,10 @@ export default function BookingsPage() {
                       <CopyButton value={b.bookingCode} />
                     </div>
                     <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-md ${sty.bg} ${sty.text} ring-1 ${sty.ring} flex-shrink-0`}
+                      className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md ${sty.bg} ${sty.text} ring-1 ${sty.ring} flex-shrink-0`}
                     >
-                      {sty.emoji} {sty.label}
+                      {getStatusIcon(b.status, "h-2.5 w-2.5")}
+                      <span>{b.status}</span>
                     </span>
                   </div>
                   <div className="font-extrabold text-[13px] text-brand-ink line-clamp-1">
@@ -501,18 +578,12 @@ export default function BookingsPage() {
                     </span>
                   </div>
                   <div className="flex gap-1.5 mt-2.5">
-                    <select
+                    <StatusSelector
                       value={b.status}
-                      onChange={(e) => handleStatusChange(b, e.target.value)}
+                      onChange={(s) => handleStatusChange(b, s)}
                       disabled={updatingId === b.id}
-                      className="flex-1 text-[11px] font-extrabold py-1.5 px-2 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink cursor-pointer outline-none focus:border-brand-green"
-                    >
-                      {BOOKING_STATUSES.map((s) => (
-                        <option key={s} value={s} className="bg-brand-surface text-brand-ink">
-                          {statusStyle(s).emoji} {s}
-                        </option>
-                      ))}
-                    </select>
+                      className="flex-1"
+                    />
                     <button
                       onClick={() => handleDelete(b)}
                       disabled={deletingId === b.id}
