@@ -14,7 +14,9 @@ import {
   Phone,
   X,
   Download,
+  ChevronDown,
 } from "lucide-react";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { bookingsApi } from "@/lib/eden";
 import {
   BOOKING_STATUSES,
@@ -72,7 +74,8 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [dateFilter, setDateFilter] = useState<"all" | "today" | "this_week" | "this_month">("all");
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "this_week" | "this_month" | "custom">("all");
+  const [selectedSpecificDate, setSelectedSpecificDate] = useState<string>("");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -95,10 +98,10 @@ export default function BookingsPage() {
     load();
   }, [load]);
 
-  // Reset page when search, statusFilter or dateFilter changes
+  // Reset page when search, statusFilter, dateFilter or custom date changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, dateFilter]);
+  }, [search, statusFilter, dateFilter, selectedSpecificDate]);
 
   const handleStatusChange = async (b: Booking, status: string) => {
     setUpdatingId(b.id);
@@ -158,6 +161,10 @@ export default function BookingsPage() {
         if (dateFilter === "today" && bDate < startOfToday) return false;
         if (dateFilter === "this_week" && bDate < startOfThisWeek) return false;
         if (dateFilter === "this_month" && bDate < startOfThisMonth) return false;
+        if (dateFilter === "custom" && selectedSpecificDate) {
+          const bDateStr = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, "0")}-${String(bDate.getDate()).padStart(2, "0")}`;
+          if (bDateStr !== selectedSpecificDate) return false;
+        }
       }
 
       if (!q) return true;
@@ -168,7 +175,7 @@ export default function BookingsPage() {
         b.phone.includes(q)
       );
     });
-  }, [items, search, statusFilter, dateFilter]);
+  }, [items, search, statusFilter, dateFilter, selectedSpecificDate]);
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -289,17 +296,34 @@ export default function BookingsPage() {
         </div>
 
         {/* Date Filter */}
-        <div className="relative">
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value as any)}
-            className="w-full sm:w-auto inline-flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-sm font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none"
-          >
-            <option value="all">📅 ทั้งหมด (วันที่)</option>
-            <option value="today">📅 วันนี้</option>
-            <option value="this_week">📅 สัปดาห์นี้</option>
-            <option value="this_month">📅 เดือนนี้</option>
-          </select>
+        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+          <div className="relative inline-flex items-center">
+            <CalendarDays className="absolute left-3 h-4 w-4 text-brand-ink-soft" />
+            <select
+              value={dateFilter}
+              onChange={(e) => {
+                setDateFilter(e.target.value as any);
+                if (e.target.value !== "custom") setSelectedSpecificDate("");
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-sm font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
+            >
+              <option value="all">ทั้งหมด (วันที่)</option>
+              <option value="today">วันนี้</option>
+              <option value="this_week">สัปดาห์นี้</option>
+              <option value="this_month">เดือนนี้</option>
+              <option value="custom">ระบุวันที่...</option>
+            </select>
+            <ChevronDown className="absolute right-3 h-4 w-4 text-brand-ink-soft pointer-events-none" />
+          </div>
+
+          {dateFilter === "custom" && (
+            <DatePicker
+              value={selectedSpecificDate}
+              onChange={setSelectedSpecificDate}
+              placeholder="เลือกวันที่ต้องการกรอง"
+              className="w-full sm:w-44 flex-shrink-0"
+            />
+          )}
         </div>
 
         {/* Refresh */}
