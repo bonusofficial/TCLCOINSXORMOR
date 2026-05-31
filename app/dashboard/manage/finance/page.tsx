@@ -143,7 +143,7 @@ export default function FinancePage() {
         if (dateFilter === "this_week" && rowDate < startOfThisWeek) return false;
         if (dateFilter === "this_month" && rowDate < startOfThisMonth) return false;
         if (dateFilter === "custom" && selectedSpecificDate) {
-          const rowDateStr = a.date.slice(0, 10);
+          const rowDateStr = `${rowDate.getFullYear()}-${String(rowDate.getMonth() + 1).padStart(2, "0")}-${String(rowDate.getDate()).padStart(2, "0")}`;
           if (rowDateStr !== selectedSpecificDate) return false;
         }
         return true;
