@@ -93,7 +93,9 @@ export const UserScalarFieldEnum = {
   credit: 'credit',
   total_credit: 'total_credit',
   role: 'role',
-  phone: 'phone'
+  phone: 'phone',
+  shopName: 'shopName',
+  lineId: 'lineId'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -156,7 +158,24 @@ export const ConfigScalarFieldEnum = {
   qrcodenormal: 'qrcodenormal',
   qrcodeagent: 'qrcodeagent',
   qrcodesupport: 'qrcodesupport',
-  warningMessage: 'warningMessage'
+  warningMessage: 'warningMessage',
+  maxBookingsPerUser: 'maxBookingsPerUser',
+  agentPrivileges: 'agentPrivileges',
+  lineGroupNormal: 'lineGroupNormal',
+  lineGroupAgent: 'lineGroupAgent',
+  welcomeTitle: 'welcomeTitle',
+  welcomeAgentDesc: 'welcomeAgentDesc',
+  welcomeMemberDesc: 'welcomeMemberDesc',
+  howItWorks: 'howItWorks',
+  termsContent: 'termsContent',
+  privacyContent: 'privacyContent',
+  reviewLink: 'reviewLink',
+  announceEnabled: 'announceEnabled',
+  announceBanner: 'announceBanner',
+  announceBadge: 'announceBadge',
+  announceTitle: 'announceTitle',
+  announceContent: 'announceContent',
+  marqueeText: 'marqueeText'
 } as const
 
 export type ConfigScalarFieldEnum = (typeof ConfigScalarFieldEnum)[keyof typeof ConfigScalarFieldEnum]
@@ -165,6 +184,7 @@ export type ConfigScalarFieldEnum = (typeof ConfigScalarFieldEnum)[keyof typeof 
 export const BannersScalarFieldEnum = {
   id: 'id',
   image: 'image',
+  sortOrder: 'sortOrder',
   createdAt: 'createdAt'
 } as const
 
@@ -245,6 +265,7 @@ export const ProductsScalarFieldEnum = {
   name: 'name',
   description: 'description',
   price: 'price',
+  cost: 'cost',
   agentPrice: 'agentPrice',
   stockEnabled: 'stockEnabled',
   stock: 'stock',
@@ -299,7 +320,9 @@ export const UserOrderByRelevanceFieldEnum = {
   username: 'username',
   displayUsername: 'displayUsername',
   role: 'role',
-  phone: 'phone'
+  phone: 'phone',
+  shopName: 'shopName',
+  lineId: 'lineId'
 } as const
 
 export type UserOrderByRelevanceFieldEnum = (typeof UserOrderByRelevanceFieldEnum)[keyof typeof UserOrderByRelevanceFieldEnum]
@@ -340,6 +363,23 @@ export const VerificationOrderByRelevanceFieldEnum = {
 export type VerificationOrderByRelevanceFieldEnum = (typeof VerificationOrderByRelevanceFieldEnum)[keyof typeof VerificationOrderByRelevanceFieldEnum]
 
 
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+export const QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+} as const
+
+export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
 export const ConfigOrderByRelevanceFieldEnum = {
   logo: 'logo',
   title: 'title',
@@ -351,7 +391,21 @@ export const ConfigOrderByRelevanceFieldEnum = {
   qrcodenormal: 'qrcodenormal',
   qrcodeagent: 'qrcodeagent',
   qrcodesupport: 'qrcodesupport',
-  warningMessage: 'warningMessage'
+  warningMessage: 'warningMessage',
+  agentPrivileges: 'agentPrivileges',
+  lineGroupNormal: 'lineGroupNormal',
+  lineGroupAgent: 'lineGroupAgent',
+  welcomeTitle: 'welcomeTitle',
+  welcomeAgentDesc: 'welcomeAgentDesc',
+  welcomeMemberDesc: 'welcomeMemberDesc',
+  termsContent: 'termsContent',
+  privacyContent: 'privacyContent',
+  reviewLink: 'reviewLink',
+  announceBanner: 'announceBanner',
+  announceBadge: 'announceBadge',
+  announceTitle: 'announceTitle',
+  announceContent: 'announceContent',
+  marqueeText: 'marqueeText'
 } as const
 
 export type ConfigOrderByRelevanceFieldEnum = (typeof ConfigOrderByRelevanceFieldEnum)[keyof typeof ConfigOrderByRelevanceFieldEnum]
@@ -396,23 +450,6 @@ export const accountsOrderByRelevanceFieldEnum = {
 } as const
 
 export type accountsOrderByRelevanceFieldEnum = (typeof accountsOrderByRelevanceFieldEnum)[keyof typeof accountsOrderByRelevanceFieldEnum]
-
-
-export const JsonNullValueFilter = {
-  DbNull: DbNull,
-  JsonNull: JsonNull,
-  AnyNull: AnyNull
-} as const
-
-export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
-
-
-export const QueryMode = {
-  default: 'default',
-  insensitive: 'insensitive'
-} as const
-
-export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
 
 
 export const audit_logsOrderByRelevanceFieldEnum = {

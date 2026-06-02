@@ -6,6 +6,7 @@ import { useProducts } from "@/lib/contexts/PublicDataContext";
 import { useSession } from "@/lib/auth-client";
 import { UserRole } from "@/lib/booking";
 import { PackageCard } from "@/components/PackageCard";
+import { getProductAvailability } from "@/lib/product-utils";
 
 interface PackagesSectionProps {
   onSelectPackage: (productId: number) => void;
@@ -25,21 +26,29 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
   })();
   const username = user?.username ?? null;
 
-  // Split products into popular and recommended (just for UI tabs simulation since we don't have this in DB yet)
+  // แสดงเฉพาะแพ็กที่เปิดจองอยู่จริง (อยู่ในวันขายและช่วงเวลา slot)
+  // ตัวที่ไม่อยู่ในช่วงเวลา / ปิดรับ / สินค้าหมด จะถูกซ่อนเพื่อไม่ให้ลูกค้าสับสน
   const displayProducts = useMemo(() => {
     if (products.length === 0) return [];
-    
-    // Sort products by price ascending
-    const sorted = [...products].sort((a, b) => Number(a.price) - Number(b.price));
-    
+
+    const active = products.filter(
+      (p) => getProductAvailability(p).status === "open"
+    );
+
+    const sorted = [...active].sort((a, b) => Number(a.price) - Number(b.price));
+
     if (activeTab === "popular") {
-      // First half or top 3
       return sorted.slice(0, Math.max(3, Math.ceil(sorted.length / 2)));
     } else {
-      // Second half
       return sorted.slice(Math.max(3, Math.ceil(sorted.length / 2)));
     }
   }, [products, activeTab]);
+
+  // คิวสูงสุดในบรรดาสินค้าทั้งหมด — ใช้ทำ % แถบความนิยมแบบสัมพัทธ์ในการ์ด
+  const maxQueueCount = useMemo(
+    () => products.reduce((m, p) => Math.max(m, p.queueCount), 0),
+    [products]
+  );
 
   return (
     <section className="bg-gradient-to-b from-brand-paper to-brand-paper py-20" id="packages">
@@ -110,6 +119,7 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
                 product={p}
                 userRole={userRole}
                 username={username}
+                maxQueueCount={maxQueueCount}
                 onSelect={() => onSelectPackage(p.id)}
               />
             ))}

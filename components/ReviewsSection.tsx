@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import { Star, Quote, BadgeCheck, ThumbsUp } from "lucide-react";
-import { useReviews } from "@/lib/contexts/PublicDataContext";
+import { useConfig, useReviews } from "@/lib/contexts/PublicDataContext";
 
 interface Review {
   id: string;
@@ -39,112 +39,8 @@ const TIME_UNIT_TH: Record<string, string> = {
   year: "ปี",
 };
 
-const REVIEWS: Review[] = [
-  {
-    id: "r1",
-    name: "คุณกิตติ ส.",
-    initial: "ก",
-    avatarBg: "linear-gradient(135deg,#FF8A65,#FF7043)",
-    rating: 5,
-    review:
-      "เติมไวมากจริง 5 นาทีเหรียญเข้าเลย ใช้บริการครั้งที่ 3 แล้ว ราคาดีที่สุดที่เคยเจอในตลาด แนะนำเพื่อนต่อแล้ว",
-    package: "เติม 3,300 Coins",
-    timeAgo: "2 ชม. ที่แล้ว",
-    verified: true,
-    helpful: 24
-  },
-  {
-    id: "r2",
-    name: "คุณนภัสร ม.",
-    initial: "น",
-    avatarBg: "linear-gradient(135deg,#39C848,#128C2E)",
-    rating: 5,
-    review:
-      "ตอนแรกกลัวโดนโกง แต่ทีมงานคุยน่ารักมาก อธิบายชัด ตอบไว มีรูปยืนยันทุกขั้นตอน ปลอดภัยจริง 100%",
-    package: "เติม 10,000 Coins",
-    timeAgo: "5 ชม. ที่แล้ว",
-    verified: true,
-    helpful: 41
-  },
-  {
-    id: "r3",
-    name: "คุณวรวัฒน์ ป.",
-    initial: "ว",
-    avatarBg: "linear-gradient(135deg,#42A5F5,#1E88E5)",
-    rating: 5,
-    review:
-      "เป็นตัวแทนใช้ที่นี่ประจำ ส่วนลด 5% คุ้มมาก เคลมเร็วถ้ามีปัญหา ระบบหลังบ้านจัดการง่าย",
-    package: "ตัวแทนจำหน่าย VIP",
-    timeAgo: "1 วันที่แล้ว",
-    verified: true,
-    helpful: 18
-  },
-  {
-    id: "r4",
-    name: "คุณพิมพ์ใจ ก.",
-    initial: "พ",
-    avatarBg: "linear-gradient(135deg,#FFC928,#F0A800)",
-    rating: 5,
-    review:
-      "ใช้ครั้งแรก สแกน QR จองคิวง่ายมาก ไม่ต้องกรอกอะไรเยอะ เหรียญเข้าใน 8 นาที จากกังวลเป็นประทับใจเลย",
-    package: "เติม 5,400 Coins",
-    timeAgo: "1 วันที่แล้ว",
-    verified: true,
-    helpful: 33
-  },
-  {
-    id: "r5",
-    name: "คุณสมศักดิ์ ท.",
-    initial: "ส",
-    avatarBg: "linear-gradient(135deg,#AB47BC,#8E24AA)",
-    rating: 5,
-    review:
-      "จองคิวรอบดึก ตี 2 กว่า ทีมตอบเร็วทันที 24/7 จริง ๆ ราคาคุ้มกว่าเติมในแอปเยอะมาก",
-    package: "เติม 15,000 Coins",
-    timeAgo: "2 วันที่แล้ว",
-    verified: true,
-    helpful: 27
-  },
-  {
-    id: "r6",
-    name: "คุณวีรภัทร น.",
-    initial: "ว",
-    avatarBg: "linear-gradient(135deg,#26A69A,#00897B)",
-    rating: 5,
-    review:
-      "คุ้มมาก ๆ ที่นี่ ลดหนักกว่าเจ้าอื่นเห็น ๆ ใช้มาเป็นปีแล้วไม่เคยมีปัญหาสักครั้ง ขอบคุณทีมงานครับ",
-    package: "ลูกค้าประจำ 1+ ปี",
-    timeAgo: "3 วันที่แล้ว",
-    verified: true,
-    helpful: 56
-  },
-  {
-    id: "r7",
-    name: "คุณภัทรา ส.",
-    initial: "ภ",
-    avatarBg: "linear-gradient(135deg,#EF5350,#E53935)",
-    rating: 5,
-    review:
-      "เพื่อนแนะนำมา ตอนแรกไม่ค่อยเชื่อ แต่เติมจริงเหรียญเข้าจริง สบายใจมาก หาเจ้าประจำได้แล้ว",
-    package: "เติม 3,300 Coins",
-    timeAgo: "4 วันที่แล้ว",
-    verified: true,
-    helpful: 19
-  },
-  {
-    id: "r8",
-    name: "คุณอนุชา ร.",
-    initial: "อ",
-    avatarBg: "linear-gradient(135deg,#5C6BC0,#3949AB)",
-    rating: 5,
-    review:
-      "ระบบดีมาก จองง่าย จ่ายง่าย เหรียญเข้าไว แนะนำมือใหม่ให้ใช้เลย ไม่ต้องกลัวเหมือนเจ้าอื่น",
-    package: "เติม 30,000 Coins",
-    timeAgo: "1 สัปดาห์ที่แล้ว",
-    verified: true,
-    helpful: 38
-  }
-];
+const formatNumber = (value: number) =>
+  new Intl.NumberFormat("en-US").format(Math.max(0, Math.floor(value)));
 
 function ReviewCard({ r }: { r: Review }) {
   return (
@@ -231,6 +127,7 @@ function ReviewCard({ r }: { r: Review }) {
 export default function ReviewsSection() {
   // Reviews มาจาก context — โหลดครั้งเดียวที่ root, share ทุกหน้า
   const { reviews: apiReviews } = useReviews();
+  const { config } = useConfig();
 
   // Map context shape → component shape
   const mapped = useMemo<Review[]>(
@@ -251,8 +148,31 @@ export default function ReviewsSection() {
     [apiReviews]
   );
 
-  // Fallback static data ถ้า API ยังไม่มีรีวิว
-  const source = mapped.length > 0 ? mapped : REVIEWS;
+  const source = mapped;
+
+  const reviewSummary = useMemo(() => {
+    const reviewCount = apiReviews.length;
+    const averageRating =
+      reviewCount > 0
+        ? apiReviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount
+        : 0;
+    const uniqueReviewers = new Set(
+      apiReviews
+        .map((review) => review.name.trim())
+        .filter((name) => name.length > 0)
+    ).size;
+    const totalCustomers = config.stats?.totalUsers ?? 0;
+    const customerCount = totalCustomers > 0 ? totalCustomers : uniqueReviewers;
+
+    return {
+      averageRating,
+      customerCount,
+      reviewCount,
+      ratingLabel: averageRating.toFixed(1),
+      customerLabel: formatNumber(customerCount),
+      reviewLabel: formatNumber(reviewCount),
+    };
+  }, [apiReviews, config.stats?.totalUsers]);
 
   // ── สร้าง 2 แถวที่ดู populated เสมอ ──
   //  - รีวิวน้อย ก็วน loop จนได้ขั้นต่ำต่อแถว → marquee ดูเต็มตลอด
@@ -294,13 +214,14 @@ export default function ReviewsSection() {
             รีวิวจากลูกค้าจริง
           </div>
           <h2 className="font-display font-black text-3xl md:text-[46px] leading-[1.08] tracking-tight text-brand-ink">
-            ลูกค้า<em className="not-italic text-brand-green">+10,000 คน</em>
+            ลูกค้า<em className="not-italic text-brand-green"> {reviewSummary.customerLabel} คน</em>
             <br />
             บอกต่อความประทับใจ
           </h2>
           <p className="text-base leading-relaxed text-brand-ink-soft font-medium">
-            รีวิวจริงจากลูกค้าที่ใช้บริการ ไม่ตัดต่อ ไม่จ้าง
-            ทุกความคิดเห็นยืนยันตัวตนแล้ว
+            {reviewSummary.reviewCount > 0
+              ? "รีวิวจริงจากลูกค้าที่ใช้บริการ ไม่ตัดต่อ ไม่จ้าง ทุกความคิดเห็นยืนยันตัวตนแล้ว"
+              : "ยังไม่มีรีวิวจากลูกค้าในระบบ เมื่อเพิ่มรีวิวแล้วสถิติจะอัปเดตอัตโนมัติ"}
           </p>
 
           {/* Rating summary pill */}
@@ -309,45 +230,63 @@ export default function ReviewsSection() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <Star
                   key={i}
-                  className="h-4 w-4 fill-brand-gold text-brand-gold-deep"
+                  className={`h-4 w-4 ${
+                    i < Math.round(reviewSummary.averageRating)
+                      ? "fill-brand-gold text-brand-gold-deep"
+                      : "fill-zinc-200 text-zinc-300"
+                  }`}
                   strokeWidth={1.5}
                 />
               ))}
             </div>
             <span className="font-display font-black text-lg text-brand-ink leading-none">
-              4.9
+              {reviewSummary.ratingLabel}
             </span>
             <span className="w-px h-4 bg-brand-green-100" />
             <span className="text-xs font-bold text-brand-ink-soft">
-              จาก <b className="text-brand-ink">2,847 รีวิว</b>
+              จาก <b className="text-brand-ink">{reviewSummary.reviewLabel} รีวิว</b>
             </span>
           </div>
         </div>
 
-        {/* Marquee rows */}
-        <div className="marquee-pause space-y-5 relative">
-          {/* Edge fade masks */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-24 md:w-40 bg-gradient-to-r from-brand-surface to-transparent z-20" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-24 md:w-40 bg-gradient-to-l from-brand-surface to-transparent z-20" />
+        {source.length > 0 ? (
+          /* Marquee rows */
+          <div className="marquee-pause space-y-5 relative">
+            {/* Edge fade masks */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 md:w-40 bg-gradient-to-r from-brand-surface to-transparent z-20" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 md:w-40 bg-gradient-to-l from-brand-surface to-transparent z-20" />
 
-          {/* Row A — scroll left (duplicate 2x สำหรับ seamless marquee) */}
-          <div className="overflow-hidden">
-            <div className="flex gap-5 w-max animate-marquee">
-              {[...rowA, ...rowA].map((r, i) => (
-                <ReviewCard key={`a-${i}-${r.id}`} r={r} />
-              ))}
+            {/* Row A — scroll left (duplicate 2x สำหรับ seamless marquee) */}
+            <div className="overflow-hidden">
+              <div className="flex gap-5 w-max animate-marquee">
+                {[...rowA, ...rowA].map((r, i) => (
+                  <ReviewCard key={`a-${i}-${r.id}`} r={r} />
+                ))}
+              </div>
+            </div>
+
+            {/* Row B — scroll right (reverse) */}
+            <div className="overflow-hidden">
+              <div className="flex gap-5 w-max animate-marquee-reverse">
+                {[...rowB, ...rowB].map((r, i) => (
+                  <ReviewCard key={`b-${i}-${r.id}`} r={r} />
+                ))}
+              </div>
             </div>
           </div>
-
-          {/* Row B — scroll right (reverse) */}
-          <div className="overflow-hidden">
-            <div className="flex gap-5 w-max animate-marquee-reverse">
-              {[...rowB, ...rowB].map((r, i) => (
-                <ReviewCard key={`b-${i}-${r.id}`} r={r} />
-              ))}
+        ) : (
+          <div className="mx-auto max-w-xl rounded-3xl border border-dashed border-brand-green-100 bg-brand-green-50/40 p-8 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-surface text-brand-green shadow-sm">
+              <Star className="h-5.5 w-5.5" />
             </div>
+            <p className="font-display text-xl font-black text-brand-ink">
+              ยังไม่มีรีวิวจากลูกค้าจริง
+            </p>
+            <p className="mt-2 text-sm font-semibold leading-relaxed text-brand-ink-soft">
+              เมื่อเพิ่มรีวิวในแดชบอร์ด ระบบจะแสดงรีวิวและคำนวณคะแนนเฉลี่ยจากข้อมูลจริงทันที
+            </p>
           </div>
-        </div>
+        )}
 
         {/* Bottom CTA strip */}
         <div className="mt-12 text-center">

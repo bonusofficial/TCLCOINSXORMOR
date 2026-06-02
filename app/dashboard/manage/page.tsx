@@ -63,6 +63,7 @@ function parseProduct(p: Record<string, unknown>): ProductParsed {
     name: (p.name as string) ?? "",
     description: (p.description as string) ?? "",
     price: (p.price as string) ?? "0",
+    cost: (p.cost as string) ?? "0",
     agentPrice: (p.agentPrice as string) ?? "0",
     stockEnabled: (p.stockEnabled as boolean) ?? false,
     stock: (p.stock as number) ?? 0,

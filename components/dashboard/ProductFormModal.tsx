@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { uploadImage } from "@/lib/upload";
 import {
   X,
   Trash2,
@@ -19,7 +20,7 @@ import {
   Users,
   Percent,
 } from "lucide-react";
-import { productsApi } from "@/lib/eden";
+import { productsApi, usersApi } from "@/lib/eden";
 import { TimePicker } from "@/components/ui/TimePicker";
 import { DatePicker } from "@/components/ui/DatePicker";
 import {
@@ -52,10 +53,13 @@ function todayPlus(days: number) {
 export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // States
   const [image, setImage] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("0");
+  const [cost, setCost] = useState("0");
   const [agentPrice, setAgentPrice] = useState("0");
   const [stockEnabled, setStockEnabled] = useState(false);
   const [stock, setStock] = useState("0");
@@ -63,10 +67,30 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([
     { start: "09:00", end: "18:00" },
   ]);
-  const [discountUsers, setDiscountUsers] = useState("");
+  const [selectedUsernames, setSelectedUsernames] = useState<string[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [allUsers, setAllUsers] = useState<Array<{ username: string | null; name: string; email: string }>>([]);
   const [discountAmount, setDiscountAmount] = useState("0");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Load all users on mount
+  useEffect(() => {
+    usersApi.collection.api.v1.users
+      .get()
+      .then(({ data, error }) => {
+        if (error || !data?.ok) return;
+        setAllUsers(
+          data.data.map((u) => ({
+            username: u.username,
+            name: u.name ?? "",
+            email: u.email,
+          }))
+        );
+      })
+      .catch((err) => console.error("Load users failed:", err));
+  }, []);
 
   // Reset / prefill เมื่อเปิด modal
   useEffect(() => {
@@ -76,11 +100,11 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       setName(initial.name);
       setDescription(initial.description);
       setPrice(String(initial.price));
+      setCost(String(initial.cost ?? "0"));
       setAgentPrice(String(initial.agentPrice));
       setStockEnabled(initial.stockEnabled);
       setStock(String(initial.stock));
 
-      // Permissive JSON parsing — รับได้ทั้ง array, JSON string, datetime
       const toArray = (v: unknown): unknown[] => {
         if (Array.isArray(v)) return v;
         if (typeof v === "string") {
@@ -122,7 +146,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       const safeUsers = toArray(initial.discountEligibleUsernames).filter(
         (u): u is string => typeof u === "string"
       );
-      setDiscountUsers(safeUsers.join(", "));
+      setSelectedUsernames(safeUsers);
       setDiscountAmount(String(initial.discountAmount));
       setNote(initial.note ?? "");
     } else {
@@ -130,12 +154,13 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       setName("");
       setDescription("");
       setPrice("0");
+      setCost("0");
       setAgentPrice("0");
       setStockEnabled(false);
       setStock("0");
       setSaleDates([todayPlus(0)]);
       setTimeSlots([{ start: "09:00", end: "18:00" }]);
-      setDiscountUsers("");
+      setSelectedUsernames([]);
       setDiscountAmount("0");
       setNote("");
     }
@@ -144,16 +169,30 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   if (!open) return null;
 
   /* ─── helpers ─── */
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) {
       toast.warning("ไฟล์ใหญ่เกินไป", { description: "อัปโหลดได้สูงสุด 3 MB" });
+      e.target.value = "";
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setImage(reader.result as string);
-    reader.readAsDataURL(file);
+    setImageUploading(true);
+    const tId = toast.loading("กำลังอัปโหลดรูป...");
+    try {
+      // อัปโหลดเป็นไฟล์จริง → ได้ URL (/uploads/images/xxx) ไม่ใช่ base64
+      const url = await uploadImage(file);
+      setImage(url);
+      toast.success("อัปโหลดรูปแล้ว", { id: tId });
+    } catch (err) {
+      toast.error("อัปโหลดรูปไม่สำเร็จ", {
+        id: tId,
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setImageUploading(false);
+      e.target.value = ""; // reset เพื่อเลือกไฟล์เดิมซ้ำได้
+    }
   };
 
   const addDate = () => {
@@ -186,13 +225,8 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       return;
     }
 
-    const users = discountUsers
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (users.length > PRODUCT_MAX_DISCOUNT_USERS) {
-      toast.warning(`ระบุได้สูงสุด ${PRODUCT_MAX_DISCOUNT_USERS} คน`);
+    if (selectedUsernames.length > PRODUCT_MAX_DISCOUNT_USERS) {
+      toast.warning(`ระบุผู้มีสิทธิ์ได้สูงสุด ${PRODUCT_MAX_DISCOUNT_USERS} คน`);
       return;
     }
 
@@ -201,12 +235,13 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       name: name.trim(),
       description,
       price: Number(price) || 0,
+      cost: Number(cost) || 0,
       agentPrice: Number(agentPrice) || 0,
       stockEnabled,
       stock: Number(stock) || 0,
       saleDates,
       timeSlots,
-      discountEligibleUsernames: users,
+      discountEligibleUsernames: selectedUsernames,
       discountAmount: Number(discountAmount) || 0,
       note: note.trim() || null,
     };
@@ -244,6 +279,10 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
     }
   };
 
+  // คำนวณกำไร
+  const calculatedProfitGeneral = Math.max(0, Number(price) - Number(cost));
+  const calculatedProfitAgent = Math.max(0, Number(agentPrice) - Number(cost));
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div
@@ -270,17 +309,25 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
           </button>
         </header>
 
-        {/* Body — scrollable */}
+        {/* Body — scrollable (รูป → ชื่อ → คำอธิบาย → ราคาขาย/ต้นทุน/Agent → สต็อก → วันและเวลา → ส่วนลด → หมายเหตุ) */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-5">
-          {/* Image */}
+          
+          {/* 1. รูปสินค้า (Image) */}
           <div>
             <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">
               รูปสินค้า
             </label>
             <div
-              onClick={() => fileRef.current?.click()}
-              className="group relative bg-brand-paper border-2 border-dashed border-brand-green-100 rounded-2xl overflow-hidden hover:border-brand-green transition cursor-pointer aspect-[16/8]"
+              onClick={() => {
+                if (!imageUploading) fileRef.current?.click();
+              }}
+              className="group relative bg-brand-paper border-2 border-dashed border-brand-green-100 rounded-2xl overflow-hidden hover:border-brand-green transition cursor-pointer aspect-square max-w-[260px]"
             >
+              {imageUploading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-brand-paper/80 backdrop-blur-sm">
+                  <Loader2 className="h-6 w-6 animate-spin text-brand-green" />
+                </div>
+              )}
               {image ? (
                 <>
                   <img
@@ -312,10 +359,15 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                   <p className="text-[12px] font-extrabold text-brand-ink">
                     คลิกอัปโหลดรูปสินค้า
                   </p>
-                  <p className="text-[10px] font-bold mt-0.5">PNG/JPG ≤ 3 MB</p>
+                  <p className="text-[10px] font-bold mt-0.5 text-center">
+                    แนะนำ 500×500px (1:1) · PNG/JPG ≤ 3 MB
+                  </p>
                 </div>
               )}
             </div>
+            <p className="text-[10.5px] font-bold text-brand-ink-soft mt-1.5 leading-relaxed">
+              💡 แนะนำขนาด <span className="text-brand-green font-black">500×500px</span> หรือสัดส่วน <span className="text-brand-green font-black">1:1 (สี่เหลี่ยมจัตุรัส)</span> — หากใส่รูปสัดส่วนผิดจะถูกครอบตัด/บิดเบี้ยวในการ์ดสินค้า
+            </p>
             <input
               ref={fileRef}
               type="file"
@@ -325,7 +377,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             />
           </div>
 
-          {/* Name */}
+          {/* 2. ชื่อสินค้า & คำอธิบาย */}
           <div>
             <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
               <Tag className="h-3.5 w-3.5 text-brand-green" />
@@ -340,7 +392,6 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             />
           </div>
 
-          {/* Description */}
           <div>
             <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">
               คำอธิบาย
@@ -354,215 +405,431 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             />
           </div>
 
-          {/* Prices */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* 3. ราคาขาย → ต้นทุน → ราคา Agent */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[12px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1">
+                  <Coins className="h-3.5 w-3.5 text-brand-green" />
+                  ราคาทั่วไป/ขาย (฿)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1">
+                  <Coins className="h-3.5 w-3.5 text-brand-coral" />
+                  ต้นทุน (บาท)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  className={inputCls}
+                  placeholder="ต้นทุนสินค้า"
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1">
+                  <Crown className="h-3.5 w-3.5 text-brand-gold" />
+                  ราคา Agent (฿)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={agentPrice}
+                  onChange={(e) => setAgentPrice(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+
+            {/* อัตราคำนวณกำไร */}
+            {(!isNaN(Number(price)) && !isNaN(Number(cost)) && Number(price) > 0) && (
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-brand-green-50/50 border border-brand-green-100/60 text-[11px] font-bold text-brand-ink-soft select-none">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-brand-green" />
+                  <span>กำไรขายทั่วไป: <b className="text-brand-green text-xs">{calculatedProfitGeneral.toLocaleString()} บาท</b></span>
+                </div>
+                {(!isNaN(Number(agentPrice)) && Number(agentPrice) > 0) && (
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-brand-gold-deep" />
+                    <span>กำไร Agent: <b className="text-brand-gold-deep text-xs">{calculatedProfitAgent.toLocaleString()} บาท</b></span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 4. ระบบสต็อก (Segmented Control + Stepper) */}
+          <div className="p-4 rounded-2xl bg-brand-paper border border-brand-green-100">
+            <div className="flex items-start gap-3">
+              <Boxes className="h-5 w-5 text-brand-green mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-extrabold text-brand-ink">
+                      การควบคุมจำนวนสต็อก
+                    </span>
+                  </div>
+                  
+                  {/* Segmented Control */}
+                  <div className="grid grid-cols-2 p-1 bg-brand-surface border border-brand-green-100/60 rounded-xl select-none">
+                    <button
+                      type="button"
+                      onClick={() => setStockEnabled(false)}
+                      className={`py-2 px-3 rounded-lg text-xs font-black text-center transition-all cursor-pointer ${
+                        !stockEnabled
+                          ? "bg-gradient-to-r from-brand-green to-brand-green-600 text-white shadow-sm"
+                          : "text-brand-ink-soft hover:text-brand-green"
+                      }`}
+                    >
+                      จองได้ไม่จำกัด
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStockEnabled(true);
+                        if (stock === "0") {
+                          setStock("10"); // default to 10 stock to avoid 0 stock auto-close
+                        }
+                      }}
+                      className={`py-2 px-3 rounded-lg text-xs font-black text-center transition-all cursor-pointer ${
+                        stockEnabled
+                          ? "bg-gradient-to-r from-brand-green to-brand-green-600 text-white shadow-sm"
+                          : "text-brand-ink-soft hover:text-brand-green"
+                      }`}
+                    >
+                      จำกัดจำนวนสต็อก
+                    </button>
+                  </div>
+                </div>
+                
+                {stockEnabled && (
+                  <div className="flex items-center gap-3 mt-4.5 select-none bg-brand-surface-soft border border-brand-green-100/40 rounded-xl p-3.5 animate-in fade-in duration-200">
+                    <span className="text-xs font-bold text-brand-ink-soft">
+                      ระบุจำนวนสต็อก:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setStock(Math.max(0, Number(stock) - 1).toString())}
+                      className="w-9 h-9 rounded-lg bg-brand-green-50 text-brand-green border border-brand-green-100 hover:bg-brand-green-100 flex items-center justify-center font-black text-base transition cursor-pointer active:scale-95 flex-shrink-0"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      value={stock}
+                      onChange={(e) => setStock(Math.max(0, parseInt(e.target.value) || 0).toString())}
+                      className="w-20 rounded-lg border border-brand-green-100 bg-brand-paper py-1.5 px-2.5 text-center font-bold text-sm outline-none text-brand-ink"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setStock((Number(stock) + 1).toString())}
+                      className="w-9 h-9 rounded-lg bg-brand-green-50 text-brand-green border border-brand-green-100 hover:bg-brand-green-100 flex items-center justify-center font-black text-base transition cursor-pointer active:scale-95 flex-shrink-0"
+                    >
+                      +
+                    </button>
+                    <span className="text-[10px] text-brand-ink-soft/80 font-bold ml-auto">
+                      * สต็อกจะลดลงทีละ 1 ทุกครั้งที่ลูกค้าจอง
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 5. วันและเวลาที่ตั้งขาย */}
+          <div className="space-y-4">
+            {/* วันที่ตั้งการขาย */}
+            <div className="bg-brand-paper/40 p-4 border border-brand-green-100 rounded-2xl">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[12.5px] font-extrabold text-brand-ink inline-flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5 text-brand-green" />
+                  วันที่ตั้งการขาย
+                  <span className="text-brand-ink-soft font-bold">
+                    (สูงสุด {PRODUCT_MAX_SALE_DATES} วัน)
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={addDate}
+                  disabled={saleDates.length >= PRODUCT_MAX_SALE_DATES}
+                  className="text-[11px] font-extrabold text-brand-green hover:text-brand-green-600 inline-flex items-center gap-1 disabled:opacity-40 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" /> เพิ่มวันที่
+                </button>
+              </div>
+
+              {/* วันที่ลูกค้าจอง Preview */}
+              <div className="bg-brand-surface-soft/80 border border-brand-green-100/40 rounded-xl p-3 text-[11px] text-brand-ink-soft space-y-1.5 font-bold mb-3 select-none">
+                <span className="text-[10px] text-brand-green font-extrabold uppercase tracking-wider block">💡 ตัวอย่างปฏิทินที่ลูกค้าจะคลิกจอง (Preview)</span>
+                <div className="flex gap-1.5 flex-wrap">
+                  {saleDates.slice(0, 3).map((d, index) => {
+                    const formattedDate = d ? new Date(d).toLocaleDateString("th-TH", { day: "numeric", month: "short" }) : `วันที่ ${index + 1}`;
+                    return (
+                      <span key={index} className={`px-2.5 py-1 rounded-lg border text-[10.5px] font-black ${index === 0 ? "bg-brand-green text-white border-brand-green shadow-sm shadow-brand-green/20" : "bg-brand-paper border-brand-green-100 text-brand-ink/75"}`}>
+                        {formattedDate}
+                      </span>
+                    );
+                  })}
+                  {saleDates.length > 3 && (
+                    <span className="px-2.5 py-1 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft/75 text-[10.5px]">
+                      +{saleDates.length - 3} วันที่เหลือ...
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {saleDates.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <DatePicker
+                      value={d}
+                      onChange={(v) => setDate(i, v)}
+                      className="flex-1"
+                    />
+                    {saleDates.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeDate(i)}
+                        className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 flex items-center justify-center transition cursor-pointer flex-shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ช่วงเวลาเปิดรับ */}
+            <div className="bg-brand-paper/40 p-4 border border-brand-green-100 rounded-2xl">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[12.5px] font-extrabold text-brand-ink inline-flex items-center gap-1.5 flex-wrap">
+                  <Clock className="h-3.5 w-3.5 text-brand-green" />
+                  ช่วงเวลาเปิดรับ
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand-green/10 text-brand-green text-[10px] font-black ring-1 ring-brand-green/30">
+                    เวลาไทย · UTC+7
+                  </span>
+                  <span className="text-brand-ink-soft font-bold">
+                    (สูงสุด {PRODUCT_MAX_TIME_SLOTS} ช่วง)
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={addSlot}
+                  disabled={timeSlots.length >= PRODUCT_MAX_TIME_SLOTS}
+                  className="text-[11px] font-extrabold text-brand-green hover:text-brand-green-600 inline-flex items-center gap-1 disabled:opacity-40 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" /> เพิ่มเวลา
+                </button>
+              </div>
+              <p className="text-[10.5px] font-bold text-brand-ink-soft -mt-1 mb-3">
+                ระบบใช้เวลาประเทศไทยเสมอ — ลูกค้าทุกคนจะเห็นช่วงเวลานี้ตรงกัน
+              </p>
+
+              {/* ช่วงเวลา Preview */}
+              <div className="bg-brand-surface-soft/80 border border-brand-green-100/40 rounded-xl p-3 text-[11px] text-brand-ink-soft space-y-1.5 font-bold mb-3 select-none">
+                <span className="text-[10px] text-brand-green font-extrabold uppercase tracking-wider block">💡 ตัวอย่างแถบเลือกช่วงเวลาที่ลูกค้าจะกดเลือก (Preview)</span>
+                <div className="flex gap-1.5 flex-wrap">
+                  {timeSlots.slice(0, 3).map((slot, index) => (
+                    <span key={index} className={`px-2.5 py-1 rounded-lg border text-[10.5px] font-black ${index === 0 ? "bg-brand-green text-white border-brand-green shadow-sm shadow-brand-green/20" : "bg-brand-paper border-brand-green-100 text-brand-ink/75"}`}>
+                      {slot.start} - {slot.end}
+                    </span>
+                  ))}
+                  {timeSlots.length > 3 && (
+                    <span className="px-2.5 py-1 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft/75 text-[10.5px]">
+                      +{timeSlots.length - 3} ช่วง...
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {timeSlots.map((s, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
+                    <TimePicker
+                      value={s.start}
+                      onChange={(v) => setSlot(i, "start", v)}
+                    />
+                    <span className="text-brand-ink-soft font-bold">–</span>
+                    <TimePicker
+                      value={s.end}
+                      onChange={(v) => setSlot(i, "end", v)}
+                    />
+                    {timeSlots.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => removeSlot(i)}
+                        className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 flex items-center justify-center transition cursor-pointer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <div className="w-10" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 6. ส่วนลด (ผู้มีสิทธิ์ได้รับส่วนลด & จำนวนส่วนลด) */}
+          <div className="space-y-4">
+            <div className="bg-brand-paper/40 p-4 border border-brand-green-100 rounded-2xl">
+              <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-brand-green" />
+                สมาชิกที่มีสิทธิ์ได้รับส่วนลดพิเศษ
+                <span className="text-brand-ink-soft font-bold">
+                  (สูงสุด {PRODUCT_MAX_DISCOUNT_USERS} คน)
+                </span>
+              </label>
+
+              {/* แสดงแท็กคนที่เลือกไว้ */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {selectedUsernames.map((uname) => (
+                  <span
+                    key={uname}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-brand-green-50 text-brand-green border border-brand-green-100 shadow-sm"
+                  >
+                    @{uname}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUsernames(selectedUsernames.filter((x) => x !== uname))}
+                      className="w-4 h-4 rounded-full bg-brand-green-100 hover:bg-rose-500 hover:text-white text-brand-green flex items-center justify-center transition cursor-pointer active:scale-90"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                ))}
+                {selectedUsernames.length === 0 && (
+                  <span className="text-xs text-brand-ink-soft/60 font-bold py-1 select-none">
+                    ยังไม่มีการเลือกสมาชิก (ใช้ราคาขายปกติทั่วไป)
+                  </span>
+                )}
+              </div>
+
+              {/* Search input & Custom searchable dropdown */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => {
+                    setUserSearch(e.target.value);
+                    setDropdownOpen(true);
+                  }}
+                  onFocus={() => setDropdownOpen(true)}
+                  className={inputCls}
+                  placeholder="พิมพ์เพื่อค้นหาชื่อ Username, ชื่อแสดงผล หรืออีเมลสมาชิก..."
+                />
+                
+                {dropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 max-h-48 overflow-y-auto bg-brand-surface border border-brand-green-100 rounded-xl shadow-2xl z-10 p-1 divide-y divide-brand-green-100/40 animate-in fade-in duration-100">
+                    {allUsers.filter((u) => {
+                      if (!u.username) return false;
+                      const q = userSearch.toLowerCase().trim();
+                      if (!q) return !selectedUsernames.includes(u.username);
+                      return (
+                        (u.username.toLowerCase().includes(q) ||
+                         u.name.toLowerCase().includes(q) ||
+                         u.email.toLowerCase().includes(q)) &&
+                        !selectedUsernames.includes(u.username)
+                      );
+                    }).length === 0 ? (
+                      <div className="p-3 text-center text-xs text-brand-ink-soft font-bold select-none">
+                        ไม่พบรายชื่อสมาชิก หรือสมาชิกถูกเลือกครบแล้ว
+                      </div>
+                    ) : (
+                      allUsers
+                        .filter((u) => {
+                          if (!u.username) return false;
+                          const q = userSearch.toLowerCase().trim();
+                          if (!q) return !selectedUsernames.includes(u.username);
+                          return (
+                            (u.username.toLowerCase().includes(q) ||
+                             u.name.toLowerCase().includes(q) ||
+                             u.email.toLowerCase().includes(q)) &&
+                            !selectedUsernames.includes(u.username)
+                          );
+                        })
+                        .map((u) => (
+                          <button
+                            key={u.username}
+                            type="button"
+                            onClick={() => {
+                              if (u.username) {
+                                if (selectedUsernames.length >= PRODUCT_MAX_DISCOUNT_USERS) {
+                                  toast.warning(`ระบุได้สูงสุด ${PRODUCT_MAX_DISCOUNT_USERS} คน`);
+                                  return;
+                                }
+                                setSelectedUsernames([...selectedUsernames, u.username]);
+                                setUserSearch("");
+                                setDropdownOpen(false);
+                              }
+                            }}
+                            className="w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold text-brand-ink hover:bg-brand-green-50 hover:text-brand-green transition flex items-center justify-between cursor-pointer"
+                          >
+                            <div>
+                              <div className="font-extrabold text-[12.5px]">@{u.username}</div>
+                              <div className="text-[10px] text-brand-ink-soft mt-0.5">{u.name || "ไม่มีชื่อ"} · {u.email}</div>
+                            </div>
+                            <Plus className="h-4 w-4 text-brand-green" />
+                          </button>
+                        ))
+                    )}
+                  </div>
+                )}
+                {dropdownOpen && (
+                  <div
+                    className="fixed inset-0 z-0"
+                    onClick={() => setDropdownOpen(false)}
+                  />
+                )}
+              </div>
+            </div>
+
             <div>
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
-                <Coins className="h-3.5 w-3.5 text-brand-green" />
-                ราคาทั่วไป (บาท)
+                <Percent className="h-3.5 w-3.5 text-brand-gold" />
+                จำนวนส่วนลดสำหรับผู้มีสิทธิ์ (บาท)
               </label>
               <input
                 type="number"
                 min={0}
                 step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
-                <Crown className="h-3.5 w-3.5 text-brand-gold" />
-                ราคา Agent (บาท)
-              </label>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={agentPrice}
-                onChange={(e) => setAgentPrice(e.target.value)}
+                value={discountAmount}
+                onChange={(e) => setDiscountAmount(e.target.value)}
                 className={inputCls}
               />
             </div>
           </div>
 
-          {/* Sale dates */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-[12.5px] font-extrabold text-brand-ink inline-flex items-center gap-1.5">
-                <CalendarDays className="h-3.5 w-3.5 text-brand-green" />
-                วันที่ตั้งการขาย
-                <span className="text-brand-ink-soft font-bold">
-                  (สูงสุด {PRODUCT_MAX_SALE_DATES} วัน)
-                </span>
-              </label>
-              <button
-                type="button"
-                onClick={addDate}
-                disabled={saleDates.length >= PRODUCT_MAX_SALE_DATES}
-                className="text-[11px] font-extrabold text-brand-green hover:text-brand-green-600 inline-flex items-center gap-1 disabled:opacity-40 cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" /> เพิ่มวันที่
-              </button>
-            </div>
-            <div className="space-y-2">
-              {saleDates.map((d, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <DatePicker
-                    value={d}
-                    onChange={(v) => setDate(i, v)}
-                    className="flex-1"
-                  />
-                  {saleDates.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeDate(i)}
-                      className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 flex items-center justify-center transition cursor-pointer flex-shrink-0"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Time slots */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-[12.5px] font-extrabold text-brand-ink inline-flex items-center gap-1.5 flex-wrap">
-                <Clock className="h-3.5 w-3.5 text-brand-green" />
-                ช่วงเวลาเปิดรับ
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand-green/10 text-brand-green text-[10px] font-black ring-1 ring-brand-green/30">
-                  เวลาไทย · UTC+7
-                </span>
-                <span className="text-brand-ink-soft font-bold">
-                  (สูงสุด {PRODUCT_MAX_TIME_SLOTS} ช่วง)
-                </span>
-              </label>
-              <button
-                type="button"
-                onClick={addSlot}
-                disabled={timeSlots.length >= PRODUCT_MAX_TIME_SLOTS}
-                className="text-[11px] font-extrabold text-brand-green hover:text-brand-green-600 inline-flex items-center gap-1 disabled:opacity-40 cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" /> เพิ่มเวลา
-              </button>
-            </div>
-            <p className="text-[10.5px] font-bold text-brand-ink-soft -mt-1 mb-2">
-              ระบบใช้เวลาประเทศไทยเสมอ — ลูกค้าทุกคนจะเห็นช่วงเวลานี้ตรงกัน
-            </p>
-            <div className="space-y-2">
-              {timeSlots.map((s, i) => (
-                <div key={i} className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
-                  <TimePicker
-                    value={s.start}
-                    onChange={(v) => setSlot(i, "start", v)}
-                  />
-                  <span className="text-brand-ink-soft font-bold">–</span>
-                  <TimePicker
-                    value={s.end}
-                    onChange={(v) => setSlot(i, "end", v)}
-                  />
-                  {timeSlots.length > 1 ? (
-                    <button
-                      type="button"
-                      onClick={() => removeSlot(i)}
-                      className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 flex items-center justify-center transition cursor-pointer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  ) : (
-                    <div className="w-10" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Note */}
+          {/* 7. หมายเหตุ (Note) */}
           <div>
             <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
               <StickyNote className="h-3.5 w-3.5 text-brand-green" />
-              หมายเหตุ
+              หมายเหตุเพิ่มเติม
             </label>
             <textarea
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className={textareaCls}
-              placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)..."
+              placeholder="ระบุหมายเหตุเพิ่มเติมที่เป็นประโยชน์สำหรับแอดมินหรือระบบ..."
             />
           </div>
 
-          {/* Discount users */}
-          <div>
-            <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-brand-green" />
-              ผู้มีสิทธิ์ได้รับส่วนลด
-              <span className="text-brand-ink-soft font-bold">
-                (สูงสุด {PRODUCT_MAX_DISCOUNT_USERS} คน)
-              </span>
-            </label>
-            <textarea
-              rows={2}
-              value={discountUsers}
-              onChange={(e) => setDiscountUsers(e.target.value)}
-              className={textareaCls}
-              placeholder="ใส่ชื่อผู้ใช้ (คั่นด้วยจุลภาค ,) เช่น peak, riu, john..."
-            />
-          </div>
-
-          {/* Discount amount */}
-          <div>
-            <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
-              <Percent className="h-3.5 w-3.5 text-brand-gold" />
-              จำนวนส่วนลดสำหรับผู้มีสิทธิ์ (บาท)
-            </label>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={discountAmount}
-              onChange={(e) => setDiscountAmount(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-
-          {/* Stock toggle + amount */}
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-brand-paper border border-brand-green-100">
-            <Boxes className="h-5 w-5 text-brand-green mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[13px] font-extrabold text-brand-ink">
-                  ระบบสต็อก
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setStockEnabled(!stockEnabled)}
-                  className={`relative w-11 h-6 rounded-full transition cursor-pointer ${
-                    stockEnabled ? "bg-brand-green" : "bg-brand-ink-soft/30"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
-                      stockEnabled ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-              {stockEnabled && (
-                <input
-                  type="number"
-                  min={0}
-                  value={stock}
-                  onChange={(e) => setStock(e.target.value)}
-                  className={inputCls}
-                  placeholder="จำนวนสต็อก"
-                />
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Footer — fixed */}

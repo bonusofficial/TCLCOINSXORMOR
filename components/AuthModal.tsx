@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { signIn, signUp, authClient } from "@/lib/auth-client";
+import {
+  authClient,
+  requestPasswordReset,
+  signIn,
+  signUp,
+} from "@/lib/auth-client";
+import { publicApi } from "@/lib/eden";
 import { toast } from "sonner";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
 import {
@@ -38,6 +44,8 @@ const PASSWORD_RULES: Array<{ id: string; label: string; test: (p: string) => bo
   { id: "sym", label: "อักขระพิเศษ (!@#$...)", test: (p) => /[^A-Za-z0-9]/.test(p) },
 ];
 
+type AuthTab = "login" | "register" | "forgot";
+
 export default function AuthModal({
   isOpen,
   onClose,
@@ -45,7 +53,7 @@ export default function AuthModal({
   onLoginSuccess,
 }: AuthModalProps) {
   const { config } = useConfig();
-  const [activeTab, setActiveTab] = useState<"login" | "register">(initialTab);
+  const [activeTab, setActiveTab] = useState<AuthTab>(initialTab);
   const [showPassword, setShowPassword] = useState(false);
   const [success, setSuccess] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -54,11 +62,15 @@ export default function AuthModal({
   // Sync activeTab when modal re-opens with a different initialTab
   // (useState initializer only runs once; component stays mounted between opens)
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) return;
+
+    const id = window.setTimeout(() => {
       setActiveTab(initialTab);
       setSuccess(false);
       setShowPassword(false);
-    }
+    }, 0);
+
+    return () => window.clearTimeout(id);
   }, [isOpen, initialTab]);
 
   const [formData, setFormData] = useState({
@@ -103,10 +115,13 @@ export default function AuthModal({
 
   if (!isOpen) return null;
 
-  const handleTabChange = (tab: "login" | "register") => {
+  const handleTabChange = (tab: AuthTab) => {
     setActiveTab(tab);
     setSuccess(false);
     setShowPassword(false);
+    if (tab === "forgot" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.username.trim())) {
+      setFormData((prev) => ({ ...prev, email: prev.username.trim() }));
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,6 +189,27 @@ export default function AuthModal({
         // Edge case: some users register with email-shaped usernames
         const fallback = await signIn.username({ username: input, ...credentials });
         if (!fallback.error) res = fallback;
+      }
+
+      // Fallback สุดท้าย: ลองค้นด้วย "ชื่อร้าน" หรือ "ไอดีไลน์" → resolve เป็น username แล้วเข้าสู่ระบบ
+      if (res.error) {
+        try {
+          const resolved =
+            await publicApi.authResolve.api.v0.auth.resolve.post({
+              identifier: input,
+            });
+          const resolvedUsername =
+            resolved?.data?.ok ? resolved.data.username : null;
+          if (resolvedUsername && resolvedUsername !== input) {
+            const r = await signIn.username({
+              username: resolvedUsername,
+              ...credentials,
+            });
+            if (!r.error) res = r;
+          }
+        } catch {
+          // ถ้า resolve ล้มเหลว ปล่อยให้แสดง error เดิม
+        }
       }
 
       if (res.error) {
@@ -274,7 +310,50 @@ export default function AuthModal({
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
+
+    const email = formData.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.warning("อีเมลไม่ถูกต้อง", {
+        description: "กรุณาระบุอีเมลที่ใช้สมัครสมาชิก",
+      });
+      return;
+    }
+
+    setLoading(true);
+    const id = toast.loading("กำลังส่งลิงก์รีเซ็ตรหัสผ่าน...");
+    try {
+      const res = await requestPasswordReset({ email });
+      if (res.error) {
+        toast.error("ส่งอีเมลไม่สำเร็จ", {
+          id,
+          description:
+            res.error.message ??
+            "กรุณาตรวจสอบการตั้งค่า SMTP/Gmail ในระบบ",
+        });
+        setLoading(false);
+        return;
+      }
+
+      toast.success("ส่งคำขอเรียบร้อย", {
+        id,
+        description:
+          "หากอีเมลนี้มีบัญชีอยู่ในระบบ คุณจะได้รับลิงก์สำหรับตั้งรหัสผ่านใหม่",
+      });
+      setActiveTab("login");
+      setFormData((prev) => ({ ...prev, password: "", confirmPassword: "" }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในระบบ";
+      toast.error("ส่งอีเมลไม่สำเร็จ", { id, description: msg });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
+    if (activeTab === "forgot") return handleForgotPassword(e);
     if (activeTab === "login") return handleLogin(e);
     return handleRegister(e);
   };
@@ -287,7 +366,7 @@ export default function AuthModal({
       />
 
       {/* Dark-Theme Modal Dialog */}
-      <div className="relative w-full max-w-[1000px] overflow-hidden rounded-[38px] border border-brand-green-100 bg-brand-surface-soft shadow-[0_30px_60px_-15px_rgba(8,238,32,0.25)] ring-1 ring-brand-green/20 transition-all duration-300 grid grid-cols-1 lg:grid-cols-[1.25fr_0.75fr] animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-[1000px] max-h-[92vh] overflow-x-hidden overflow-y-auto rounded-[38px] border border-brand-green-100 bg-brand-surface-soft shadow-[0_30px_60px_-15px_rgba(8,238,32,0.25)] ring-1 ring-brand-green/20 transition-all duration-300 grid grid-cols-1 lg:grid-cols-[1.25fr_0.75fr] animate-in fade-in zoom-in-95 duration-200">
         {/* Soft background light blobs */}
         <div className="absolute top-[-10%] left-[-10%] h-60 w-60 rounded-full bg-brand-green/8 blur-[80px] pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] h-60 w-60 rounded-full bg-brand-gold/6 blur-[80px] pointer-events-none" />
@@ -331,49 +410,74 @@ export default function AuthModal({
                   </span>
                 </div>
                 <h2 className="font-display font-black text-3.5xl tracking-tight text-brand-ink mt-2 leading-none">
-                  {activeTab === "login" ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
+                  {activeTab === "login"
+                    ? "เข้าสู่ระบบ"
+                    : activeTab === "forgot"
+                    ? "ลืมรหัสผ่าน"
+                    : "สมัครสมาชิก"}
                 </h2>
                 <p className="mt-3 text-xs.5 md:text-sm text-brand-ink-soft font-bold">
                   {activeTab === "login"
                     ? "ยินดีต้อนรับกลับมา! กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ"
+                    : activeTab === "forgot"
+                    ? "กรอกอีเมลที่ใช้สมัครสมาชิก แล้วระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่"
                     : "เริ่มการสมัครสมาชิกของคุณได้เลยที่นี่!"}
                 </p>
               </div>
 
               {/* Form Input pods */}
               <form onSubmit={handleSubmit} className="space-y-4.5">
-                {/* Username Input Pod */}
-                <div className="relative group">
-                  <div className="absolute top-1/2 left-4.5 -translate-y-1/2 flex items-center justify-center text-brand-ink-soft group-focus-within:text-brand-green transition duration-200">
-                    <User className="h-4.5 w-4.5" />
+                {activeTab === "forgot" ? (
+                  <div className="relative group">
+                    <div className="absolute top-1/2 left-4.5 -translate-y-1/2 flex items-center justify-center text-brand-ink-soft group-focus-within:text-brand-green transition duration-200">
+                      <Mail className="h-4.5 w-4.5" />
+                    </div>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="อีเมลที่ใช้สมัครสมาชิก"
+                      className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-4 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                    required
-                    placeholder={
-                      activeTab === "login"
-                        ? "ชื่อผู้ใช้งาน หรือ อีเมล"
-                        : "ชื่อผู้ใช้งาน"
-                    }
-                    className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-4 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
-                  />
-                </div>
+                ) : (
+                  <>
+                    {/* Username Input Pod */}
+                    <div className="relative group">
+                      <div className="absolute top-1/2 left-4.5 -translate-y-1/2 flex items-center justify-center text-brand-ink-soft group-focus-within:text-brand-green transition duration-200">
+                        <User className="h-4.5 w-4.5" />
+                      </div>
+                      <input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleInputChange}
+                        required
+                        placeholder={
+                          activeTab === "login"
+                            ? "ชื่อผู้ใช้ / อีเมล / ชื่อร้าน / ไอดีไลน์"
+                            : "ชื่อผู้ใช้งาน"
+                        }
+                        className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-4 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
+                      />
+                    </div>
 
-                {activeTab === "login" && (
-                  <p className="text-[10px] text-brand-ink-soft font-bold pl-1.5 -mt-3.5">
-                    💡 เข้าสู่ระบบด้วย{" "}
-                    <span className="text-brand-green font-black">
-                      อีเมล Gmail
-                    </span>{" "}
-                    หรือ{" "}
-                    <span className="text-brand-green font-black">
-                      ชื่อผู้ใช้งาน
-                    </span>{" "}
-                    ที่ลงทะเบียนไว้
-                  </p>
+                    {activeTab === "login" && (
+                      <p className="text-[10px] text-brand-ink-soft font-bold pl-1.5 -mt-3.5">
+                        💡 เข้าสู่ระบบด้วย{" "}
+                        <span className="text-brand-green font-black">
+                          อีเมล · ชื่อผู้ใช้
+                        </span>{" "}
+                        หรือ{" "}
+                        <span className="text-brand-green font-black">
+                          ชื่อร้าน · ไอดีไลน์
+                        </span>{" "}
+                        ที่ลงทะเบียนไว้
+                      </p>
+                    )}
+                  </>
                 )}
 
                 {activeTab === "register" && (
@@ -412,32 +516,34 @@ export default function AuthModal({
                   </>
                 )}
 
-                {/* Password Input Pod */}
-                <div className="relative group">
-                  <div className="absolute top-1/2 left-4.5 -translate-y-1/2 flex items-center justify-center text-brand-ink-soft group-focus-within:text-brand-green transition duration-200">
-                    <Lock className="h-4.5 w-4.5" />
+                {activeTab !== "forgot" && (
+                  /* Password Input Pod */
+                  <div className="relative group">
+                    <div className="absolute top-1/2 left-4.5 -translate-y-1/2 flex items-center justify-center text-brand-ink-soft group-focus-within:text-brand-green transition duration-200">
+                      <Lock className="h-4.5 w-4.5" />
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="รหัสผ่าน"
+                      className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-12.5 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute top-1/2 right-4.5 -translate-y-1/2 text-brand-ink-soft hover:text-brand-green transition"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4.5 w-4.5" />
+                      ) : (
+                        <Eye className="h-4.5 w-4.5" />
+                      )}
+                    </button>
                   </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="รหัสผ่าน"
-                    className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-12.5 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute top-1/2 right-4.5 -translate-y-1/2 text-brand-ink-soft hover:text-brand-green transition"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4.5 w-4.5" />
-                    ) : (
-                      <Eye className="h-4.5 w-4.5" />
-                    )}
-                  </button>
-                </div>
+                )}
 
                 {/* Password Strength Indicator — register only */}
                 {activeTab === "register" && formData.password.length > 0 && (
@@ -522,12 +628,13 @@ export default function AuthModal({
                         จดจำฉันไว้
                       </span>
                     </label>
-                    <a
-                      href="#"
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("forgot")}
                       className="text-xs.5 font-bold text-brand-ink-soft hover:text-brand-green hover:underline transition"
                     >
                       ลืมรหัสผ่าน?
-                    </a>
+                    </button>
                   </div>
                 )}
 
@@ -548,6 +655,8 @@ export default function AuthModal({
                       <>
                         {activeTab === "login"
                           ? "เข้าสู่ระบบ"
+                          : activeTab === "forgot"
+                          ? "ส่งลิงก์รีเซ็ต"
                           : "สมัครสมาชิกเลย"}
                         <ArrowRight className="h-4.5 w-4.5" />
                       </>
@@ -555,33 +664,35 @@ export default function AuthModal({
                   </button>
 
                   {/* Secondary Button — VIP Agent (dark green + gold border + glow) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (config?.agentLink) {
-                        window.open(config.agentLink, "_blank");
-                      } else {
-                        handleTabChange("register");
-                      }
-                    }}
-                    className="group/agent relative w-full rounded-2xl bg-gradient-to-br from-brand-green-700 via-brand-green-600 to-brand-leaf-deep border-2 border-brand-gold py-3.5 px-4 text-base font-extrabold text-brand-ink hover:scale-[1.01] shadow-lg shadow-brand-gold/25 hover:shadow-xl hover:shadow-brand-gold/45 transition duration-250 flex items-center justify-center gap-2.5 cursor-pointer overflow-hidden"
-                  >
-                    {/* Gold shimmer overlay */}
-                    <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-brand-gold-light/15 to-transparent translate-x-[-100%] group-hover/agent:translate-x-[100%] transition-transform duration-700" />
+                  {activeTab !== "forgot" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (config?.agentLink) {
+                          window.open(config.agentLink, "_blank");
+                        } else {
+                          handleTabChange("register");
+                        }
+                      }}
+                      className="group/agent relative w-full rounded-2xl bg-gradient-to-br from-brand-green-700 via-brand-green-600 to-brand-leaf-deep border-2 border-brand-gold py-3.5 px-4 text-base font-extrabold text-brand-ink hover:scale-[1.01] shadow-lg shadow-brand-gold/25 hover:shadow-xl hover:shadow-brand-gold/45 transition duration-250 flex items-center justify-center gap-2.5 cursor-pointer overflow-hidden"
+                    >
+                      {/* Gold shimmer overlay */}
+                      <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-brand-gold-light/15 to-transparent translate-x-[-100%] group-hover/agent:translate-x-[100%] transition-transform duration-700" />
 
-                    <Crown
-                      className="h-5 w-5 text-brand-gold drop-shadow-[0_1px_3px_rgba(240,168,0,0.6)] flex-shrink-0"
-                      strokeWidth={2.5}
-                    />
-                    <span className="flex flex-col items-start leading-none gap-1">
-                      <span className="text-white text-glow-gold">
-                        สมัครตัวแทน
+                      <Crown
+                        className="h-5 w-5 text-brand-gold drop-shadow-[0_1px_3px_rgba(240,168,0,0.6)] flex-shrink-0"
+                        strokeWidth={2.5}
+                      />
+                      <span className="flex flex-col items-start leading-none gap-1">
+                        <span className="text-white text-glow-gold">
+                          สมัครตัวแทน 199฿
+                        </span>
+                        <span className="text-[10px] text-brand-gold-light font-bold tracking-wide">
+                          สิทธิพิเศษ VIP • พร้อมส่วนลดมากมาย!
+                        </span>
                       </span>
-                      <span className="text-[10px] text-brand-gold-light font-bold tracking-wide">
-                        สิทธิพิเศษ VIP · รับรหัสตัวแทน
-                      </span>
-                    </span>
-                  </button>
+                    </button>
+                  )}
                 </div>
               </form>
 
@@ -614,7 +725,7 @@ export default function AuthModal({
         </div>
 
         {/* RIGHT COLUMN: PREMIUM DARK ILLUSTRATION & DETAILS */}
-        <div className="hidden lg:flex relative bg-gradient-to-br from-brand-surface via-brand-paper to-brand-surface p-10 xl:p-12 flex-col justify-center border-l border-brand-green-100/40 overflow-hidden">
+        <div className="flex order-first lg:order-none relative bg-gradient-to-br from-brand-surface via-brand-paper to-brand-surface p-7 lg:p-10 xl:p-12 flex-col justify-center border-b lg:border-b-0 lg:border-l border-brand-green-100/40 overflow-hidden">
           {/* Soft brand color blobs for depth on dark */}
           <div className="absolute -top-16 -right-12 h-60 w-60 rounded-full bg-brand-green/20 blur-[80px] pointer-events-none" />
           <div className="absolute -bottom-24 -left-12 h-64 w-64 rounded-full bg-brand-gold/15 blur-[90px] pointer-events-none" />
@@ -645,12 +756,21 @@ export default function AuthModal({
                 ระบบจองเหรียญไลน์อันดับ 1
               </div>
               <h3 className="font-display font-black text-[26px] xl:text-[30px] leading-[1.05] tracking-tight text-brand-ink">
-                ยินดีต้อนรับสู่
-                <br />
-                <span className="relative inline-block text-transparent bg-clip-text bg-gradient-to-r from-brand-green-600 to-brand-green">
-                  ครอบครัว TCLCOINSXORMOR
-                  <span className="absolute left-0 right-0 bottom-0.5 h-2 bg-brand-gold/40 rounded -z-10 rotate-[-0.5deg]" />
-                </span>
+                {config.welcomeTitle?.trim() ? (
+                  <span className="relative inline-block text-transparent bg-clip-text bg-gradient-to-r from-brand-green-600 to-brand-green">
+                    {config.welcomeTitle}
+                    <span className="absolute left-0 right-0 bottom-0.5 h-2 bg-brand-gold/40 rounded -z-10 rotate-[-0.5deg]" />
+                  </span>
+                ) : (
+                  <>
+                    ยินดีต้อนรับสู่
+                    <br />
+                    <span className="relative inline-block text-transparent bg-clip-text bg-gradient-to-r from-brand-green-600 to-brand-green">
+                      ครอบครัว TCLCOINSXORMOR
+                      <span className="absolute left-0 right-0 bottom-0.5 h-2 bg-brand-gold/40 rounded -z-10 rotate-[-0.5deg]" />
+                    </span>
+                  </>
+                )}
               </h3>
               <p className="mt-3 text-[12.5px] text-brand-ink-soft font-semibold leading-relaxed max-w-[300px] mx-auto">
                 เข้าสู่ระบบเพื่อรับ
@@ -669,10 +789,14 @@ export default function AuthModal({
                 <b className="text-[#E04F96] text-[14.5px] block mb-1 font-black">
                   บทบาทตัวแทนจำหน่าย
                 </b>
-                <span className="text-brand-ink-soft font-medium">
-                  สมัครสมาชิกโดยใช้{" "}
-                  <b className="text-[#E04F96]">(ชื่อผู้ใช้งาน)</b>{" "}
-                  ในกลุ่มโอเพนแชทที่คุณตั้งไว้ได้เลย
+                <span className="text-brand-ink-soft font-medium whitespace-pre-line">
+                  {config.welcomeAgentDesc?.trim() || (
+                    <>
+                      สมัครสมาชิกโดยใช้{" "}
+                      <b className="text-[#E04F96]">(ชื่อผู้ใช้งาน)</b>{" "}
+                      ในกลุ่มโอเพนแชทที่คุณตั้งไว้ได้เลย
+                    </>
+                  )}
                 </span>
               </div>
             </div>
@@ -686,9 +810,9 @@ export default function AuthModal({
                 <b className="text-brand-green text-[14.5px] block mb-1 font-black">
                   บทบาทลูกค้าทั่วไป
                 </b>
-                <span className="text-brand-ink-soft font-medium">
-                  สมัครได้ตามปกติ
-                  และอัปเกรดเป็นตัวแทนเพื่อรับเรทพิเศษที่ดีกว่าได้ทันที
+                <span className="text-brand-ink-soft font-medium whitespace-pre-line">
+                  {config.welcomeMemberDesc?.trim() ||
+                    "สมัครได้ตามปกติ และอัปเกรดเป็นตัวแทนเพื่อรับเรทพิเศษที่ดีกว่าได้ทันที"}
                 </span>
               </div>
             </div>

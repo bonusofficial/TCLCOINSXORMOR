@@ -3,13 +3,13 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useConfig } from "@/lib/contexts/PublicDataContext";
 import {
   Home,
   Package,
   Settings,
   Users,
   LogOut,
-  HelpCircle,
   X,
   ChevronUp,
   Box,
@@ -56,7 +56,10 @@ interface SidebarProps {
 
 export function DashboardSidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { config } = useConfig();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const siteLogo = config.logo?.trim() || "/logo.webp";
+  const siteTitle = config.title?.trim() || "TCLCOINSXORMOR";
 
   /** active state — รวมถึง children ด้วย (parent จะ active ถ้า child active) */
   const isPathActive = (match: string) => {
@@ -78,7 +81,12 @@ export function DashboardSidebar({ mobileOpen, onClose }: SidebarProps) {
         next.add(item.key);
       }
     }
-    setExpanded(next);
+
+    const id = window.setTimeout(() => {
+      setExpanded(next);
+    }, 0);
+
+    return () => window.clearTimeout(id);
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleExpand = (key: string) => {
@@ -110,10 +118,14 @@ export function DashboardSidebar({ mobileOpen, onClose }: SidebarProps) {
       )}
 
       {/* Logo */}
-      <Link href="/" className="mb-8 block" aria-label="TCLCOINSXORMOR">
+      <Link
+        href="/"
+        className="mb-8 block"
+        aria-label={siteTitle}
+      >
         <img
-          src="/logo.webp"
-          alt="TCLCOINSXORMOR"
+          src={siteLogo}
+          alt={siteTitle}
           className="w-14 h-14 object-contain drop-shadow-sm"
         />
       </Link>

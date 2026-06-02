@@ -28,27 +28,32 @@ export type AggregateBanners = {
 
 export type BannersAvgAggregateOutputType = {
   id: number | null
+  sortOrder: number | null
 }
 
 export type BannersSumAggregateOutputType = {
   id: number | null
+  sortOrder: number | null
 }
 
 export type BannersMinAggregateOutputType = {
   id: number | null
   image: string | null
+  sortOrder: number | null
   createdAt: Date | null
 }
 
 export type BannersMaxAggregateOutputType = {
   id: number | null
   image: string | null
+  sortOrder: number | null
   createdAt: Date | null
 }
 
 export type BannersCountAggregateOutputType = {
   id: number
   image: number
+  sortOrder: number
   createdAt: number
   _all: number
 }
@@ -56,27 +61,32 @@ export type BannersCountAggregateOutputType = {
 
 export type BannersAvgAggregateInputType = {
   id?: true
+  sortOrder?: true
 }
 
 export type BannersSumAggregateInputType = {
   id?: true
+  sortOrder?: true
 }
 
 export type BannersMinAggregateInputType = {
   id?: true
   image?: true
+  sortOrder?: true
   createdAt?: true
 }
 
 export type BannersMaxAggregateInputType = {
   id?: true
   image?: true
+  sortOrder?: true
   createdAt?: true
 }
 
 export type BannersCountAggregateInputType = {
   id?: true
   image?: true
+  sortOrder?: true
   createdAt?: true
   _all?: true
 }
@@ -170,6 +180,7 @@ export type bannersGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
 export type BannersGroupByOutputType = {
   id: number
   image: string
+  sortOrder: number
   createdAt: Date
   _count: BannersCountAggregateOutputType | null
   _avg: BannersAvgAggregateOutputType | null
@@ -199,12 +210,14 @@ export type bannersWhereInput = {
   NOT?: Prisma.bannersWhereInput | Prisma.bannersWhereInput[]
   id?: Prisma.IntFilter<"banners"> | number
   image?: Prisma.StringFilter<"banners"> | string
+  sortOrder?: Prisma.IntFilter<"banners"> | number
   createdAt?: Prisma.DateTimeFilter<"banners"> | Date | string
 }
 
 export type bannersOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   image?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _relevance?: Prisma.bannersOrderByRelevanceInput
 }
@@ -215,12 +228,14 @@ export type bannersWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.bannersWhereInput[]
   NOT?: Prisma.bannersWhereInput | Prisma.bannersWhereInput[]
   image?: Prisma.StringFilter<"banners"> | string
+  sortOrder?: Prisma.IntFilter<"banners"> | number
   createdAt?: Prisma.DateTimeFilter<"banners"> | Date | string
 }, "id">
 
 export type bannersOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   image?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.bannersCountOrderByAggregateInput
   _avg?: Prisma.bannersAvgOrderByAggregateInput
@@ -235,45 +250,53 @@ export type bannersScalarWhereWithAggregatesInput = {
   NOT?: Prisma.bannersScalarWhereWithAggregatesInput | Prisma.bannersScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"banners"> | number
   image?: Prisma.StringWithAggregatesFilter<"banners"> | string
+  sortOrder?: Prisma.IntWithAggregatesFilter<"banners"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"banners"> | Date | string
 }
 
 export type bannersCreateInput = {
   image: string
+  sortOrder?: number
   createdAt?: Date | string
 }
 
 export type bannersUncheckedCreateInput = {
   id?: number
   image: string
+  sortOrder?: number
   createdAt?: Date | string
 }
 
 export type bannersUpdateInput = {
   image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type bannersUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type bannersCreateManyInput = {
   id?: number
   image: string
+  sortOrder?: number
   createdAt?: Date | string
 }
 
 export type bannersUpdateManyMutationInput = {
   image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type bannersUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -286,27 +309,32 @@ export type bannersOrderByRelevanceInput = {
 export type bannersCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   image?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
 export type bannersAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
 }
 
 export type bannersMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   image?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
 export type bannersMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   image?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
 export type bannersSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
 }
 
 
@@ -314,6 +342,7 @@ export type bannersSumOrderByAggregateInput = {
 export type bannersSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   image?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["banners"]>
 
@@ -322,10 +351,11 @@ export type bannersSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
 export type bannersSelectScalar = {
   id?: boolean
   image?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
 }
 
-export type bannersOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "image" | "createdAt", ExtArgs["result"]["banners"]>
+export type bannersOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "image" | "sortOrder" | "createdAt", ExtArgs["result"]["banners"]>
 
 export type $bannersPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "banners"
@@ -333,6 +363,7 @@ export type $bannersPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
     image: string
+    sortOrder: number
     createdAt: Date
   }, ExtArgs["result"]["banners"]>
   composites: {}
@@ -705,6 +736,7 @@ export interface Prisma__bannersClient<T, Null = never, ExtArgs extends runtime.
 export interface bannersFieldRefs {
   readonly id: Prisma.FieldRef<"banners", 'Int'>
   readonly image: Prisma.FieldRef<"banners", 'String'>
+  readonly sortOrder: Prisma.FieldRef<"banners", 'Int'>
   readonly createdAt: Prisma.FieldRef<"banners", 'DateTime'>
 }
     

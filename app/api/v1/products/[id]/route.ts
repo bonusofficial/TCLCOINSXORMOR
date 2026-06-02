@@ -29,6 +29,7 @@ const app = new Elysia({ prefix: "/api/v1/products" })
         data: {
           ...item,
           price: item.price.toString(),
+          cost: item.cost.toString(),
           agentPrice: item.agentPrice.toString(),
           discountAmount: item.discountAmount.toString(),
         },
@@ -49,6 +50,7 @@ const app = new Elysia({ prefix: "/api/v1/products" })
             name: body.name,
             description: body.description,
             price: body.price,
+            cost: body.cost,
             agentPrice: body.agentPrice,
             stockEnabled: body.stockEnabled,
             stock: body.stock,
@@ -65,6 +67,7 @@ const app = new Elysia({ prefix: "/api/v1/products" })
           data: {
             ...saved,
             price: saved.price.toString(),
+            cost: saved.cost.toString(),
             agentPrice: saved.agentPrice.toString(),
             discountAmount: saved.discountAmount.toString(),
           },

@@ -10,11 +10,22 @@ const app = new Elysia({ prefix: "/api/v0/products" })
   .use(loggerPlugin)
   .use(errorPlugin)
 
-  /** GET — list สินค้าทั้งหมด */
+  /** GET — list สินค้าทั้งหมด พร้อมจำนวนคิวจริง (booking ที่ไม่ถูกยกเลิก) */
   .get("/", async () => {
     const items = await prisma.products.findMany({
       orderBy: { createdAt: "desc" },
     });
+
+    // นับจำนวนการจองจริงต่อสินค้า (ไม่นับที่ยกเลิก) — ใช้เป็น "คนเลือกอันนี้" / คิวปัจจุบัน
+    const grouped = await prisma.bookings.groupBy({
+      by: ["productId"],
+      where: { status: { not: "ยกเลิก" }, productId: { not: null } },
+      _count: { _all: true },
+    });
+    const queueMap = new Map(
+      grouped.map((g) => [g.productId, g._count._all])
+    );
+
     return {
       ok: true as const,
       data: items.map((p) => ({
@@ -31,6 +42,7 @@ const app = new Elysia({ prefix: "/api/v0/products" })
         timeSlots: p.timeSlots,
         discountEligibleUsernames: p.discountEligibleUsernames,
         note: p.note,
+        queueCount: queueMap.get(p.id) ?? 0,
       })),
     };
   });

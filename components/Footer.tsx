@@ -2,8 +2,16 @@
 
 import React from "react";
 import { MessageCircle, ArrowUp } from "lucide-react";
+import { useConfig } from "@/lib/contexts/PublicDataContext";
 
 export default function Footer() {
+  const { config } = useConfig();
+  const siteLogo = config.logo?.trim() || "/logo.webp";
+  const siteTitle = config.title?.trim() || "TCLCOINSXORMOR";
+  const siteDescription =
+    config.description?.trim() ||
+    "ระบบรับจองคิวและเติมเงินเหรียญแท้ 100% รวดเร็ว ปลอดภัย และเสถียรที่สุดในอุตสาหกรรม";
+
   const scrollToTop = (e: React.MouseEvent) => {
     e.preventDefault();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -28,11 +36,23 @@ export default function Footer() {
           
           {/* Col 1: Brand info */}
           <div className="space-y-4">
-            <h3 className="font-display font-black text-2xl tracking-tight leading-none">
-              TCLCOINSXORMOR <span className="text-[14px] font-bold block text-brand-gold mt-1 tracking-widest uppercase">TOPUP COINS</span>
-            </h3>
+            <div className="flex items-start gap-3">
+              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white border border-white/30 overflow-hidden shadow-lg shadow-black/10">
+                <img
+                  src={siteLogo}
+                  alt={siteTitle}
+                  className="h-full w-full object-contain p-1.5"
+                />
+              </div>
+              <h3 className="font-display font-black text-2xl tracking-tight leading-none">
+                {siteTitle}
+                <span className="text-[14px] font-bold block text-brand-gold mt-1 tracking-widest uppercase">
+                  TOPUP COINS
+                </span>
+              </h3>
+            </div>
             <p className="text-xs.5 leading-relaxed text-white/80 max-w-[280px] font-medium">
-              ระบบรับจองคิวและเติมเงินเหรียญแท้ 100% รวดเร็ว ปลอดภัย และเสถียรที่สุดในอุตสาหกรรม
+              {siteDescription}
             </p>
           </div>
 
@@ -49,10 +69,7 @@ export default function Footer() {
                 <a href="#how" className="hover:text-white hover:translate-x-1 inline-block transition">ขั้นตอนการสั่งจองคิว</a>
               </li>
               <li>
-                <a href="#packages" className="hover:text-white hover:translate-x-1 inline-block transition">เช็คสถานะสต็อกแพ็กเกจ</a>
-              </li>
-              <li>
-                <a href="#stats" className="hover:text-white hover:translate-x-1 inline-block transition">ดูความเสถียรภาพระบบ</a>
+                <a href="/queue" className="hover:text-white hover:translate-x-1 inline-block transition">เช็คสถานะสต็อกแพ็กเกจ</a>
               </li>
             </ul>
           </div>
@@ -64,13 +81,7 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2.5 text-xs.5 font-bold text-white/80">
               <li>
-                <a href="#support" className="hover:text-white hover:translate-x-1 inline-block transition">ศูนย์ช่วยเหลือ / ติดปัญหา</a>
-              </li>
-              <li>
-                <a href="https://line.me/R/ti/p/@ormorcoins" className="hover:text-white hover:translate-x-1 inline-block transition">LINE Official OA</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white hover:translate-x-1 inline-block transition">สิทธิพิเศษสำหรับตัวแทน</a>
+                <a href="/profile/benefits" className="hover:text-white hover:translate-x-1 inline-block transition">สิทธิพิเศษสำหรับตัวแทน</a>
               </li>
             </ul>
           </div>
@@ -90,16 +101,6 @@ export default function Footer() {
                 <MessageCircle className="w-5.5 h-5.5 fill-current" />
               </a>
               <a 
-                href="https://facebook.com"
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="w-11.5 h-11.5 rounded-xl bg-brand-surface/14 text-white flex items-center justify-center hover:bg-brand-surface hover:text-brand-green hover:-translate-y-1 transition duration-200"
-              >
-                <svg className="w-5.5 h-5.5 fill-current" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-              </a>
-              <a 
                 href="#"
                 onClick={scrollToTop}
                 className="w-11.5 h-11.5 rounded-xl bg-brand-surface/14 text-white flex items-center justify-center hover:bg-brand-gold hover:text-brand-ink hover:-translate-y-1 transition duration-200"
@@ -114,10 +115,10 @@ export default function Footer() {
 
         {/* Legal Bottom Bar */}
         <div className="border-t border-white/16 py-5.5 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/70 font-bold">
-          <p>© {new Date().getFullYear()} TCLCOINSXORMOR TOPUP COINS. ระบบเติมเหรียญไลน์ ขอสงวนลิขสิทธิ์ทั้งหมด</p>
+          <p>© {new Date().getFullYear()} {siteTitle} TOPUP COINS. ระบบเติมเหรียญไลน์ ขอสงวนลิขสิทธิ์ทั้งหมด</p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-brand-gold transition">ข้อกำหนดเงื่อนไขการใช้บริการ</a>
-            <a href="#" className="hover:text-brand-gold transition">นโยบายความเป็นส่วนตัว</a>
+            <a href="/terms" className="hover:text-brand-gold transition">ข้อกำหนดเงื่อนไขการใช้บริการ</a>
+            <a href="/privacy" className="hover:text-brand-gold transition">นโยบายความเป็นส่วนตัว</a>
           </div>
         </div>
 

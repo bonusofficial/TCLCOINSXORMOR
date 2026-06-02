@@ -10,9 +10,14 @@ const app = new Elysia({ prefix: "/api/v0/banners" })
   .use(loggerPlugin)
   .use(errorPlugin)
 
-  /** GET — list ทั้งหมด เรียงตามลำดับเพิ่ม (id asc) */
+  /** GET — list ทั้งหมด เรียงตามลำดับความพรีเมียม (sortOrder asc, id asc) */
   .get("/", async () => {
-    const items = await prisma.banners.findMany({ orderBy: { id: "asc" } });
+    const items = await prisma.banners.findMany({
+      orderBy: [
+        { sortOrder: "asc" },
+        { id: "asc" },
+      ],
+    });
     return {
       ok: true as const,
       data: items.map((b) => ({

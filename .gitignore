@@ -42,3 +42,9 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+
+# database dumps
+/ormor_db.sql
+
+# claude settings
+/.claude

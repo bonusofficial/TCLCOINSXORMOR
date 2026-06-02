@@ -29,6 +29,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
+import SalesProfitSection from "@/components/dashboard/SalesProfitSection";
 
 interface AccountRow {
   id: number;
@@ -203,10 +204,15 @@ export default function FinancePage() {
 
   return (
     <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+      {/* ── กำไรจากการขาย (ดึงจาก order ที่สำเร็จอัตโนมัติ) ── */}
+      <SalesProfitSection />
+
+      {/* ── บันทึกรายรับ-รายจ่ายเพิ่มเติม (กรอกเอง) ── */}
+      <div className="border-t border-brand-green-100/50 pt-7 mb-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="font-display font-black text-xl sm:text-2xl text-brand-ink">
-            บัญชีรับ-จ่าย
+            บัญชีรับ-จ่าย (กรอกเอง)
           </h1>
           <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
             ทั้งหมด <b className="text-brand-green">{items.length}</b> รายการ
@@ -233,6 +239,7 @@ export default function FinancePage() {
             <Plus className="h-4 w-4" strokeWidth={2.5} />
             เพิ่มรายการ
           </button>
+        </div>
         </div>
       </div>
 

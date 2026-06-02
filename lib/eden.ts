@@ -14,12 +14,15 @@ import type { BookingsApp } from "@/app/api/v1/bookings/route";
 import type { BookingsItemApp } from "@/app/api/v1/bookings/[id]/route";
 import type { AccountsApp } from "@/app/api/v1/accounts/route";
 import type { AccountsItemApp } from "@/app/api/v1/accounts/[id]/route";
+import type { AccountsSalesApp } from "@/app/api/v1/accounts/sales/route";
 import type { DashboardApp } from "@/app/api/v1/dashboard/route";
 // ── Public v0 (สำหรับเว็บฝั่งผู้ใช้) ──
 import type { ConfigPublicApp } from "@/app/api/v0/config/route";
 import type { ProductsPublicApp } from "@/app/api/v0/products/route";
 import type { BookingsPublicApp } from "@/app/api/v0/bookings/route";
 import type { ReviewsPublicApp } from "@/app/api/v0/reviews/route";
+import type { AuthResolveApp } from "@/app/api/v0/auth/resolve/route";
+import type { ProfileUniqueApp } from "@/app/api/v1/profile/unique/route";
 import type { BannersPublicApp } from "@/app/api/v0/banners/route";
 
 const configuredBaseURL = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -58,6 +61,7 @@ export const bookingsApi = {
 export const accountsApi = {
   collection: treaty<AccountsApp>(baseURL, commonConfig),
   item: treaty<AccountsItemApp>(baseURL, commonConfig),
+  sales: treaty<AccountsSalesApp>(baseURL, commonConfig),
 };
 
 /* ──────────────────────────────────────────────
@@ -69,6 +73,7 @@ export const publicApi = {
   bookings: treaty<BookingsPublicApp>(baseURL, commonConfig),
   reviews: treaty<ReviewsPublicApp>(baseURL, commonConfig),
   banners: treaty<BannersPublicApp>(baseURL, commonConfig),
+  authResolve: treaty<AuthResolveApp>(baseURL, commonConfig),
 };
 
 export const productsApi = {
@@ -77,3 +82,5 @@ export const productsApi = {
 };
 
 export const dashboardApi = treaty<DashboardApp>(baseURL, commonConfig);
+
+export const profileApi = treaty<ProfileUniqueApp>(baseURL, commonConfig);

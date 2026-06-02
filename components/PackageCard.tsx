@@ -1,161 +1,179 @@
-import React from "react";
-import { Zap, Sparkles, Boxes, Clock, Coins, CalendarDays, AlertOctagon } from "lucide-react";
+import { Coins, AlertOctagon, Trophy, Medal, Sparkles, Flame, Rocket, Calendar, Clock } from "lucide-react";
 import { PublicProduct as QueueProduct } from "@/lib/contexts/PublicDataContext";
 import { UserRole } from "@/lib/booking";
-import { getProductAvailability, getEffectivePrice, fmt, fmtThaiDate, useNowTick } from "@/lib/product-utils";
+import { getProductAvailability, getEffectivePrice, fmt, fmtThaiDate, padHHMM, useNowTick } from "@/lib/product-utils";
 
 export function PackageCard({
   idx,
   product: p,
   userRole,
   username,
+  maxQueueCount = 0,
   onSelect,
 }: {
   idx: number;
   product: QueueProduct;
   userRole: UserRole;
   username: string | null;
+  /** จำนวนคิวสูงสุดในบรรดาสินค้าทั้งหมด — ใช้คำนวณ % แถบความนิยมแบบสัมพัทธ์ */
+  maxQueueCount?: number;
   onSelect: () => void;
 }) {
-  useNowTick(); // re-render ตามเวลา เพื่อให้สถานะเปิด/ปิด อัปเดตเอง
+  useNowTick(); // re-render ตามเวลา
   const avail = getProductAvailability(p);
   const price = getEffectivePrice(p, userRole, username);
 
-  const statusBadge = (() => {
-    if (avail.status === "open")
-      return {
-        bg: "bg-emerald-500/10",
-        text: "text-emerald-600",
-        ring: "ring-emerald-500/30",
-        icon: <Zap className="h-3 w-3" />,
-        label: "เปิดจองแล้ว",
-      };
-    if (avail.status === "soon")
-      return {
-        bg: "bg-amber-50",
-        text: "text-amber-700",
-        ring: "ring-amber-500/30",
-        icon: <Sparkles className="h-3 w-3" />,
-        label: "เปิดจองเร็วๆนี้",
-      };
-    if (avail.status === "outOfStock")
-      return {
-        bg: "bg-rose-500/10",
-        text: "text-rose-400",
-        ring: "ring-rose-500/30",
-        icon: <Boxes className="h-3 w-3" />,
-        label: "สินค้าหมด",
-      };
-    return {
-      bg: "bg-brand-paper",
-      text: "text-brand-ink-soft",
-      ring: "ring-brand-green-100",
-      icon: <Clock className="h-3 w-3" />,
-      label: "ปิดรับ",
-    };
-  })();
+  const sellingPrice = price.amount;
 
-  const buttonDisabled = avail.status !== "open";
-  const buttonText =
-    avail.status === "open"
-      ? "จองสินค้าเลย!"
-      : avail.status === "soon"
-      ? avail.message ?? "ยังไม่ถึงเวลาจอง"
-      : avail.status === "outOfStock"
-      ? "สินค้าหมด"
-      : "ไม่อยู่ในช่วงเวลาจอง";
+  // คำนวณราคาขีดฆ่าและเปอร์เซ็นต์ส่วนลด ตามสิทธิ์ของผู้ใช้ (ทั่วไป / ตัวแทน / VIP)
+  let strikePrice = 0;
+  let strikeLabel = "";
+
+  if (price.isAgent) {
+    strikePrice = Number(p.price);
+    strikeLabel = "ราคาทั่วไป";
+  } else if (price.hasVipDiscount) {
+    strikePrice = Number(p.price);
+    strikeLabel = "ราคาทั่วไป";
+  }
+
+  const discountPercent = strikePrice > 0 ? Math.round(((strikePrice - sellingPrice) / strikePrice) * 100) : 0;
+
+  // จำนวนที่ "ขายไปแล้ว" = booking จริงที่ไม่ถูกยกเลิก (อัปเดต realtime)
+  const soldCount = p.queueCount;
+  // ระบบหักสต็อกตอนจอง → สต็อกเต็มเดิม = ที่เหลือ + ที่ขายไปแล้ว
+  const stockTotal = p.stockEnabled ? p.stock + soldCount : 0;
+  // % ความคืบหน้าการขาย = ขายแล้วกี่ % ของสต็อกทั้งหมด
+  // (สินค้าที่ไม่เปิดสต็อก = ไม่มีเพดาน → เทียบความนิยมสัมพัทธ์กับแพ็กที่ขายดีสุดแทน)
+  const soldPercentage = p.stockEnabled
+    ? stockTotal > 0
+      ? Math.round((soldCount / stockTotal) * 100)
+      : 0
+    : maxQueueCount > 0
+      ? Math.round((soldCount / maxQueueCount) * 100)
+      : 0;
+
+  // วันที่ + ช่วงเวลาเปิดรับ (จาก saleDates / timeSlots)
+  const dateLabel = p.saleDates.length
+    ? p.saleDates.map(fmtThaiDate).join(" · ")
+    : "ไม่ระบุวันขาย";
+  const timeLabel = p.timeSlots.length
+    ? p.timeSlots.map((s) => `${padHHMM(s.start)}-${padHHMM(s.end)}`).join(", ")
+    : "";
+
+  // คำการันตีแบบสลับสับเปลี่ยนเพื่อความพรีเมียม
+  const guaranteeText = p.id % 2 === 0
+    ? "รับประกันเหรียญแท้ภายใน 24 ชม."
+    : "มีเงินเติมส่งตรงเข้าคิวใน 24 ชม.";
+
+  const BadgeIcon = idx === 1 
+    ? Trophy 
+    : idx === 2 || idx === 3 
+    ? Medal 
+    : Sparkles;
+    
+  const badgeLabel = idx <= 3 ? `ยอดนิยมอันดับ ${idx}` : `แพ็กเกจอันดับ ${idx}`;
+
+  const buttonDisabled = false;
 
   return (
-    <article className="bg-brand-surface border border-brand-green-100 rounded-3xl p-5 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <p className="text-[10.5px] font-extrabold text-brand-ink-soft uppercase tracking-widest">
-          แพ็กเกจลำดับที่ {idx}
-        </p>
-        <span
-          className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md ${statusBadge.bg} ${statusBadge.text} ring-1 ${statusBadge.ring}`}
-        >
-          {statusBadge.icon}
-          {statusBadge.label}
+    <article className={`relative bg-[#0d0f12]/45 backdrop-blur-md border-2 rounded-3xl p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col ${
+      idx === 1 ? "border-brand-green/80 shadow-lg shadow-brand-green/10" : "border-brand-green-100/50"
+    }`}>
+      {/* Top Header Row */}
+      <div className="flex items-center justify-between gap-2 mb-4 select-none">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-brand-ink/90 bg-brand-surface border border-brand-green-100 px-2.5 py-1 rounded-full">
+          <BadgeIcon className={`h-3.5 w-3.5 ${
+            idx === 1 ? "text-amber-400" : idx === 2 ? "text-slate-300" : idx === 3 ? "text-amber-700" : "text-brand-green"
+          }`} />
+          {badgeLabel}
         </span>
-      </div>
-
-      {/* Title — product image (fallback to coin icon) */}
-      <div className="flex items-center gap-2.5 mb-1">
-        {p.image ? (
-          <img
-            src={p.image}
-            alt={p.name}
-            className="w-10 h-10 rounded-xl object-cover ring-2 ring-brand-green-100 shadow-sm flex-shrink-0"
-          />
-        ) : (
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-gold-light to-brand-gold-deep flex items-center justify-center shadow-sm flex-shrink-0">
-            <Coins className="h-5 w-5 text-white" />
-          </div>
-        )}
-        <h3 className="font-display font-black text-lg text-brand-ink line-clamp-2 flex-1 min-w-0">
-          {p.name}
-        </h3>
-      </div>
-
-      {/* Price */}
-      <div className="flex items-baseline gap-2 mb-3">
-        <span className="font-display font-black text-2xl text-brand-green">
-          {fmt(price.amount)}
-        </span>
-        <span className="text-xs font-bold text-brand-ink-soft">บาท</span>
-        {price.isAgent && Number(p.price) !== price.amount && (
-          <span className="text-[10px] text-brand-ink-soft/60 line-through ml-auto">
-            ฿{fmt(p.price)}
+        {discountPercent > 0 && (
+          <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10.5px] font-black px-2.5 py-0.5 rounded-lg">
+            -{discountPercent}%
           </span>
         )}
       </div>
 
-      {/* Meta */}
-      <div className="space-y-1.5 text-[11.5px] font-bold text-brand-ink-soft mb-3">
-        {p.saleDates[0] && (
-          <div className="flex items-center justify-between gap-2 bg-brand-paper rounded-lg px-2.5 py-1.5 border border-brand-green-100/60">
-            <span className="inline-flex items-center gap-1.5">
-              <CalendarDays className="h-3 w-3 text-brand-green" />
-              {fmtThaiDate(p.saleDates[0])}
-            </span>
-            {p.saleDates.length > 1 && (
-              <span className="text-[10px] font-extrabold text-brand-green">
-                +{p.saleDates.length - 1} วัน
-              </span>
-            )}
+      {/* Main visual info */}
+      <div className="flex items-center gap-3.5 mb-2.5">
+        {p.image ? (
+          <img
+            src={p.image}
+            alt={p.name}
+            className="w-[100px] h-[100px] rounded-2xl object-cover ring-2 ring-brand-green-100 shadow-md flex-shrink-0"
+          />
+        ) : (
+          <div className="w-[100px] h-[100px] rounded-2xl bg-gradient-to-br from-brand-gold-light via-brand-gold to-brand-gold-deep flex items-center justify-center shadow-md flex-shrink-0">
+            <Coins className="h-11 w-11 text-white" />
           </div>
         )}
-        {p.timeSlots[0] && (
-          <div className="flex items-center justify-between gap-2 bg-brand-paper rounded-lg px-2.5 py-1.5 border border-brand-green-100/60">
-            <span className="inline-flex items-center gap-1.5">
-              <Clock className="h-3 w-3 text-brand-green" />
-              {p.timeSlots[0].start} - {p.timeSlots[0].end}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-display font-black text-xl text-white tracking-tight leading-tight truncate">
+            {p.name}
+          </h3>
+        </div>
+      </div>
+
+      {/* Pricing block */}
+      <div className="mb-4">
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-display font-black text-2xl text-brand-green">
+            {fmt(sellingPrice)}
+          </span>
+          <span className="text-xs font-bold text-brand-ink-soft">บาท</span>
+          {strikePrice > 0 && (
+            <span className="text-[11.5px] text-rose-400 font-black line-through ml-auto">
+              {strikeLabel} {fmt(strikePrice)}
             </span>
-            {p.timeSlots.length > 1 && (
-              <span className="text-[10px] font-extrabold text-brand-green">
-                +{p.timeSlots.length - 1} ช่วง
-              </span>
-            )}
-          </div>
-        )}
-        {p.stockEnabled && (
-          <div className="inline-flex items-center gap-1.5">
-            <Boxes className="h-3 w-3" />
-            คงเหลือ:{" "}
-            <span className={p.stock > 0 ? "text-brand-green font-black" : "text-rose-400 font-black"}>
-              {p.stock} ชิ้น
-            </span>
-          </div>
+          )}
+        </div>
+      </div>
+
+      {/* Sales progress bar — ขายไปแล้วกี่ชิ้นจากสต็อกทั้งหมด (ข้อมูลจริง realtime) */}
+      <div className="space-y-1.5 mb-3.5 select-none">
+        <div className="flex items-center justify-between text-[11px] font-black">
+          <span className="text-amber-500 flex items-center gap-1.5">
+            <Flame className="h-3.5 w-3.5 fill-amber-500 animate-pulse text-amber-500" />
+            {soldCount > 0 ? `ซื้อไปแล้ว ${fmt(soldCount)} คน` : "เพิ่งเปิดให้จอง"}
+          </span>
+          {soldPercentage > 0 && (
+            <span className="text-rose-400">{soldPercentage}%</span>
+          )}
+        </div>
+        <div className="w-full bg-brand-green-100/10 h-2.5 rounded-full overflow-hidden border border-brand-green-100/25">
+          <div
+            className="bg-gradient-to-r from-amber-500 via-rose-500 to-brand-green h-full rounded-full transition-all duration-500"
+            style={{ width: `${soldPercentage}%` }}
+          />
+        </div>
+        {p.stockEnabled && stockTotal > 0 && (
+          <p className="text-[10px] font-bold text-brand-ink-soft">
+            ขายแล้ว <span className="text-brand-ink font-black">{fmt(soldCount)}</span> / {fmt(stockTotal)} ชิ้น
+          </p>
         )}
       </div>
 
-      {/* Description — รายละเอียดสินค้า */}
-      {p.description && (
-        <div className="bg-brand-paper border border-brand-green-100 rounded-lg p-2.5 mb-3 text-[11px] font-medium text-brand-ink-soft leading-relaxed line-clamp-3">
-          {p.description}
-        </div>
-      )}
+      {/* Stock remaining info */}
+      <div className="mb-3">
+        {p.stockEnabled ? (
+          <p className="text-[11px] font-bold text-brand-ink-soft">
+            สต็อกที่เหลือ: <span className={p.stock > 0 ? "text-brand-green font-black" : "text-rose-400 font-black"}>{p.stock > 0 ? `เหลือ ${p.stock} ชิ้น` : "หมดชั่วคราว"}</span>
+          </p>
+        ) : (
+          <p className="text-[11px] font-bold text-brand-ink-soft">
+            คลังสินค้า: <span className="text-brand-green font-black">เหรียญแท้พร้อมส่ง</span>
+          </p>
+        )}
+      </div>
+
+      {/* Status + booking window — สถานะ + วันที่/ช่วงเวลาเปิดรับ */}
+      <div className="mb-3 rounded-xl border border-brand-green-100/30 bg-brand-surface/40 p-2.5 space-y-1.5">
+        <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-brand-green/15 text-brand-green border border-brand-green/30">
+          <span className="h-1.5 w-1.5 rounded-full bg-brand-green animate-pulse" />
+          {avail.status === "open" ? "เปิดรับจองอยู่" : avail.label}
+        </span>
+      </div>
 
       {/* Note — หมายเหตุจาก admin (เด่นขึ้นกว่าเดิม) */}
       {p.note && (
@@ -166,25 +184,23 @@ export function PackageCard({
       )}
 
       {/* Footer */}
-      <div className="mt-auto">
-        <div className="flex items-center justify-between text-[10.5px] font-bold mb-2.5">
-          <span className="text-brand-ink-soft">สถานะ:</span>
-          <span className={`inline-flex items-center gap-1 font-black ${statusBadge.text}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${avail.status === "open" ? "bg-emerald-500 animate-pulse" : avail.status === "soon" ? "bg-amber-500" : "bg-brand-ink-soft/40"}`} />
-            {avail.label}
-          </span>
+      <div className="mt-auto pt-2 border-t border-brand-green-100/20">
+        <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-brand-ink-soft mb-3.5 select-none">
+          <span className="h-1.5 w-1.5 rounded-full bg-brand-green animate-pulse" />
+          {guaranteeText}
         </div>
         <button
           type="button"
           onClick={onSelect}
           disabled={buttonDisabled}
-          className={`w-full py-2.5 rounded-xl font-extrabold text-sm transition cursor-pointer ${
+          className={`w-full py-3 rounded-xl font-extrabold text-sm transition cursor-pointer flex items-center justify-center gap-2 ${
             buttonDisabled
-              ? "bg-brand-paper text-brand-ink-soft/50 border border-brand-green-100/60 cursor-not-allowed"
-              : "bg-gradient-to-r from-brand-green to-brand-green-600 text-white shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5"
+              ? "bg-brand-paper/50 text-brand-ink-soft/40 border border-brand-green-100/30 cursor-not-allowed"
+              : "bg-gradient-to-r from-brand-green to-brand-green-600 hover:from-brand-green-600 hover:to-brand-green-700 text-white shadow-md shadow-brand-green/20 hover:shadow-lg hover:-translate-y-0.5"
           }`}
         >
-          {buttonText}
+          {idx === 1 && <Rocket className="h-4 w-4 animate-bounce" />}
+          <span>{idx === 1 ? "จองเลย – แพ็กเกจที่คนซื้อเยอะที่สุด" : "จองสินค้าเลย!"}</span>
         </button>
       </div>
     </article>

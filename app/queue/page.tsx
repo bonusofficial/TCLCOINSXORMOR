@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
+import { Marquee } from "@/components/ui/Marquee";
 import { publicApi } from "@/lib/eden";
 import {
   useConfig,
@@ -37,13 +38,6 @@ import { PackageCard } from "@/components/PackageCard";
  * Types — Reuse PublicProduct + TimeSlot from context
  * ───────────────────────────────────────────── */
 
-type Filter = "all" | "soon" | "open";
-
-const FILTER_LABEL: Record<Filter, string> = {
-  all: "ทั้งหมด",
-  soon: "เปิดจองวันนี้",
-  open: "จองได้เลย",
-};
 
 /* ─────────────────────────────────────────────
  * Page
@@ -74,7 +68,6 @@ function QueueContent() {
   const router = useRouter();
   const paramProductId = searchParams.get("productId");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
 
   // Booking form
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
@@ -106,16 +99,27 @@ function QueueContent() {
   /* ── Filter + search ── */
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return products.filter((p) => {
+    const filtered = products.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q) && !p.description.toLowerCase().includes(q))
         return false;
-      const avail = getProductAvailability(p);
-      if (filter === "open" && avail.status !== "open") return false;
-      if (filter === "soon" && avail.status !== "soon") return false;
+
+      // แสดงเฉพาะแพ็กที่เปิดจองอยู่จริง (อยู่ในวันขายและช่วงเวลา slot)
+      // ตัวที่ไม่อยู่ในช่วงเวลา / ปิดรับ / สินค้าหมด จะถูกซ่อนเพื่อไม่ให้ลูกค้าสับสน
+      if (getProductAvailability(p).status !== "open") return false;
+
       return true;
     });
+
+    // เรียงตามราคาจากถูกไปแพง
+    return [...filtered].sort((a, b) => Number(a.price) - Number(b.price));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, search, filter, nowTick]);
+  }, [products, search, nowTick]);
+
+  // คิวสูงสุดในบรรดาสินค้าทั้งหมด — ใช้ทำ % แถบความนิยมแบบสัมพัทธ์ในการ์ด
+  const maxQueueCount = useMemo(
+    () => products.reduce((m, p) => Math.max(m, p.queueCount), 0),
+    [products]
+  );
 
   /* ── Booking handlers ── */
   const selectedProduct = useMemo(
@@ -139,7 +143,10 @@ function QueueContent() {
       return;
     }
     setSelectedProductId(p.id);
-    setSelectedDate(p.saleDates[0] ?? todayISO());
+    // เลือกวันแรกที่ยังไม่ผ่าน (>= วันนี้) เป็นค่าเริ่มต้น — ไม่ดีฟอลต์เป็นวันที่หมดเวลาไปแล้ว
+    const today = todayISO();
+    const upcomingDates = [...p.saleDates].filter((d) => d >= today).sort();
+    setSelectedDate(upcomingDates[0] ?? today);
     setSelectedTime(
       p.timeSlots[0] ? `${p.timeSlots[0].start} - ${p.timeSlots[0].end}` : ""
     );
@@ -316,10 +323,10 @@ function QueueContent() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div>
             <h1 className="font-display font-black text-2xl sm:text-3xl text-brand-ink">
-              แพ็กเกจที่เปิดให้จอง<span className="text-brand-green">วันนี้</span>
+              สินค้า<span className="text-brand-green">ยอดนิยม</span>
             </h1>
             <p className="text-xs text-brand-ink-soft font-bold mt-1">
-              สามารถเลือกจองแพ็กเกจที่ต้องการของคุณได้
+              จัดอันดับจากยอดจองจริงของลูกค้า — เลือกแพ็กเกจที่คนซื้อเยอะที่สุด มั่นใจได้ในความคุ้มค่า
             </p>
           </div>
 
@@ -335,26 +342,6 @@ function QueueContent() {
           </div>
         </div>
 
-        {/* Filter chips */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {(Object.keys(FILTER_LABEL) as Filter[]).map((k) => {
-            const active = filter === k;
-            return (
-              <button
-                key={k}
-                onClick={() => setFilter(k)}
-                className={`px-4 py-1.5 rounded-full text-[12px] font-extrabold border transition cursor-pointer ${
-                  active
-                    ? "bg-brand-green text-white border-brand-green shadow-md shadow-brand-green/30"
-                    : "bg-brand-surface text-brand-ink-soft border-brand-green-100 hover:text-brand-green"
-                }`}
-              >
-                {FILTER_LABEL[k]}
-              </button>
-            );
-          })}
-        </div>
-
         {/* Grid */}
         {loading ? (
           <div className="flex items-center justify-center py-20 text-brand-ink-soft">
@@ -365,10 +352,10 @@ function QueueContent() {
           <div className="bg-brand-surface border border-brand-green-100 rounded-3xl p-12 text-center">
             <Tag className="h-12 w-12 mx-auto text-brand-green mb-2" />
             <p className="font-display font-black text-base text-brand-ink mb-1">
-              ไม่มีแพ็กเกจที่ตรงกัน
+              ยังไม่มีแพ็กเกจที่เปิดจองตอนนี้
             </p>
             <p className="text-xs text-brand-ink-soft font-bold">
-              ลองเปลี่ยนคำค้นหรือฟิลเตอร์ดู
+              ขณะนี้ไม่มีแพ็กเกจที่อยู่ในช่วงเวลาเปิดจอง ลองกลับมาใหม่ตามรอบการเปิดรับ
             </p>
           </div>
         ) : (
@@ -380,6 +367,7 @@ function QueueContent() {
                 product={p}
                 userRole={userRole}
                 username={user?.username ?? null}
+                maxQueueCount={maxQueueCount}
                 onSelect={() => handlePickProduct(p)}
               />
             ))}
@@ -396,6 +384,11 @@ function QueueContent() {
           <p className="text-xs text-brand-ink-soft font-bold mt-1">
             เลือกวัน, เวลา และแพ็กเกจที่ต้องการ จากนั้นตรวจสอบรายละเอียดก่อนยืนยันการจอง
           </p>
+          {config.maxBookingsPerUser > 0 && (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-3 py-1 text-[11.5px] font-extrabold text-amber-500">
+              📌 จำกัดการจองสูงสุด {config.maxBookingsPerUser} ครั้ง/วัน/คน
+            </p>
+          )}
         </div>
 
         {!isLoggedIn ? (
@@ -444,11 +437,14 @@ function QueueContent() {
                     <option value="" className="bg-brand-surface text-brand-ink">
                       กรุณาเลือกแพ็กเกจก่อน
                     </option>
-                    {(selectedProduct?.saleDates ?? []).map((d) => (
-                      <option key={d} value={d} className="bg-brand-surface text-brand-ink">
-                        {fmtThaiDate(d)}
-                      </option>
-                    ))}
+                    {(selectedProduct?.saleDates ?? [])
+                      .filter((d) => d >= todayISO())
+                      .sort()
+                      .map((d) => (
+                        <option key={d} value={d} className="bg-brand-surface text-brand-ink">
+                          {fmtThaiDate(d)}
+                        </option>
+                      ))}
                   </select>
                   <p className="text-[10.5px] font-bold text-brand-ink-soft mt-1.5">
                     {selectedProduct ? "เลือกวันที่ต้องการ" : "ยังไม่ได้เลือก"}
@@ -515,34 +511,20 @@ function QueueContent() {
                     <option value="" className="bg-brand-surface text-brand-ink">
                       -- กรุณาเลือกแพ็กเกจ --
                     </option>
-                    {products.map((p) => {
-                      const av = getProductAvailability(p);
-                      const disabled = av.status !== "open";
-                      const tag =
-                        av.status === "outOfStock"
-                          ? "สินค้าหมด"
-                          : av.status === "soon"
-                            ? av.label
-                            : av.status === "ended"
-                              ? "ปิดรับแล้ว"
-                              : "";
-                      return (
+                    {products
+                      .filter((p) => getProductAvailability(p).status === "open")
+                      .map((p) => (
                         <option
                           key={p.id}
                           value={p.id}
-                          disabled={disabled}
-                          className={`bg-brand-surface text-brand-ink ${
-                            disabled ? "text-brand-ink-soft/60" : ""
-                          }`}
+                          className="bg-brand-surface text-brand-ink"
                         >
                           {p.name} · ฿{fmt(p.price)}
-                          {tag ? ` — ${tag}` : ""}
                         </option>
-                      );
-                    })}
+                      ))}
                   </select>
                   <p className="text-[10.5px] font-bold text-brand-ink-soft mt-1.5">
-                    เฉพาะแพ็กเกจที่<span className="text-brand-green">เปิดจองอยู่</span>เท่านั้นที่เลือกได้ — สินค้าหมด / นอกวันขาย / นอกช่วงเวลา จะถูกปิดไว้
+                    แสดงเฉพาะแพ็กเกจที่<span className="text-brand-green">เปิดจองอยู่</span>เท่านั้น — สินค้าหมด / นอกวันขาย / นอกช่วงเวลา จะไม่แสดงในรายการนี้
                   </p>
                 </div>
                 <div>
@@ -636,7 +618,6 @@ function QueueContent() {
           </form>
         )}
       </section>
-
       <AuthModal
         isOpen={authOpen}
         onClose={() => setAuthOpen(false)}

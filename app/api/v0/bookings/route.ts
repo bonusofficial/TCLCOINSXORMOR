@@ -66,6 +66,36 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
   .post(
     "/",
     async ({ body, user, request, status: code }) => {
+      // เช็คโควตาการจองสูงสุดต่อคนต่อวัน (maxBookingsPerUser) — 0 = ไม่จำกัด
+      // อ่าน config แถวเดียวกับที่ฝั่งแอดมินบันทึก (findFirst desc) เพื่อบังคับใช้ค่าที่ตั้งไว้จริง
+      const config = await prisma.config.findFirst({ orderBy: { id: "desc" } });
+      if (config && config.maxBookingsPerUser > 0) {
+        // นับทั้งวันแบบ UTC — bookingDate ถูกเก็บเป็นเที่ยงคืน UTC ของวันนั้น (กัน tz ของ server เพี้ยน)
+        const day = new Date(body.bookingDate);
+        const startOfDay = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 0, 0, 0, 0));
+        const endOfDay = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 23, 59, 59, 999));
+
+        const dailyCount = await prisma.bookings.count({
+          where: {
+            userId: user.id,
+            bookingDate: {
+              gte: startOfDay,
+              lte: endOfDay,
+            },
+            status: {
+              not: "ยกเลิก",
+            },
+          },
+        });
+
+        if (dailyCount >= config.maxBookingsPerUser) {
+          return code(400, {
+            ok: false,
+            message: `ขออภัย จำกัดการจองสูงสุดไม่เกิน ${config.maxBookingsPerUser} แพ็กต่อวันสำหรับวันที่คุณเลือก`,
+          });
+        }
+      }
+
       // เช็คสต็อกก่อน
       const ok = await hasAvailableStock(body.productId ?? null);
       if (!ok) {

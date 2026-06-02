@@ -16,6 +16,8 @@ const UserUpdateBody = t.Object({
     t.Union([t.Literal("member"), t.Literal("agent"), t.Literal("admin")])
   ),
   credit: t.Optional(t.Integer({ minimum: 0 })),
+  shopName: t.Optional(t.Union([t.String({ maxLength: 200 }), t.Null()])),
+  lineId: t.Optional(t.Union([t.String({ maxLength: 100 }), t.Null()])),
 });
 
 function shape(u: {
@@ -29,6 +31,8 @@ function shape(u: {
   credit: number | null;
   total_credit: number | null;
   emailVerified: boolean;
+  shopName: string | null;
+  lineId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -70,6 +74,8 @@ const app = new Elysia({ prefix: "/api/v1/users" })
           ...(body.phone !== undefined && { phone: body.phone }),
           ...(body.role !== undefined && { role: body.role }),
           ...(body.credit !== undefined && { credit: body.credit }),
+          ...(body.shopName !== undefined && { shopName: body.shopName }),
+          ...(body.lineId !== undefined && { lineId: body.lineId }),
         },
       });
 
@@ -85,12 +91,16 @@ const app = new Elysia({ prefix: "/api/v1/users" })
             phone: before.phone,
             role: before.role,
             credit: before.credit,
+            shopName: before.shopName,
+            lineId: before.lineId,
           },
           after: {
             name: saved.name,
             phone: saved.phone,
             role: saved.role,
             credit: saved.credit,
+            shopName: saved.shopName,
+            lineId: saved.lineId,
           },
         },
         user: actor,

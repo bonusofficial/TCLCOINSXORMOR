@@ -18,7 +18,9 @@ import {
   Crown,
   Shield,
   Settings2,
+  Copy,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Drawer,
   DrawerContent,
@@ -93,6 +95,15 @@ function buildFallbackAvatar(identifier?: string | null) {
   return `https://placehold.co/500x500/39C848/F7FDF7?text=${encodeURIComponent(firstChar)}`;
 }
 
+export function formatDisplayID(id?: string | null) {
+  if (!id) return "";
+  if (/^\d+$/.test(id)) {
+    return `U${id.padStart(5, "0")}`;
+  }
+  const clean = id.replace(/[^a-zA-Z0-9]/g, "");
+  return `U-${clean.substring(0, 6).toUpperCase()}`;
+}
+
 export default function Navbar({
   onOpenAuth,
   isLoggedIn,
@@ -112,6 +123,7 @@ export default function Navbar({
   const { data: session } = useSession();
   const user = session?.user as
     | {
+        id?: string;
         username?: string | null;
         name?: string | null;
         email?: string | null;
@@ -150,12 +162,15 @@ export default function Navbar({
     if (isAdmin) {
       items.push({ href: "/dashboard", icon: Settings2, label: "จัดการระบบ" });
     }
+    if (userRole === "agent" || userRole === "admin") {
+      items.push({ href: "/profile/benefits", icon: Crown, label: "สิทธิพิเศษตัวแทน" });
+    }
     items.push(
       { href: "/profile", icon: UserCog, label: "แก้ไขโปรไฟล์" },
       { href: "/profile/orders", icon: Receipt, label: "ประวัติการสั่งซื้อ" }
     );
     return items;
-  }, [isAdmin]);
+  }, [isAdmin, userRole]);
 
   return (
     <div className="sticky top-[18px] z-80 px-7 max-w-[1240px] mx-auto w-full">
@@ -196,7 +211,7 @@ export default function Navbar({
               }`}
             >
               <CalendarDays className="h-4.5 w-4.5" />
-              จองคิวเติมเงิน
+              จองคิว
             </Link>
           </div>
         </div>
@@ -276,6 +291,21 @@ export default function Navbar({
                         />
                         {role.label}
                       </p>
+                      {(userRole === "agent" || userRole === "admin") && (
+                        <div 
+                          onClick={() => {
+                            if (user?.id) {
+                              navigator.clipboard.writeText(formatDisplayID(user.id));
+                              toast.success("คัดลอก ID สำเร็จแล้ว!");
+                            }
+                          }}
+                          className="flex items-center gap-1 mt-1 bg-brand-paper hover:bg-brand-green-50 border border-brand-green-100 rounded-lg py-0.5 px-2 text-[9.5px] font-extrabold text-brand-ink-soft w-fit cursor-pointer transition select-none group/uid"
+                          title="คัดลอก ID"
+                        >
+                          <span>ID: {formatDisplayID(user?.id)}</span>
+                          <Copy className="h-2.5 w-2.5 text-brand-green group-hover/uid:scale-110 transition-transform" />
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -399,7 +429,7 @@ export default function Navbar({
               }`}
             >
               <CalendarDays className="h-5 w-5" />
-              จองคิวเติมเงิน
+              จองคิว
             </Link>
 
             <div className="h-px bg-brand-green-100 my-1" />
@@ -430,14 +460,31 @@ export default function Navbar({
                     <p className="font-display font-extrabold text-sm text-brand-ink truncate">
                       {displayName}
                     </p>
-                    <p
-                      className={`text-[11px] font-bold inline-flex items-center gap-1 ${role.badgeText}`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full animate-pulse ${role.badgeDot}`}
-                      />
-                      {role.label}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <p
+                        className={`text-[11px] font-bold inline-flex items-center gap-1 ${role.badgeText}`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full animate-pulse ${role.badgeDot}`}
+                        />
+                        {role.label}
+                      </p>
+                      {(userRole === "agent" || userRole === "admin") && (
+                        <div 
+                          onClick={() => {
+                            if (user?.id) {
+                              navigator.clipboard.writeText(formatDisplayID(user.id));
+                              toast.success("คัดลอก ID สำเร็จแล้ว!");
+                            }
+                          }}
+                          className="flex items-center gap-1 bg-brand-paper border border-brand-green-100 rounded-lg py-0.5 px-1.5 text-[9.5px] font-extrabold text-brand-ink-soft cursor-pointer transition select-none group/uid"
+                          title="คัดลอก ID"
+                        >
+                          <span>ID: {formatDisplayID(user?.id)}</span>
+                          <Copy className="h-2.5 w-2.5 text-brand-green" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 

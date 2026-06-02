@@ -31,6 +31,7 @@ export interface ProductParsed {
   name: string;
   description: string;
   price: string;            // Prisma Decimal → string ใน JSON
+  cost: string;
   agentPrice: string;
   stockEnabled: boolean;
   stock: number;
@@ -51,6 +52,7 @@ export interface ProductInput {
   name: string;
   description: string;
   price: number;
+  cost: number;
   agentPrice: number;
   stockEnabled: boolean;
   stock: number;
@@ -67,6 +69,7 @@ export interface ProductInput {
 export function validateProductInput(input: ProductInput): string | null {
   if (!input.name.trim()) return "ต้องระบุชื่อสินค้า";
   if (input.price < 0) return "ราคาทั่วไปต้องไม่ติดลบ";
+  if (input.cost < 0) return "ต้นทุนต้องไม่ติดลบ";
   if (input.agentPrice < 0) return "ราคา Agent ต้องไม่ติดลบ";
   if (input.stock < 0) return "จำนวนสต็อกต้องไม่ติดลบ";
   if (input.discountAmount < 0) return "ส่วนลดต้องไม่ติดลบ";

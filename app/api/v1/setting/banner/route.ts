@@ -11,9 +11,14 @@ const app = new Elysia({ prefix: "/api/v1/setting/banner" })
   .use(errorPlugin)
   .use(authMacros)
 
-  /** GET — list banners เรียง id asc (เก่าสุดก่อน) */
+  /** GET — list banners เรียงตามลำดับความพรีเมียม (sortOrder asc, id asc) */
   .get("/", async () => {
-    const items = await prisma.banners.findMany({ orderBy: { id: "asc" } });
+    const items = await prisma.banners.findMany({
+      orderBy: [
+        { sortOrder: "asc" },
+        { id: "asc" },
+      ],
+    });
     return {
       ok: true as const,
       data: items.map((b) => {
@@ -25,6 +30,32 @@ const app = new Elysia({ prefix: "/api/v1/setting/banner" })
       }),
     };
   })
+
+  /** PUT — จัดเรียงลำดับ banner ทั้งหมด */
+  .put(
+    "/sort",
+    async ({ body }) => {
+      const { ids } = body;
+      await Promise.all(
+        ids.map((id: number, idx: number) =>
+          prisma.banners.update({
+            where: { id },
+            data: { sortOrder: idx },
+          })
+        )
+      );
+      return {
+        ok: true as const,
+        message: "จัดเรียงลำดับรูปภาพสไลเดอร์เรียบร้อยแล้ว",
+      };
+    },
+    {
+      body: t.Object({
+        ids: t.Array(t.Numeric()),
+      }),
+      requireRole: "admin",
+    }
+  )
 
   /** POST — เพิ่ม banner ใหม่ (รับ URL จาก upload endpoint) */
   .post(
@@ -54,3 +85,4 @@ export type BannerApp = typeof app;
 
 export const GET = app.handle;
 export const POST = app.handle;
+export const PUT = app.handle;

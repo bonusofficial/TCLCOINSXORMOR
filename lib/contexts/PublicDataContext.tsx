@@ -26,11 +26,29 @@ export interface PublicConfig {
   qrcodeagent: string;
   qrcodesupport: string;
   warningMessage: string;
+  maxBookingsPerUser: number;
+  agentPrivileges: string;
+  lineGroupNormal: string;
+  lineGroupAgent: string;
+  welcomeTitle: string;
+  welcomeAgentDesc: string;
+  welcomeMemberDesc: string;
+  howItWorks: { title: string; desc: string }[];
+  termsContent: string;
+  privacyContent: string;
+  reviewLink: string;
+  announceEnabled: boolean;
+  announceBanner: string;
+  announceBadge: string;
+  announceTitle: string;
+  announceContent: string;
+  marqueeText: string;
   stats?: {
     activeQueues: number;
     totalCompleted: number;
     totalStock: number;
     totalUsers: number;
+    successRate: number;
   };
 }
 
@@ -53,6 +71,8 @@ export interface PublicProduct {
   timeSlots: TimeSlot[];
   discountEligibleUsernames: string[];
   note: string | null;
+  /** จำนวนคิวจริง (booking ที่ไม่ถูกยกเลิก) — ใช้แสดง "คนเลือกอันนี้" */
+  queueCount: number;
 }
 
 export interface PublicReview {
@@ -97,11 +117,29 @@ const DEFAULT_CONFIG: PublicConfig = {
   qrcodeagent: "",
   qrcodesupport: "",
   warningMessage: "",
+  maxBookingsPerUser: 0,
+  agentPrivileges: "",
+  lineGroupNormal: "",
+  lineGroupAgent: "",
+  welcomeTitle: "",
+  welcomeAgentDesc: "",
+  welcomeMemberDesc: "",
+  howItWorks: [],
+  termsContent: "",
+  privacyContent: "",
+  reviewLink: "",
+  announceEnabled: false,
+  announceBanner: "",
+  announceBadge: "",
+  announceTitle: "",
+  announceContent: "",
+  marqueeText: "",
   stats: {
     activeQueues: 0,
-    totalCompleted: 10000,
+    totalCompleted: 0,
     totalStock: 0,
-    totalUsers: 100,
+    totalUsers: 0,
+    successRate: 100,
   },
 };
 
@@ -193,6 +231,7 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
             p.discountEligibleUsernames
           ).filter((u): u is string => typeof u === "string"),
           note: (p.note as string | null) ?? null,
+          queueCount: (p.queueCount as number) ?? 0,
         }))
       );
     } catch (err) {
@@ -238,12 +277,15 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
     await Promise.all([fetchConfig(), fetchProducts(), fetchReviews()]);
   }, [fetchConfig, fetchProducts, fetchReviews]);
 
-  // โหลดครั้งเดียวที่ mount พร้อมตั้งเวลาโพลล์อัปเดตสถานะคิวแบบ Realtime ทุกๆ 10 วินาที
+  // โหลดครั้งเดียวที่ mount พร้อมตั้งเวลาโพลล์อัปเดตสถานะ + จำนวนคิวแบบ Realtime ทุกๆ 10 วินาที
   useEffect(() => {
     fetchAll();
-    const id = setInterval(fetchConfig, 10_000);
+    const id = setInterval(() => {
+      fetchConfig();
+      fetchProducts();
+    }, 10_000);
     return () => clearInterval(id);
-  }, [fetchAll, fetchConfig]);
+  }, [fetchAll, fetchConfig, fetchProducts]);
 
   const value: PublicDataValue = useMemo(
     () => ({

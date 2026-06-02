@@ -4,6 +4,8 @@ import React, { useState, useRef, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { authClient, useSession, signOut } from "@/lib/auth-client";
+import { profileApi } from "@/lib/eden";
+import { uploadImage } from "@/lib/upload";
 import {
   Mail,
   AtSign,
@@ -20,9 +22,15 @@ import {
   ShieldCheck,
   Crown,
   Shield,
+  Store,
+  MessageCircle,
+  ArrowRight,
+  Copy,
 } from "lucide-react";
-import Navbar from "@/components/Navbar";
+import Navbar, { formatDisplayID } from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
+import { useConfig } from "@/lib/contexts/PublicDataContext";
+
 
 type UserRole = "member" | "agent" | "admin";
 
@@ -69,8 +77,11 @@ export default function ProfilePage() {
         image?: string | null;
         phone?: string | null;
         role?: string | null;
+        shopName?: string | null;
+        lineId?: string | null;
       }
     | undefined;
+  const { config } = useConfig();
 
   // Modal/auth state for Navbar
   const [authOpen, setAuthOpen] = useState(false);
@@ -86,6 +97,9 @@ export default function ProfilePage() {
   // Account info (name & phone are editable)
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  // ข้อมูลร้าน (สำหรับตัวแทน) — ชื่อร้านปัจจุบัน + ไอดีไลน์ที่ใช้เติม Coins
+  const [shopName, setShopName] = useState("");
+  const [lineId, setLineId] = useState("");
   const [savingInfo, setSavingInfo] = useState(false);
 
   // Change password
@@ -102,6 +116,8 @@ export default function ProfilePage() {
     if (user) {
       setPhone(user.phone ?? "");
       setName(user.name ?? "");
+      setShopName(user.shopName ?? "");
+      setLineId(user.lineId ?? "");
     }
   }, [user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -120,16 +136,30 @@ export default function ProfilePage() {
 
   const handlePickAvatar = () => fileInputRef.current?.click();
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
       toast.warning("ไฟล์ใหญ่เกินไป", { description: "อัปโหลดได้สูงสุด 2 MB" });
+      e.target.value = "";
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setAvatarPreview(reader.result as string);
-    reader.readAsDataURL(file);
+    setAvatarUploading(true);
+    const tId = toast.loading("กำลังอัปโหลดรูป...");
+    try {
+      // อัปโหลดเป็นไฟล์จริง → ได้ URL (/uploads/images/xxx) ไม่ใช่ base64
+      const url = await uploadImage(file);
+      setAvatarPreview(url);
+      toast.success("อัปโหลดรูปแล้ว — กด \"บันทึกรูป\" เพื่อยืนยัน", { id: tId });
+    } catch (err) {
+      toast.error("อัปโหลดรูปไม่สำเร็จ", {
+        id: tId,
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setAvatarUploading(false);
+      e.target.value = "";
+    }
   };
 
   const handleSaveAvatar = async () => {
@@ -165,7 +195,26 @@ export default function ProfilePage() {
     setSavingInfo(true);
     const id = toast.loading("กำลังบันทึก...");
     try {
-      const res = await authClient.updateUser({ name, phone } as Parameters<typeof authClient.updateUser>[0]);
+      // เช็คชื่อร้าน/ไอดีไลน์ ห้ามซ้ำกับผู้ใช้คนอื่น ก่อนบันทึก
+      const check = await profileApi.api.v1.profile.unique.post({
+        shopName: shopName.trim(),
+        lineId: lineId.trim(),
+      });
+      if (check.error || (check.data && !check.data.ok)) {
+        const taken: string[] = [];
+        if (check.data?.shopNameTaken) taken.push("ชื่อร้านนี้");
+        if (check.data?.lineIdTaken) taken.push("ไอดีไลน์นี้");
+        toast.error("ข้อมูลซ้ำกับผู้ใช้อื่น", {
+          id,
+          description: taken.length
+            ? `${taken.join(" และ ")}ถูกใช้ไปแล้ว กรุณาเปลี่ยนเป็นค่าอื่น`
+            : "ไม่สามารถตรวจสอบความซ้ำได้ กรุณาลองใหม่",
+        });
+        setSavingInfo(false);
+        return;
+      }
+
+      const res = await authClient.updateUser({ name, phone, shopName, lineId } as Parameters<typeof authClient.updateUser>[0]);
       if (res.error) {
         toast.error("บันทึกไม่สำเร็จ", {
           id,
@@ -364,9 +413,23 @@ export default function ProfilePage() {
                   {role.label}
                 </span>
               </div>
-              <p className="text-[12px] text-brand-ink-soft font-bold mb-4">
+              <p className="text-[12px] text-brand-ink-soft font-bold mb-3">
                 {user?.email}
               </p>
+
+              {/* อัปเกรดเป็นตัวแทน — แสดงเฉพาะสมาชิกทั่วไป */}
+              {userRole === "member" && (
+                <a
+                  href={config.agentLink.trim() || "#"}
+                  target={config.agentLink.trim() ? "_blank" : undefined}
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 mb-4 px-3.5 py-1.5 rounded-full text-[11.5px] font-extrabold text-brand-gold-deep bg-brand-gold/10 border border-brand-gold/30 hover:bg-brand-gold/20 hover:-translate-y-0.5 transition cursor-pointer"
+                >
+                  <Crown className="h-3.5 w-3.5" />
+                  อัปเกรดเป็นตัวแทน
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </a>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 <button
@@ -415,7 +478,7 @@ export default function ProfilePage() {
             ข้อมูลบัญชี
           </h2>
           <p className="text-xs text-brand-ink-soft font-bold mb-5">
-            ข้อมูลหลักของบัญชีไม่สามารถเปลี่ยนแปลงได้ เพื่อความปลอดภัยและความถูกต้องในการทำธุรกรรม
+            ข้อมูลหลักทางด้านอีเมลและชื่อผู้ใช้จะไม่สามารถเปลี่ยนแปลงได้ เบอร์โทรศัพท์ ชื่อร้าน และไอดีไลน์สามารถอัปเดตและบันทึกข้อมูลได้ตามต้องการ
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -443,7 +506,34 @@ export default function ProfilePage() {
                 className={inputCls}
               />
             </div>
-            <div className="md:col-span-2">
+            <div>
+              <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
+                <AtSign className="h-3.5 w-3.5 text-brand-green" />
+                UID ผู้ใช้งาน
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formatDisplayID(user?.id)}
+                  disabled
+                  className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-3 pl-4 pr-11 text-sm font-semibold outline-none text-brand-ink-soft opacity-60 disabled:cursor-not-allowed"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (user?.id) {
+                      navigator.clipboard.writeText(formatDisplayID(user.id));
+                      toast.success("คัดลอก UID สำเร็จแล้ว!");
+                    }
+                  }}
+                  className="absolute top-1/2 right-3.5 -translate-y-1/2 text-brand-green hover:scale-110 transition cursor-pointer"
+                  title="คัดลอก UID"
+                >
+                  <Copy className="h-4.5 w-4.5" />
+                </button>
+              </div>
+            </div>
+            <div>
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
                 <Phone className="h-3.5 w-3.5 text-brand-green" />
                 เบอร์โทรศัพท์
@@ -451,10 +541,50 @@ export default function ProfilePage() {
               <input
                 type="tel"
                 value={phone}
-                disabled
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="ระบุเบอร์โทรศัพท์ของคุณ"
                 className={inputCls}
               />
             </div>
+
+            <div>
+              <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
+                <Store className="h-3.5 w-3.5 text-brand-green" />
+                ชื่อร้านปัจจุบัน
+              </label>
+              <input
+                type="text"
+                value={shopName}
+                onChange={(e) => setShopName(e.target.value)}
+                placeholder="เช่น ร้านเติมเหรียญ ABC (สำหรับตัวแทน)"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
+                <MessageCircle className="h-3.5 w-3.5 text-brand-green" />
+                ไอดีไลน์ปัจจุบันที่ใช้เติม Coins
+              </label>
+              <input
+                type="text"
+                value={lineId}
+                onChange={(e) => setLineId(e.target.value)}
+                placeholder="เช่น @yourlineid (สำหรับตัวแทน)"
+                className={inputCls}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-6 border-t border-brand-green-100/60 pt-4">
+            <button
+              type="button"
+              onClick={handleSaveInfo}
+              disabled={savingInfo}
+              className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-[13px] font-extrabold text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition cursor-pointer disabled:opacity-60"
+            >
+              {savingInfo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              บันทึกข้อมูลบัญชี
+            </button>
           </div>
         </section>
 

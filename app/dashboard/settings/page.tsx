@@ -19,8 +19,14 @@ import {
   AlertTriangle,
   Sparkles,
   Loader2,
+  ChevronUp,
+  ChevronDown,
+  Crown,
+  Bell,
 } from "lucide-react";
 import { settingApi } from "@/lib/eden";
+import { DEFAULT_HOW_IT_WORKS, parseHowItWorks, type HowItWorksStep } from "@/lib/site-defaults";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 /* ─────────────────────────────────────────────
  * MOCK DATA — replace with API/Server-state later
  * ───────────────────────────────────────────── */
@@ -385,9 +391,9 @@ function ReviewEditor({
   const [timeUnit, setTimeUnit] = useState<TimeUnit>(initial?.timeUnit ?? "day");
 
   const handleSave = () => {
-    if (!name.trim() || !review.trim()) {
-      toast.warning("กรอกข้อมูลให้ครบ", {
-        description: "ชื่อและรายละเอียดรีวิวจำเป็นต้องระบุ",
+    if (!name.trim() || !detail.trim() || !review.trim() || rating < 1) {
+      toast.warning("กรอกข้อมูลให้ครบถ้วน", {
+        description: "กรุณากรอก ชื่อลูกค้า, จำนวน Coins ที่เติม, คะแนนดาว และข้อความรีวิว ให้ครบทุกช่องก่อนบันทึก",
       });
       return;
     }
@@ -461,12 +467,12 @@ function ReviewEditor({
             />
           </Field>
 
-          <Field label="รายละเอียดเพิ่ม (แพ็กเกจ/ป้าย)">
+          <Field label="จำนวน Coins ที่เติม" required>
             <input
               type="text"
               value={detail}
               onChange={(e) => setDetail(e.target.value)}
-              placeholder="เช่น เติม 3,300 Coins หรือ ตัวแทน VIP"
+              placeholder="เช่น 3,300 Coins"
               className={inputCls}
             />
           </Field>
@@ -564,7 +570,7 @@ function ReviewEditor({
  * PAGE
  * ───────────────────────────────────────────── */
 
-type SettingsTab = "general" | "aesthetics" | "reviews";
+type SettingsTab = "general" | "aesthetics" | "reviews" | "notify";
 
 const TABS: Array<{
   key: SettingsTab;
@@ -574,6 +580,7 @@ const TABS: Array<{
   { key: "general", label: "ทั่วไป", icon: Globe },
   { key: "aesthetics", label: "ความสวยงาม", icon: Sparkles },
   { key: "reviews", label: "รีวิว", icon: Star },
+  { key: "notify", label: "แจ้งเตือน", icon: Bell },
 ];
 
 export default function SettingsPage() {
@@ -599,6 +606,28 @@ export default function SettingsPage() {
   const [warning, setWarning] = useState(
     "ห้ามกดจองเล่น ๆ หากตรวจพบ ปรับ 50 บาท / 1 ครั้ง • กรุณาจองเฉพาะที่ต้องการเติมจริงเท่านั้น"
   );
+  const [marqueeText, setMarqueeText] = useState("");
+  const [maxBookingsPerUser, setMaxBookingsPerUser] = useState<number>(0);
+  const [agentPrivileges, setAgentPrivileges] = useState("");
+  // เนื้อหาเว็บที่แก้ไขได้ (config ใหม่)
+  const [lineGroupNormal, setLineGroupNormal] = useState("");
+  const [lineGroupAgent, setLineGroupAgent] = useState("");
+  const [reviewLink, setReviewLink] = useState("");
+  const [welcomeTitle, setWelcomeTitle] = useState("");
+  const [welcomeAgentDesc, setWelcomeAgentDesc] = useState("");
+  const [welcomeMemberDesc, setWelcomeMemberDesc] = useState("");
+  const [howItWorks, setHowItWorks] = useState<HowItWorksStep[]>(DEFAULT_HOW_IT_WORKS);
+  const updateStep = (i: number, key: "title" | "desc", value: string) =>
+    setHowItWorks((prev) => prev.map((s, idx) => (idx === i ? { ...s, [key]: value } : s)));
+  // หน้าเอกสาร (rich text)
+  const [termsContent, setTermsContent] = useState("");
+  const [privacyContent, setPrivacyContent] = useState("");
+  // ประกาศแจ้งเตือน
+  const [announceEnabled, setAnnounceEnabled] = useState(false);
+  const [announceBanner, setAnnounceBanner] = useState("");
+  const [announceBadge, setAnnounceBadge] = useState("");
+  const [announceTitle, setAnnounceTitle] = useState("");
+  const [announceContent, setAnnounceContent] = useState("");
 
   // AESTHETICS TAB STATE
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -668,6 +697,24 @@ export default function SettingsPage() {
         setQrAgent(c.qrcodeagent || null);
         setQrSupport(c.qrcodesupport || null);
         setWarning(c.warningMessage);
+        setMarqueeText(c.marqueeText ?? "");
+        setMaxBookingsPerUser(c.maxBookingsPerUser ?? 0);
+        setAgentPrivileges(c.agentPrivileges ?? "");
+        setLineGroupNormal(c.lineGroupNormal ?? "");
+        setLineGroupAgent(c.lineGroupAgent ?? "");
+        setReviewLink(c.reviewLink ?? "");
+        setWelcomeTitle(c.welcomeTitle ?? "");
+        setWelcomeAgentDesc(c.welcomeAgentDesc ?? "");
+        setWelcomeMemberDesc(c.welcomeMemberDesc ?? "");
+        const parsedSteps = parseHowItWorks(c.howItWorks);
+        setHowItWorks(parsedSteps.length ? parsedSteps : DEFAULT_HOW_IT_WORKS);
+        setTermsContent(c.termsContent ?? "");
+        setPrivacyContent(c.privacyContent ?? "");
+        setAnnounceEnabled(c.announceEnabled ?? false);
+        setAnnounceBanner(c.announceBanner ?? "");
+        setAnnounceBadge(c.announceBadge ?? "");
+        setAnnounceTitle(c.announceTitle ?? "");
+        setAnnounceContent(c.announceContent ?? "");
       })
       .catch((err) => console.error("Load setting failed:", err));
   }, []);
@@ -688,6 +735,23 @@ export default function SettingsPage() {
         qrcodeagent: qrAgent ?? "",
         qrcodesupport: qrSupport ?? "",
         warningMessage: warning,
+        marqueeText,
+        maxBookingsPerUser: Number(maxBookingsPerUser),
+        agentPrivileges: agentPrivileges,
+        lineGroupNormal,
+        lineGroupAgent,
+        reviewLink,
+        welcomeTitle,
+        welcomeAgentDesc,
+        welcomeMemberDesc,
+        howItWorks,
+        termsContent,
+        privacyContent,
+        announceEnabled,
+        announceBanner,
+        announceBadge,
+        announceTitle,
+        announceContent,
       });
 
       if (error) {
@@ -743,6 +807,38 @@ export default function SettingsPage() {
     }
     setBanners((prev) => prev.filter((b) => b.id !== id));
     toast.success(data.message ?? "ลบแล้ว", { id: tId });
+  };
+
+  const handleSortBanners = async (newBanners: Banner[]) => {
+    setBanners(newBanners);
+    const tId = toast.loading("กำลังอัปเดตลำดับเรียง...");
+    const ids = newBanners.map((b) => b.id);
+    const { data, error } = await settingApi.banner.collection.api.v1.setting.banner.sort.put({
+      ids,
+    });
+    if (error) {
+      toast.error("บันทึกลำดับไม่สำเร็จ", { id: tId });
+    } else {
+      toast.success(data.message ?? "อัปเดตลำดับเรียบร้อย", { id: tId });
+    }
+  };
+
+  const moveBannerUp = (index: number) => {
+    if (index === 0) return;
+    const nextBanners = [...banners];
+    const temp = nextBanners[index];
+    nextBanners[index] = nextBanners[index - 1];
+    nextBanners[index - 1] = temp;
+    handleSortBanners(nextBanners);
+  };
+
+  const moveBannerDown = (index: number) => {
+    if (index === banners.length - 1) return;
+    const nextBanners = [...banners];
+    const temp = nextBanners[index];
+    nextBanners[index] = nextBanners[index + 1];
+    nextBanners[index + 1] = temp;
+    handleSortBanners(nextBanners);
   };
 
   const handleSaveReview = async (r: Review) => {
@@ -819,27 +915,54 @@ export default function SettingsPage() {
     <>
       <main className="flex-1 px-6 lg:px-8 py-7 max-w-[1200px] w-full mx-auto">
 
-          {/* Tab Switcher */}
-          <div className="bg-brand-surface-soft border border-brand-green-100 rounded-2xl p-1.5 inline-flex mb-7 gap-1 flex-wrap">
-            {TABS.map((t) => {
-              const Icon = t.icon;
-              const active = activeTab === t.key;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setActiveTab(t.key)}
-                  className={`px-5 py-2.5 rounded-xl font-extrabold text-sm transition-all duration-200 inline-flex items-center gap-2 cursor-pointer ${
-                    active
-                      ? "bg-brand-green text-white shadow-md shadow-brand-green/30"
-                      : "text-brand-ink-soft hover:text-brand-green hover:bg-brand-green-50"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {t.label}
-                </button>
-              );
-            })}
+          {/* Sticky Header Bar for Tab Switcher and Actions */}
+          <div className="sticky top-[72px] -mx-6 lg:-mx-8 px-6 lg:px-8 py-4 bg-brand-paper/90 backdrop-blur-md border-b border-brand-green-100/60 z-20 mb-7 flex flex-wrap items-center justify-between gap-4 transition-all duration-200 rounded-b-2xl">
+            {/* Tab Switcher */}
+            <div className="bg-brand-surface-soft border border-brand-green-100 rounded-2xl p-1.5 inline-flex gap-1 flex-wrap">
+              {TABS.map((t) => {
+                const Icon = t.icon;
+                const active = activeTab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setActiveTab(t.key)}
+                    className={`px-5 py-2.5 rounded-xl font-extrabold text-sm transition-all duration-200 inline-flex items-center gap-2 cursor-pointer ${
+                      active
+                        ? "bg-brand-green text-white shadow-md shadow-brand-green/30"
+                        : "text-brand-ink-soft hover:text-brand-green hover:bg-brand-green-50"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sticky Actions */}
+            {activeTab === "general" && (
+              <button
+                onClick={handleSaveGeneral}
+                className="px-6 py-2.5 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition cursor-pointer inline-flex items-center gap-2"
+              >
+                <Save className="h-4 w-4" />
+                บันทึกข้อมูล
+              </button>
+            )}
+
+            {activeTab === "reviews" && (
+              <button
+                onClick={() => {
+                  setEditingReview(null);
+                  setReviewDialogOpen(true);
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition cursor-pointer"
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+                เพิ่มรีวิว
+              </button>
+            )}
           </div>
 
           {/* ═══ Tab 1: GENERAL ═══ */}
@@ -893,6 +1016,19 @@ export default function SettingsPage() {
                         type="text"
                         value={keywords}
                         onChange={(e) => setKeywords(e.target.value)}
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field
+                      label="จำกัดการจองต่อ User (แพ็กเกจ/วัน)"
+                      icon={AlertTriangle}
+                      helper="ระบุโควตาการจองสูงสุดต่อคนต่อวัน สำหรับวันที่ลูกค้าจองคิวเข้ามา (ระบุ 0 หากไม่มีการจำกัดโควตา)"
+                    >
+                      <input
+                        type="number"
+                        min={0}
+                        value={maxBookingsPerUser}
+                        onChange={(e) => setMaxBookingsPerUser(Math.max(0, parseInt(e.target.value) || 0))}
                         className={inputCls}
                       />
                     </Field>
@@ -991,19 +1127,187 @@ export default function SettingsPage() {
                 />
               </section>
 
-              {/* Save Button */}
-              <div className="flex justify-end gap-3">
-                <button className="px-5 py-3 rounded-xl font-extrabold text-sm bg-brand-surface border border-brand-green-100 text-brand-ink-soft hover:bg-brand-green-50 hover:text-brand-green transition cursor-pointer">
-                  ยกเลิก
-                </button>
-                <button
-                  onClick={handleSaveGeneral}
-                  className="px-7 py-3 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-lg shadow-brand-green/30 hover:shadow-xl hover:-translate-y-0.5 transition cursor-pointer inline-flex items-center gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  บันทึกการตั้งค่า
-                </button>
-              </div>
+              {/* Marquee text (ข้อความวิ่ง) */}
+              <section className="bg-brand-surface border border-brand-green-100 rounded-3xl p-6 md:p-7">
+                <header className="mb-5">
+                  <h2 className="font-display font-black text-lg text-brand-ink inline-flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-brand-green" />
+                    ข้อความวิ่ง (Marquee)
+                  </h2>
+                  <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
+                    ข้อความวิ่งแนวนอนในหน้าประวัติการสั่งซื้อ · เว้นว่าง = ไม่แสดง
+                  </p>
+                </header>
+                <input
+                  type="text"
+                  value={marqueeText}
+                  onChange={(e) => setMarqueeText(e.target.value)}
+                  className={inputCls}
+                  placeholder="เช่น 🔥 โปรโมชั่นพิเศษวันนี้! เติม 10,000 Coins รับส่วนลดทันที"
+                />
+              </section>
+
+              {/* Agent Privileges */}
+              <section className="bg-brand-surface border border-brand-green-100 rounded-3xl p-6 md:p-7">
+                <header className="mb-5">
+                  <h2 className="font-display font-black text-lg text-brand-ink inline-flex items-center gap-2">
+                    <Crown className="h-5 w-5 text-brand-gold" />
+                    สิทธิพิเศษตัวแทน (Agent Privileges)
+                  </h2>
+                  <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
+                    รายละเอียดสิทธิพิเศษ/ราคาพิเศษที่ตัวแทนจำหน่ายจะได้รับเมื่อใช้บริการ
+                  </p>
+                </header>
+                <textarea
+                  rows={6}
+                  value={agentPrivileges}
+                  onChange={(e) => setAgentPrivileges(e.target.value)}
+                  className={textareaCls}
+                  placeholder="พิมพ์รายละเอียดสิทธิพิเศษของตัวแทนจำหน่าย..."
+                />
+              </section>
+
+              {/* เนื้อหาเว็บไซต์ (แก้ไขได้) — LINE group, หน้าสมัคร, ขั้นตอนการใช้งาน */}
+              <section className="bg-brand-surface border border-brand-green-100 rounded-3xl p-6 md:p-7 space-y-6">
+                <header>
+                  <h2 className="font-display font-black text-lg text-brand-ink">
+                    เนื้อหาเว็บไซต์ (แก้ไขได้)
+                  </h2>
+                  <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
+                    ลิงก์กลุ่ม LINE · ข้อความหน้าสมัคร · ขั้นตอนการใช้งาน
+                  </p>
+                </header>
+
+                {/* LINE group links */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="ลิงก์เข้ากลุ่ม LINE — ลูกค้าทั่วไป" helper='ปุ่ม "กดเพื่อเข้ากลุ่ม LINE" ใต้ QR (แท็บทั่วไป)'>
+                    <input
+                      type="text"
+                      value={lineGroupNormal}
+                      onChange={(e) => setLineGroupNormal(e.target.value)}
+                      placeholder="https://line.me/ti/g/..."
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="ลิงก์เข้ากลุ่ม LINE — ตัวแทน" helper='ปุ่ม "กดเพื่อเข้ากลุ่ม LINE" ใต้ QR (แท็บตัวแทน)'>
+                    <input
+                      type="text"
+                      value={lineGroupAgent}
+                      onChange={(e) => setLineGroupAgent(e.target.value)}
+                      placeholder="https://line.me/ti/g/..."
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
+
+                {/* Review link (ปุ่ม "ดูรีวิวลูกค้า" แถบ trust หน้าแรก) */}
+                <Field label="ลิงก์ดูรีวิวลูกค้า" helper='ปุ่ม "ดูรีวิวลูกค้า →" ในแถบ trust หน้าแรก (เว้นว่าง = ใช้ LINE OA)'>
+                  <input
+                    type="text"
+                    value={reviewLink}
+                    onChange={(e) => setReviewLink(e.target.value)}
+                    placeholder="https://... (ลิงก์รวมรีวิวทั้งหมด)"
+                    className={inputCls}
+                  />
+                </Field>
+
+                {/* Welcome panel (หน้าสมัคร) */}
+                <Field label="หัวข้อหน้าสมัคร (Welcome)" helper="แสดงในกล่องสมัครสมาชิก (เว้นว่าง = ใช้ค่าเริ่มต้น)">
+                  <input
+                    type="text"
+                    value={welcomeTitle}
+                    onChange={(e) => setWelcomeTitle(e.target.value)}
+                    placeholder="ยินดีต้อนรับสู่ครอบครัว TCLCOINSXORMOR"
+                    className={inputCls}
+                  />
+                </Field>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="คำอธิบายบทบาทตัวแทน">
+                    <textarea
+                      rows={3}
+                      value={welcomeAgentDesc}
+                      onChange={(e) => setWelcomeAgentDesc(e.target.value)}
+                      placeholder="ตัวแทนจำหน่าย: รับเรท VIP ส่วนลดพิเศษทุกออเดอร์..."
+                      className={textareaCls}
+                    />
+                  </Field>
+                  <Field label="คำอธิบายบทบาทลูกค้าทั่วไป">
+                    <textarea
+                      rows={3}
+                      value={welcomeMemberDesc}
+                      onChange={(e) => setWelcomeMemberDesc(e.target.value)}
+                      placeholder="ลูกค้าทั่วไป: เติมเหรียญง่าย ปลอดภัย รวดเร็ว..."
+                      className={textareaCls}
+                    />
+                  </Field>
+                </div>
+
+                {/* How it works steps */}
+                <div>
+                  <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">
+                    ขั้นตอนการใช้งาน (4 ขั้นตอน)
+                  </label>
+                  <div className="space-y-3">
+                    {howItWorks.map((step, i) => (
+                      <div key={i} className="bg-brand-paper border border-brand-green-100 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-lg bg-brand-green-100 text-brand-green font-black text-xs flex items-center justify-center flex-shrink-0">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <input
+                            type="text"
+                            value={step.title}
+                            onChange={(e) => updateStep(i, "title", e.target.value)}
+                            placeholder={`หัวข้อขั้นตอนที่ ${i + 1}`}
+                            className={inputCls}
+                          />
+                        </div>
+                        <textarea
+                          rows={2}
+                          value={step.desc}
+                          onChange={(e) => updateStep(i, "desc", e.target.value)}
+                          placeholder="รายละเอียดขั้นตอน"
+                          className={textareaCls}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* เอกสารทางกฎหมาย — ข้อกำหนด & นโยบาย (rich text) */}
+              <section className="bg-brand-surface border border-brand-green-100 rounded-3xl p-6 md:p-7 space-y-6">
+                <header>
+                  <h2 className="font-display font-black text-lg text-brand-ink">
+                    เอกสารทางกฎหมาย
+                  </h2>
+                  <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
+                    จัดการเนื้อหา ข้อกำหนดเงื่อนไขการใช้บริการ และนโยบายความเป็นส่วนตัว (แสดงที่หน้า /terms และ /privacy)
+                  </p>
+                </header>
+
+                <div>
+                  <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">
+                    ข้อกำหนดเงื่อนไขการใช้บริการ
+                  </label>
+                  <RichTextEditor
+                    value={termsContent}
+                    onChange={setTermsContent}
+                    placeholder="พิมพ์ข้อกำหนดเงื่อนไขการใช้บริการ..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">
+                    นโยบายความเป็นส่วนตัว
+                  </label>
+                  <RichTextEditor
+                    value={privacyContent}
+                    onChange={setPrivacyContent}
+                    placeholder="พิมพ์นโยบายความเป็นส่วนตัว..."
+                  />
+                </div>
+              </section>
             </div>
           )}
 
@@ -1054,17 +1358,38 @@ export default function SettingsPage() {
                         <div className="absolute top-2 left-2 bg-brand-surface-soft/95 backdrop-blur text-brand-ink text-[10px] font-black py-1 px-2 rounded">
                           #{i + 1}
                         </div>
-                        <button
-                          onClick={() => handleDeleteBanner(b.id)}
-                          disabled={deletingBannerId === b.id}
-                          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-rose-500/90 hover:bg-rose-500 text-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition cursor-pointer disabled:opacity-60"
-                        >
-                          {deletingBannerId === b.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
+                        <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition">
+                          {i > 0 && (
+                            <button
+                              onClick={() => moveBannerUp(i)}
+                              className="w-8 h-8 rounded-full bg-brand-surface-soft/95 hover:bg-brand-green hover:text-white text-brand-ink flex items-center justify-center shadow-md cursor-pointer transition"
+                              title="เลื่อนขึ้น"
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </button>
                           )}
-                        </button>
+                          {i < banners.length - 1 && (
+                            <button
+                              onClick={() => moveBannerDown(i)}
+                              className="w-8 h-8 rounded-full bg-brand-surface-soft/95 hover:bg-brand-green hover:text-white text-brand-ink flex items-center justify-center shadow-md cursor-pointer transition"
+                              title="เลื่อนลง"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteBanner(b.id)}
+                            disabled={deletingBannerId === b.id}
+                            className="w-8 h-8 rounded-full bg-rose-500/90 hover:bg-rose-500 text-white flex items-center justify-center shadow-md cursor-pointer disabled:opacity-60 transition"
+                            title="ลบ"
+                          >
+                            {deletingBannerId === b.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1086,16 +1411,6 @@ export default function SettingsPage() {
                       เพิ่ม/แก้ไข/ลบ รีวิวที่แสดงในหน้า Reviews
                     </p>
                   </div>
-                  <button
-                    onClick={() => {
-                      setEditingReview(null);
-                      setReviewDialogOpen(true);
-                    }}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg transition cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" strokeWidth={2.5} />
-                    เพิ่มรีวิว
-                  </button>
                 </header>
 
                 <div className="space-y-3">
@@ -1187,6 +1502,89 @@ export default function SettingsPage() {
                   ))}
                 </div>
               </section>
+            </div>
+          )}
+
+          {/* ═══ Tab 4: NOTIFY (ประกาศแจ้งเตือน) ═══ */}
+          {activeTab === "notify" && (
+            <div className="space-y-6">
+              <section className="bg-brand-surface border border-brand-green-100 rounded-3xl p-6 md:p-7 space-y-6">
+                <header className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h2 className="font-display font-black text-lg text-brand-ink inline-flex items-center gap-2">
+                      <Bell className="h-5 w-5 text-brand-gold" />
+                      ประกาศแจ้งเตือน
+                    </h2>
+                    <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
+                      แสดงเป็น popup กลางจอ + ที่กระดิ่งมุมขวาบนในหน้าแรก · กด &ldquo;รับทราบ&rdquo; จะซ่อน 1 วัน
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAnnounceEnabled((v) => !v)}
+                    aria-pressed={announceEnabled}
+                    className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition cursor-pointer ${
+                      announceEnabled ? "bg-brand-green" : "bg-brand-green-100"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                        announceEnabled ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </header>
+
+                <ImageUpload
+                  label="รูป Banner ประกาศ"
+                  value={announceBanner || null}
+                  onChange={(url) => setAnnounceBanner(url ?? "")}
+                  aspect="wide"
+                  helperText="แนะนำแนวนอน (เช่น 1200×675px) · PNG/JPG ≤ 5 MB"
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="ป้าย Badge" helper='เช่น "ประกาศสำคัญ"'>
+                    <input
+                      type="text"
+                      value={announceBadge}
+                      onChange={(e) => setAnnounceBadge(e.target.value)}
+                      placeholder="ประกาศสำคัญ"
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="หัวข้อประกาศ">
+                    <input
+                      type="text"
+                      value={announceTitle}
+                      onChange={(e) => setAnnounceTitle(e.target.value)}
+                      placeholder="เช่น วิธีสมัครตัวแทน ORMOR TOPUP COINS"
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
+
+                <div>
+                  <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">
+                    รายละเอียด
+                  </label>
+                  <RichTextEditor
+                    value={announceContent}
+                    onChange={setAnnounceContent}
+                    placeholder="พิมพ์รายละเอียดประกาศ..."
+                  />
+                </div>
+              </section>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSaveGeneral}
+                  className="px-7 py-3 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-lg shadow-brand-green/30 hover:shadow-xl hover:-translate-y-0.5 transition cursor-pointer inline-flex items-center gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  บันทึกประกาศ
+                </button>
+              </div>
             </div>
           )}
 

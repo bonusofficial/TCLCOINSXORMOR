@@ -21,6 +21,8 @@ model User {
   total_credit    Int?      @default(0)
   role            String?   @db.Text
   phone           String?   @db.Text
+  shopName        String?   @db.Text  // ชื่อร้านปัจจุบัน (สำหรับตัวแทน)
+  lineId          String?   @db.Text  // ไอดีไลน์ปัจจุบันที่ใช้เติม Coins
   accounts        Account[]
   sessions        Session[]
 
@@ -75,22 +77,40 @@ model Verification {
 }
 
 model Config {
-  id             Int    @id @default(autoincrement())
-  logo           String @db.MediumText
-  title          String @db.Text
-  description    String @db.Text
-  keywords       String @db.Text
-  agentLink      String @db.Text
-  contactLine    String @db.Text
-  phone          String @db.Text
-  qrcodenormal   String @db.MediumText
-  qrcodeagent    String @db.MediumText
-  qrcodesupport  String @db.MediumText
-  warningMessage String @db.Text
+  id                 Int    @id @default(autoincrement())
+  logo               String @db.MediumText
+  title              String @db.Text
+  description        String @db.Text
+  keywords           String @db.Text
+  agentLink          String @db.Text
+  contactLine        String @db.Text
+  phone              String @db.Text
+  qrcodenormal       String @db.MediumText
+  qrcodeagent        String @db.MediumText
+  qrcodesupport      String @db.MediumText
+  warningMessage     String @db.Text
+  maxBookingsPerUser Int    @default(0)
+  agentPrivileges    String? @db.Text
+  lineGroupNormal    String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (ลูกค้าทั่วไป)
+  lineGroupAgent     String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (ตัวแทน)
+  welcomeTitle       String? @db.Text   // หัวข้อ panel สมัคร เช่น "ยินดีต้อนรับสู่ครอบครัว..."
+  welcomeAgentDesc   String? @db.Text   // คำอธิบายบทบาทตัวแทน
+  welcomeMemberDesc  String? @db.Text   // คำอธิบายบทบาทลูกค้าทั่วไป
+  howItWorks         Json?              // ขั้นตอนการใช้งาน [{title, desc} x4]
+  termsContent       String? @db.MediumText  // ข้อกำหนดเงื่อนไขการใช้บริการ (HTML)
+  privacyContent     String? @db.MediumText  // นโยบายความเป็นส่วนตัว (HTML)
+  reviewLink         String? @db.Text   // ลิงก์ "ดูรีวิวลูกค้า" (แถบ trust ในหน้าแรก)
+  announceEnabled    Boolean @default(false)  // เปิด/ปิด ประกาศแจ้งเตือน
+  announceBanner     String? @db.MediumText   // รูป Banner ของประกาศ (URL)
+  announceBadge      String? @db.Text   // ป้าย badge เช่น "ประกาศสำคัญ"
+  announceTitle      String? @db.Text   // หัวข้อประกาศ
+  announceContent    String? @db.MediumText   // รายละเอียดประกาศ (HTML)
+  marqueeText        String? @db.Text   // ข้อความวิ่ง marquee (หน้าประวัติการสั่งซื้อ)
 }
 model banners {
   id        Int      @id @default(autoincrement())
   image     String   @db.MediumText
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 }
 
@@ -194,6 +214,7 @@ model products {
 
   // ─── ราคา ───
   price       Decimal @db.Decimal(10, 2)  // ราคาทั่วไป
+  cost        Decimal @default(0) @db.Decimal(10, 2)  // ต้นทุนสินค้า
   agentPrice  Decimal @db.Decimal(10, 2)  // ราคา Agent
 
   // ─── สต็อก ───

@@ -28,10 +28,12 @@ export type AggregateConfig = {
 
 export type ConfigAvgAggregateOutputType = {
   id: number | null
+  maxBookingsPerUser: number | null
 }
 
 export type ConfigSumAggregateOutputType = {
   id: number | null
+  maxBookingsPerUser: number | null
 }
 
 export type ConfigMinAggregateOutputType = {
@@ -47,6 +49,22 @@ export type ConfigMinAggregateOutputType = {
   qrcodeagent: string | null
   qrcodesupport: string | null
   warningMessage: string | null
+  maxBookingsPerUser: number | null
+  agentPrivileges: string | null
+  lineGroupNormal: string | null
+  lineGroupAgent: string | null
+  welcomeTitle: string | null
+  welcomeAgentDesc: string | null
+  welcomeMemberDesc: string | null
+  termsContent: string | null
+  privacyContent: string | null
+  reviewLink: string | null
+  announceEnabled: boolean | null
+  announceBanner: string | null
+  announceBadge: string | null
+  announceTitle: string | null
+  announceContent: string | null
+  marqueeText: string | null
 }
 
 export type ConfigMaxAggregateOutputType = {
@@ -62,6 +80,22 @@ export type ConfigMaxAggregateOutputType = {
   qrcodeagent: string | null
   qrcodesupport: string | null
   warningMessage: string | null
+  maxBookingsPerUser: number | null
+  agentPrivileges: string | null
+  lineGroupNormal: string | null
+  lineGroupAgent: string | null
+  welcomeTitle: string | null
+  welcomeAgentDesc: string | null
+  welcomeMemberDesc: string | null
+  termsContent: string | null
+  privacyContent: string | null
+  reviewLink: string | null
+  announceEnabled: boolean | null
+  announceBanner: string | null
+  announceBadge: string | null
+  announceTitle: string | null
+  announceContent: string | null
+  marqueeText: string | null
 }
 
 export type ConfigCountAggregateOutputType = {
@@ -77,16 +111,35 @@ export type ConfigCountAggregateOutputType = {
   qrcodeagent: number
   qrcodesupport: number
   warningMessage: number
+  maxBookingsPerUser: number
+  agentPrivileges: number
+  lineGroupNormal: number
+  lineGroupAgent: number
+  welcomeTitle: number
+  welcomeAgentDesc: number
+  welcomeMemberDesc: number
+  howItWorks: number
+  termsContent: number
+  privacyContent: number
+  reviewLink: number
+  announceEnabled: number
+  announceBanner: number
+  announceBadge: number
+  announceTitle: number
+  announceContent: number
+  marqueeText: number
   _all: number
 }
 
 
 export type ConfigAvgAggregateInputType = {
   id?: true
+  maxBookingsPerUser?: true
 }
 
 export type ConfigSumAggregateInputType = {
   id?: true
+  maxBookingsPerUser?: true
 }
 
 export type ConfigMinAggregateInputType = {
@@ -102,6 +155,22 @@ export type ConfigMinAggregateInputType = {
   qrcodeagent?: true
   qrcodesupport?: true
   warningMessage?: true
+  maxBookingsPerUser?: true
+  agentPrivileges?: true
+  lineGroupNormal?: true
+  lineGroupAgent?: true
+  welcomeTitle?: true
+  welcomeAgentDesc?: true
+  welcomeMemberDesc?: true
+  termsContent?: true
+  privacyContent?: true
+  reviewLink?: true
+  announceEnabled?: true
+  announceBanner?: true
+  announceBadge?: true
+  announceTitle?: true
+  announceContent?: true
+  marqueeText?: true
 }
 
 export type ConfigMaxAggregateInputType = {
@@ -117,6 +186,22 @@ export type ConfigMaxAggregateInputType = {
   qrcodeagent?: true
   qrcodesupport?: true
   warningMessage?: true
+  maxBookingsPerUser?: true
+  agentPrivileges?: true
+  lineGroupNormal?: true
+  lineGroupAgent?: true
+  welcomeTitle?: true
+  welcomeAgentDesc?: true
+  welcomeMemberDesc?: true
+  termsContent?: true
+  privacyContent?: true
+  reviewLink?: true
+  announceEnabled?: true
+  announceBanner?: true
+  announceBadge?: true
+  announceTitle?: true
+  announceContent?: true
+  marqueeText?: true
 }
 
 export type ConfigCountAggregateInputType = {
@@ -132,6 +217,23 @@ export type ConfigCountAggregateInputType = {
   qrcodeagent?: true
   qrcodesupport?: true
   warningMessage?: true
+  maxBookingsPerUser?: true
+  agentPrivileges?: true
+  lineGroupNormal?: true
+  lineGroupAgent?: true
+  welcomeTitle?: true
+  welcomeAgentDesc?: true
+  welcomeMemberDesc?: true
+  howItWorks?: true
+  termsContent?: true
+  privacyContent?: true
+  reviewLink?: true
+  announceEnabled?: true
+  announceBanner?: true
+  announceBadge?: true
+  announceTitle?: true
+  announceContent?: true
+  marqueeText?: true
   _all?: true
 }
 
@@ -234,6 +336,23 @@ export type ConfigGroupByOutputType = {
   qrcodeagent: string
   qrcodesupport: string
   warningMessage: string
+  maxBookingsPerUser: number
+  agentPrivileges: string | null
+  lineGroupNormal: string | null
+  lineGroupAgent: string | null
+  welcomeTitle: string | null
+  welcomeAgentDesc: string | null
+  welcomeMemberDesc: string | null
+  howItWorks: runtime.JsonValue | null
+  termsContent: string | null
+  privacyContent: string | null
+  reviewLink: string | null
+  announceEnabled: boolean
+  announceBanner: string | null
+  announceBadge: string | null
+  announceTitle: string | null
+  announceContent: string | null
+  marqueeText: string | null
   _count: ConfigCountAggregateOutputType | null
   _avg: ConfigAvgAggregateOutputType | null
   _sum: ConfigSumAggregateOutputType | null
@@ -272,6 +391,23 @@ export type ConfigWhereInput = {
   qrcodeagent?: Prisma.StringFilter<"Config"> | string
   qrcodesupport?: Prisma.StringFilter<"Config"> | string
   warningMessage?: Prisma.StringFilter<"Config"> | string
+  maxBookingsPerUser?: Prisma.IntFilter<"Config"> | number
+  agentPrivileges?: Prisma.StringNullableFilter<"Config"> | string | null
+  lineGroupNormal?: Prisma.StringNullableFilter<"Config"> | string | null
+  lineGroupAgent?: Prisma.StringNullableFilter<"Config"> | string | null
+  welcomeTitle?: Prisma.StringNullableFilter<"Config"> | string | null
+  welcomeAgentDesc?: Prisma.StringNullableFilter<"Config"> | string | null
+  welcomeMemberDesc?: Prisma.StringNullableFilter<"Config"> | string | null
+  howItWorks?: Prisma.JsonNullableFilter<"Config">
+  termsContent?: Prisma.StringNullableFilter<"Config"> | string | null
+  privacyContent?: Prisma.StringNullableFilter<"Config"> | string | null
+  reviewLink?: Prisma.StringNullableFilter<"Config"> | string | null
+  announceEnabled?: Prisma.BoolFilter<"Config"> | boolean
+  announceBanner?: Prisma.StringNullableFilter<"Config"> | string | null
+  announceBadge?: Prisma.StringNullableFilter<"Config"> | string | null
+  announceTitle?: Prisma.StringNullableFilter<"Config"> | string | null
+  announceContent?: Prisma.StringNullableFilter<"Config"> | string | null
+  marqueeText?: Prisma.StringNullableFilter<"Config"> | string | null
 }
 
 export type ConfigOrderByWithRelationInput = {
@@ -287,6 +423,23 @@ export type ConfigOrderByWithRelationInput = {
   qrcodeagent?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
+  maxBookingsPerUser?: Prisma.SortOrder
+  agentPrivileges?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineGroupNormal?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineGroupAgent?: Prisma.SortOrderInput | Prisma.SortOrder
+  welcomeTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  welcomeAgentDesc?: Prisma.SortOrderInput | Prisma.SortOrder
+  welcomeMemberDesc?: Prisma.SortOrderInput | Prisma.SortOrder
+  howItWorks?: Prisma.SortOrderInput | Prisma.SortOrder
+  termsContent?: Prisma.SortOrderInput | Prisma.SortOrder
+  privacyContent?: Prisma.SortOrderInput | Prisma.SortOrder
+  reviewLink?: Prisma.SortOrderInput | Prisma.SortOrder
+  announceEnabled?: Prisma.SortOrder
+  announceBanner?: Prisma.SortOrderInput | Prisma.SortOrder
+  announceBadge?: Prisma.SortOrderInput | Prisma.SortOrder
+  announceTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  announceContent?: Prisma.SortOrderInput | Prisma.SortOrder
+  marqueeText?: Prisma.SortOrderInput | Prisma.SortOrder
   _relevance?: Prisma.ConfigOrderByRelevanceInput
 }
 
@@ -306,6 +459,23 @@ export type ConfigWhereUniqueInput = Prisma.AtLeast<{
   qrcodeagent?: Prisma.StringFilter<"Config"> | string
   qrcodesupport?: Prisma.StringFilter<"Config"> | string
   warningMessage?: Prisma.StringFilter<"Config"> | string
+  maxBookingsPerUser?: Prisma.IntFilter<"Config"> | number
+  agentPrivileges?: Prisma.StringNullableFilter<"Config"> | string | null
+  lineGroupNormal?: Prisma.StringNullableFilter<"Config"> | string | null
+  lineGroupAgent?: Prisma.StringNullableFilter<"Config"> | string | null
+  welcomeTitle?: Prisma.StringNullableFilter<"Config"> | string | null
+  welcomeAgentDesc?: Prisma.StringNullableFilter<"Config"> | string | null
+  welcomeMemberDesc?: Prisma.StringNullableFilter<"Config"> | string | null
+  howItWorks?: Prisma.JsonNullableFilter<"Config">
+  termsContent?: Prisma.StringNullableFilter<"Config"> | string | null
+  privacyContent?: Prisma.StringNullableFilter<"Config"> | string | null
+  reviewLink?: Prisma.StringNullableFilter<"Config"> | string | null
+  announceEnabled?: Prisma.BoolFilter<"Config"> | boolean
+  announceBanner?: Prisma.StringNullableFilter<"Config"> | string | null
+  announceBadge?: Prisma.StringNullableFilter<"Config"> | string | null
+  announceTitle?: Prisma.StringNullableFilter<"Config"> | string | null
+  announceContent?: Prisma.StringNullableFilter<"Config"> | string | null
+  marqueeText?: Prisma.StringNullableFilter<"Config"> | string | null
 }, "id">
 
 export type ConfigOrderByWithAggregationInput = {
@@ -321,6 +491,23 @@ export type ConfigOrderByWithAggregationInput = {
   qrcodeagent?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
+  maxBookingsPerUser?: Prisma.SortOrder
+  agentPrivileges?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineGroupNormal?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineGroupAgent?: Prisma.SortOrderInput | Prisma.SortOrder
+  welcomeTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  welcomeAgentDesc?: Prisma.SortOrderInput | Prisma.SortOrder
+  welcomeMemberDesc?: Prisma.SortOrderInput | Prisma.SortOrder
+  howItWorks?: Prisma.SortOrderInput | Prisma.SortOrder
+  termsContent?: Prisma.SortOrderInput | Prisma.SortOrder
+  privacyContent?: Prisma.SortOrderInput | Prisma.SortOrder
+  reviewLink?: Prisma.SortOrderInput | Prisma.SortOrder
+  announceEnabled?: Prisma.SortOrder
+  announceBanner?: Prisma.SortOrderInput | Prisma.SortOrder
+  announceBadge?: Prisma.SortOrderInput | Prisma.SortOrder
+  announceTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  announceContent?: Prisma.SortOrderInput | Prisma.SortOrder
+  marqueeText?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ConfigCountOrderByAggregateInput
   _avg?: Prisma.ConfigAvgOrderByAggregateInput
   _max?: Prisma.ConfigMaxOrderByAggregateInput
@@ -344,6 +531,23 @@ export type ConfigScalarWhereWithAggregatesInput = {
   qrcodeagent?: Prisma.StringWithAggregatesFilter<"Config"> | string
   qrcodesupport?: Prisma.StringWithAggregatesFilter<"Config"> | string
   warningMessage?: Prisma.StringWithAggregatesFilter<"Config"> | string
+  maxBookingsPerUser?: Prisma.IntWithAggregatesFilter<"Config"> | number
+  agentPrivileges?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  lineGroupNormal?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  lineGroupAgent?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  welcomeTitle?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  welcomeAgentDesc?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  welcomeMemberDesc?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  howItWorks?: Prisma.JsonNullableWithAggregatesFilter<"Config">
+  termsContent?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  privacyContent?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  reviewLink?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  announceEnabled?: Prisma.BoolWithAggregatesFilter<"Config"> | boolean
+  announceBanner?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  announceBadge?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  announceTitle?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  announceContent?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  marqueeText?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
 }
 
 export type ConfigCreateInput = {
@@ -358,6 +562,23 @@ export type ConfigCreateInput = {
   qrcodeagent: string
   qrcodesupport: string
   warningMessage: string
+  maxBookingsPerUser?: number
+  agentPrivileges?: string | null
+  lineGroupNormal?: string | null
+  lineGroupAgent?: string | null
+  welcomeTitle?: string | null
+  welcomeAgentDesc?: string | null
+  welcomeMemberDesc?: string | null
+  howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  termsContent?: string | null
+  privacyContent?: string | null
+  reviewLink?: string | null
+  announceEnabled?: boolean
+  announceBanner?: string | null
+  announceBadge?: string | null
+  announceTitle?: string | null
+  announceContent?: string | null
+  marqueeText?: string | null
 }
 
 export type ConfigUncheckedCreateInput = {
@@ -373,6 +594,23 @@ export type ConfigUncheckedCreateInput = {
   qrcodeagent: string
   qrcodesupport: string
   warningMessage: string
+  maxBookingsPerUser?: number
+  agentPrivileges?: string | null
+  lineGroupNormal?: string | null
+  lineGroupAgent?: string | null
+  welcomeTitle?: string | null
+  welcomeAgentDesc?: string | null
+  welcomeMemberDesc?: string | null
+  howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  termsContent?: string | null
+  privacyContent?: string | null
+  reviewLink?: string | null
+  announceEnabled?: boolean
+  announceBanner?: string | null
+  announceBadge?: string | null
+  announceTitle?: string | null
+  announceContent?: string | null
+  marqueeText?: string | null
 }
 
 export type ConfigUpdateInput = {
@@ -387,6 +625,23 @@ export type ConfigUpdateInput = {
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
+  maxBookingsPerUser?: Prisma.IntFieldUpdateOperationsInput | number
+  agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  termsContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  privacyContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  announceBanner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceBadge?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  marqueeText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ConfigUncheckedUpdateInput = {
@@ -402,6 +657,23 @@ export type ConfigUncheckedUpdateInput = {
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
+  maxBookingsPerUser?: Prisma.IntFieldUpdateOperationsInput | number
+  agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  termsContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  privacyContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  announceBanner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceBadge?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  marqueeText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ConfigCreateManyInput = {
@@ -417,6 +689,23 @@ export type ConfigCreateManyInput = {
   qrcodeagent: string
   qrcodesupport: string
   warningMessage: string
+  maxBookingsPerUser?: number
+  agentPrivileges?: string | null
+  lineGroupNormal?: string | null
+  lineGroupAgent?: string | null
+  welcomeTitle?: string | null
+  welcomeAgentDesc?: string | null
+  welcomeMemberDesc?: string | null
+  howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  termsContent?: string | null
+  privacyContent?: string | null
+  reviewLink?: string | null
+  announceEnabled?: boolean
+  announceBanner?: string | null
+  announceBadge?: string | null
+  announceTitle?: string | null
+  announceContent?: string | null
+  marqueeText?: string | null
 }
 
 export type ConfigUpdateManyMutationInput = {
@@ -431,6 +720,23 @@ export type ConfigUpdateManyMutationInput = {
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
+  maxBookingsPerUser?: Prisma.IntFieldUpdateOperationsInput | number
+  agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  termsContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  privacyContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  announceBanner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceBadge?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  marqueeText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ConfigUncheckedUpdateManyInput = {
@@ -446,6 +752,23 @@ export type ConfigUncheckedUpdateManyInput = {
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
+  maxBookingsPerUser?: Prisma.IntFieldUpdateOperationsInput | number
+  agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  termsContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  privacyContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  announceBanner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceBadge?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  announceContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  marqueeText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ConfigOrderByRelevanceInput = {
@@ -467,10 +790,28 @@ export type ConfigCountOrderByAggregateInput = {
   qrcodeagent?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
+  maxBookingsPerUser?: Prisma.SortOrder
+  agentPrivileges?: Prisma.SortOrder
+  lineGroupNormal?: Prisma.SortOrder
+  lineGroupAgent?: Prisma.SortOrder
+  welcomeTitle?: Prisma.SortOrder
+  welcomeAgentDesc?: Prisma.SortOrder
+  welcomeMemberDesc?: Prisma.SortOrder
+  howItWorks?: Prisma.SortOrder
+  termsContent?: Prisma.SortOrder
+  privacyContent?: Prisma.SortOrder
+  reviewLink?: Prisma.SortOrder
+  announceEnabled?: Prisma.SortOrder
+  announceBanner?: Prisma.SortOrder
+  announceBadge?: Prisma.SortOrder
+  announceTitle?: Prisma.SortOrder
+  announceContent?: Prisma.SortOrder
+  marqueeText?: Prisma.SortOrder
 }
 
 export type ConfigAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  maxBookingsPerUser?: Prisma.SortOrder
 }
 
 export type ConfigMaxOrderByAggregateInput = {
@@ -486,6 +827,22 @@ export type ConfigMaxOrderByAggregateInput = {
   qrcodeagent?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
+  maxBookingsPerUser?: Prisma.SortOrder
+  agentPrivileges?: Prisma.SortOrder
+  lineGroupNormal?: Prisma.SortOrder
+  lineGroupAgent?: Prisma.SortOrder
+  welcomeTitle?: Prisma.SortOrder
+  welcomeAgentDesc?: Prisma.SortOrder
+  welcomeMemberDesc?: Prisma.SortOrder
+  termsContent?: Prisma.SortOrder
+  privacyContent?: Prisma.SortOrder
+  reviewLink?: Prisma.SortOrder
+  announceEnabled?: Prisma.SortOrder
+  announceBanner?: Prisma.SortOrder
+  announceBadge?: Prisma.SortOrder
+  announceTitle?: Prisma.SortOrder
+  announceContent?: Prisma.SortOrder
+  marqueeText?: Prisma.SortOrder
 }
 
 export type ConfigMinOrderByAggregateInput = {
@@ -501,10 +858,27 @@ export type ConfigMinOrderByAggregateInput = {
   qrcodeagent?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
+  maxBookingsPerUser?: Prisma.SortOrder
+  agentPrivileges?: Prisma.SortOrder
+  lineGroupNormal?: Prisma.SortOrder
+  lineGroupAgent?: Prisma.SortOrder
+  welcomeTitle?: Prisma.SortOrder
+  welcomeAgentDesc?: Prisma.SortOrder
+  welcomeMemberDesc?: Prisma.SortOrder
+  termsContent?: Prisma.SortOrder
+  privacyContent?: Prisma.SortOrder
+  reviewLink?: Prisma.SortOrder
+  announceEnabled?: Prisma.SortOrder
+  announceBanner?: Prisma.SortOrder
+  announceBadge?: Prisma.SortOrder
+  announceTitle?: Prisma.SortOrder
+  announceContent?: Prisma.SortOrder
+  marqueeText?: Prisma.SortOrder
 }
 
 export type ConfigSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  maxBookingsPerUser?: Prisma.SortOrder
 }
 
 export type IntFieldUpdateOperationsInput = {
@@ -530,6 +904,23 @@ export type ConfigSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   qrcodeagent?: boolean
   qrcodesupport?: boolean
   warningMessage?: boolean
+  maxBookingsPerUser?: boolean
+  agentPrivileges?: boolean
+  lineGroupNormal?: boolean
+  lineGroupAgent?: boolean
+  welcomeTitle?: boolean
+  welcomeAgentDesc?: boolean
+  welcomeMemberDesc?: boolean
+  howItWorks?: boolean
+  termsContent?: boolean
+  privacyContent?: boolean
+  reviewLink?: boolean
+  announceEnabled?: boolean
+  announceBanner?: boolean
+  announceBadge?: boolean
+  announceTitle?: boolean
+  announceContent?: boolean
+  marqueeText?: boolean
 }, ExtArgs["result"]["config"]>
 
 
@@ -547,9 +938,26 @@ export type ConfigSelectScalar = {
   qrcodeagent?: boolean
   qrcodesupport?: boolean
   warningMessage?: boolean
+  maxBookingsPerUser?: boolean
+  agentPrivileges?: boolean
+  lineGroupNormal?: boolean
+  lineGroupAgent?: boolean
+  welcomeTitle?: boolean
+  welcomeAgentDesc?: boolean
+  welcomeMemberDesc?: boolean
+  howItWorks?: boolean
+  termsContent?: boolean
+  privacyContent?: boolean
+  reviewLink?: boolean
+  announceEnabled?: boolean
+  announceBanner?: boolean
+  announceBadge?: boolean
+  announceTitle?: boolean
+  announceContent?: boolean
+  marqueeText?: boolean
 }
 
-export type ConfigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logo" | "title" | "description" | "keywords" | "agentLink" | "contactLine" | "phone" | "qrcodenormal" | "qrcodeagent" | "qrcodesupport" | "warningMessage", ExtArgs["result"]["config"]>
+export type ConfigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logo" | "title" | "description" | "keywords" | "agentLink" | "contactLine" | "phone" | "qrcodenormal" | "qrcodeagent" | "qrcodesupport" | "warningMessage" | "maxBookingsPerUser" | "agentPrivileges" | "lineGroupNormal" | "lineGroupAgent" | "welcomeTitle" | "welcomeAgentDesc" | "welcomeMemberDesc" | "howItWorks" | "termsContent" | "privacyContent" | "reviewLink" | "announceEnabled" | "announceBanner" | "announceBadge" | "announceTitle" | "announceContent" | "marqueeText", ExtArgs["result"]["config"]>
 
 export type $ConfigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Config"
@@ -567,6 +975,23 @@ export type $ConfigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     qrcodeagent: string
     qrcodesupport: string
     warningMessage: string
+    maxBookingsPerUser: number
+    agentPrivileges: string | null
+    lineGroupNormal: string | null
+    lineGroupAgent: string | null
+    welcomeTitle: string | null
+    welcomeAgentDesc: string | null
+    welcomeMemberDesc: string | null
+    howItWorks: runtime.JsonValue | null
+    termsContent: string | null
+    privacyContent: string | null
+    reviewLink: string | null
+    announceEnabled: boolean
+    announceBanner: string | null
+    announceBadge: string | null
+    announceTitle: string | null
+    announceContent: string | null
+    marqueeText: string | null
   }, ExtArgs["result"]["config"]>
   composites: {}
 }
@@ -948,6 +1373,23 @@ export interface ConfigFieldRefs {
   readonly qrcodeagent: Prisma.FieldRef<"Config", 'String'>
   readonly qrcodesupport: Prisma.FieldRef<"Config", 'String'>
   readonly warningMessage: Prisma.FieldRef<"Config", 'String'>
+  readonly maxBookingsPerUser: Prisma.FieldRef<"Config", 'Int'>
+  readonly agentPrivileges: Prisma.FieldRef<"Config", 'String'>
+  readonly lineGroupNormal: Prisma.FieldRef<"Config", 'String'>
+  readonly lineGroupAgent: Prisma.FieldRef<"Config", 'String'>
+  readonly welcomeTitle: Prisma.FieldRef<"Config", 'String'>
+  readonly welcomeAgentDesc: Prisma.FieldRef<"Config", 'String'>
+  readonly welcomeMemberDesc: Prisma.FieldRef<"Config", 'String'>
+  readonly howItWorks: Prisma.FieldRef<"Config", 'Json'>
+  readonly termsContent: Prisma.FieldRef<"Config", 'String'>
+  readonly privacyContent: Prisma.FieldRef<"Config", 'String'>
+  readonly reviewLink: Prisma.FieldRef<"Config", 'String'>
+  readonly announceEnabled: Prisma.FieldRef<"Config", 'Boolean'>
+  readonly announceBanner: Prisma.FieldRef<"Config", 'String'>
+  readonly announceBadge: Prisma.FieldRef<"Config", 'String'>
+  readonly announceTitle: Prisma.FieldRef<"Config", 'String'>
+  readonly announceContent: Prisma.FieldRef<"Config", 'String'>
+  readonly marqueeText: Prisma.FieldRef<"Config", 'String'>
 }
     
 

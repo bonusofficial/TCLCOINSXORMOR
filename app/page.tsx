@@ -16,10 +16,12 @@ import PackagesSection from "@/components/PackagesSection";
 import ReviewsSection from "@/components/ReviewsSection";
 import StatsSection from "@/components/StatsSection";
 import SupportSection from "@/components/SupportSection";
-import Footer from "@/components/Footer";
 import AuthModal from "@/components/AuthModal";
+import AnnouncementBell from "@/components/AnnouncementBell";
+import { Marquee } from "@/components/ui/Marquee";
 import { useSession, signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
+import { useConfig } from "@/lib/contexts/PublicDataContext";
 
 type UserRole = "member" | "agent" | "admin";
 
@@ -46,6 +48,7 @@ function resolveUserRole(user?: {
 export default function Home() {
   // Auth & User State — synced from better-auth session (persists across reloads)
   const { data: session } = useSession();
+  const { config } = useConfig();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>("member");
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -126,6 +129,9 @@ export default function Home() {
           }
         }}
       />
+      {/* ANNOUNCEMENT BELL — กระดิ่งประกาศ (เฉพาะหน้าแรก) */}
+      <AnnouncementBell />
+
       {/* HERO SECTION */}
       <HeroSection onOpenBooking={handleDefaultBooking} />
 
@@ -154,8 +160,7 @@ export default function Home() {
         <SupportSection />
       </div>
 
-      {/* FOOTER */}
-      <Footer />
+      {/* FOOTER — แสดงผ่าน ConditionalFooter ใน root layout */}
 
       {/* ACCOUNT STATUS WIDGET */}
       {isLoggedIn && (() => {
@@ -225,21 +230,34 @@ export default function Home() {
             )}
 
             {/* Pill Widget */}
-            <button
-              onClick={() => setShowAccountMenu(!showAccountMenu)}
-              className="flex flex-col items-start bg-brand-surface-soft hover:bg-brand-green-50 border border-brand-green-100 backdrop-blur-md rounded-2xl py-2.5 px-4 shadow-lg shadow-black/30 ring-1 ring-brand-green/15 transition-all duration-200 text-left min-w-[170px] relative overflow-hidden group cursor-pointer"
-            >
-              <span className="text-[9.5px] font-extrabold text-brand-ink-soft leading-none uppercase tracking-wider">
-                สถานะบัญชี
-              </span>
-              <div className="flex items-center justify-between w-full mt-1.5 gap-4">
-                <span className="flex items-center gap-1.5 text-xs font-black text-brand-ink leading-none">
-                  <span className={`h-2 w-2 rounded-full animate-pulse ${dotColor}`} />
-                  {roleLabel}
+            <div className="flex flex-col bg-brand-surface-soft border border-brand-green-100 backdrop-blur-md rounded-2xl py-2.5 px-4 shadow-lg shadow-black/30 ring-1 ring-brand-green/15 min-w-[170px] text-left relative overflow-hidden group">
+              <button
+                onClick={() => setShowAccountMenu(!showAccountMenu)}
+                className="w-full text-left outline-none cursor-pointer flex flex-col items-start hover:opacity-85 transition"
+              >
+                <span className="text-[9.5px] font-extrabold text-brand-ink-soft leading-none uppercase tracking-wider">
+                  สถานะบัญชี
                 </span>
-                <User className={`h-3.5 w-3.5 flex-shrink-0 ${iconColor}`} />
-              </div>
-            </button>
+                <div className="flex items-center justify-between w-full mt-1.5 gap-4">
+                  <span className="flex items-center gap-1.5 text-xs font-black text-brand-ink leading-none">
+                    <span className={`h-2 w-2 rounded-full animate-pulse ${dotColor}`} />
+                    {roleLabel}
+                  </span>
+                  <User className={`h-3.5 w-3.5 flex-shrink-0 ${iconColor}`} />
+                </div>
+              </button>
+
+              {isMember && (
+                <a
+                  href={config?.agentLink?.trim() || "#"}
+                  target={config?.agentLink?.trim() ? "_blank" : undefined}
+                  rel="noreferrer"
+                  className="mt-2.5 pt-2 border-t border-brand-green-100/50 w-full text-center text-[10.5px] font-black text-brand-gold-deep hover:text-amber-500 transition cursor-pointer flex items-center justify-center gap-0.5"
+                >
+                  อัปเกรดเป็นตัวแทน →
+                </a>
+              )}
+            </div>
           </div>
         );
       })()}

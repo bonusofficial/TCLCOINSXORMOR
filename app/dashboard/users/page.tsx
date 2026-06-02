@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { usersApi } from "@/lib/eden";
 import { timeAgo } from "@/lib/audit-labels";
+import { formatDisplayID } from "@/components/Navbar";
 import {
   Table,
   TableHeader,
@@ -44,6 +45,8 @@ interface AppUser {
   credit: number | null;
   total_credit: number | null;
   emailVerified: boolean;
+  shopName: string | null;
+  lineId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -128,7 +131,10 @@ export default function UsersPage() {
         u.name.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
         (u.username ?? "").toLowerCase().includes(q) ||
-        (u.phone ?? "").includes(q)
+        (u.phone ?? "").includes(q) ||
+        (u.shopName ?? "").toLowerCase().includes(q) ||
+        (u.lineId ?? "").toLowerCase().includes(q) ||
+        formatDisplayID(u.id).toLowerCase().includes(q)
       );
     });
   }, [items, search, roleFilter]);
@@ -141,15 +147,16 @@ export default function UsersPage() {
 
   // Handle Export to Excel (CSV with UTF-8 BOM)
   const handleExport = () => {
-    const headers = ["ID", "ชื่อผู้ใช้", "อีเมล", "Username", "บทบาท (Role)", "เบอร์โทรศัพท์", "เครดิต", "สมัครเมื่อ"];
+    const headers = ["ID", "ชื่อผู้ใช้", "อีเมล", "Username", "ชื่อร้าน", "ไอดีไลน์เติม Coins", "บทบาท (Role)", "เบอร์โทรศัพท์", "สมัครเมื่อ"];
     const rows = filtered.map(u => [
       u.id,
       u.name,
       u.email,
       u.username || "—",
+      u.shopName || "—",
+      u.lineId || "—",
       ROLE_META[normalizeRole(u.role)].label,
       u.phone || "—",
-      u.credit ?? 0,
       new Date(u.createdAt).toLocaleString("th-TH")
     ]);
     
@@ -241,8 +248,8 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead className="py-3 px-4">ผู้ใช้</TableHead>
                   <TableHead className="py-3 px-3">ติดต่อ</TableHead>
+                  <TableHead className="py-3 px-3">ชื่อร้าน / ไอดีไลน์</TableHead>
                   <TableHead className="py-3 px-3 text-center">Role</TableHead>
-                  <TableHead className="py-3 px-3 text-right whitespace-nowrap">Credit</TableHead>
                   <TableHead className="py-3 px-3 whitespace-nowrap">สมัครเมื่อ</TableHead>
                   <TableHead className="py-3 px-4 text-right">จัดการ</TableHead>
                 </TableRow>
@@ -265,9 +272,14 @@ export default function UsersPage() {
                             <div className="font-display font-extrabold text-[13.5px] text-brand-ink line-clamp-1">
                               {u.name}
                             </div>
-                            {u.username && (
-                              <div className="text-[11px] text-brand-ink-soft font-bold">@{u.username}</div>
-                            )}
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                              {u.username && (
+                                <span className="text-[11px] text-brand-ink-soft font-bold">@{u.username}</span>
+                              )}
+                              <span className="text-[9.5px] bg-brand-green-50 text-brand-green border border-brand-green-100 rounded px-1 font-mono font-bold">
+                                ID: {formatDisplayID(u.id)}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </TableCell>
@@ -277,14 +289,23 @@ export default function UsersPage() {
                           <div className="text-brand-ink-soft/70 font-bold mt-0.5">{u.phone}</div>
                         )}
                       </TableCell>
+                      <TableCell className="py-3 px-3 text-[11.5px]">
+                        {u.shopName ? (
+                          <div className="font-extrabold text-brand-ink line-clamp-1">{u.shopName}</div>
+                        ) : (
+                          <div className="text-brand-ink-soft/40 italic">ไม่มีข้อมูลร้าน</div>
+                        )}
+                        {u.lineId ? (
+                          <div className="text-brand-green font-bold mt-0.5">LINE: {u.lineId}</div>
+                        ) : (
+                          <div className="text-brand-ink-soft/40 italic text-[10.5px]">ไม่มีไลน์เติมเงิน</div>
+                        )}
+                      </TableCell>
                       <TableCell className="py-3 px-3 text-center">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-black ${ROLE_META[role].bg} ${ROLE_META[role].text}`}>
                           <RoleIcon className="h-3 w-3" strokeWidth={2.5} />
                           {ROLE_META[role].label}
                         </span>
-                      </TableCell>
-                      <TableCell className="py-3 px-3 text-right whitespace-nowrap font-extrabold text-brand-gold-deep">
-                        {(u.credit ?? 0).toLocaleString()}
                       </TableCell>
                       <TableCell className="py-3 px-3 text-[11.5px] font-bold text-brand-ink-soft whitespace-nowrap">
                         {timeAgo(u.createdAt)}
@@ -338,7 +359,22 @@ export default function UsersPage() {
                         {ROLE_META[role].label}
                       </span>
                     </div>
-                    <div className="text-[11px] text-brand-ink-soft font-medium line-clamp-1">{u.email}</div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                      <div className="text-[11px] text-brand-ink-soft font-medium line-clamp-1">{u.email}</div>
+                      <span className="text-[9px] bg-brand-green-50 text-brand-green border border-brand-green-100 rounded px-1 font-mono font-bold whitespace-nowrap">
+                        ID: {formatDisplayID(u.id)}
+                      </span>
+                    </div>
+                    {(u.shopName || u.lineId) && (
+                      <div className="mt-1.5 pt-1.5 border-t border-brand-green-100/40 text-[11px] space-y-0.5">
+                        {u.shopName && (
+                          <div className="text-brand-ink font-semibold">ร้าน: <span className="font-extrabold">{u.shopName}</span></div>
+                        )}
+                        {u.lineId && (
+                          <div className="text-brand-green font-bold">LINE เติม Coins: {u.lineId}</div>
+                        )}
+                      </div>
+                    )}
                     <div className="flex gap-1.5 mt-2">
                       <button onClick={() => setEditing(u)} className="flex-1 py-1.5 rounded-lg text-[11px] font-extrabold bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:text-brand-green inline-flex items-center justify-center gap-1 cursor-pointer">
                         <Pencil className="h-3 w-3" /> แก้ไข
@@ -392,6 +428,8 @@ function UserEditModal({
 }) {
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone ?? "");
+  const [shopName, setShopName] = useState(user.shopName ?? "");
+  const [lineId, setLineId] = useState(user.lineId ?? "");
   const [role, setRole] = useState<UserRole>(normalizeRole(user.role));
   const [credit, setCredit] = useState(String(user.credit ?? 0));
   const [saving, setSaving] = useState(false);
@@ -401,7 +439,14 @@ function UserEditModal({
     const tId = toast.loading("กำลังบันทึก...");
     const { data, error } = await usersApi.item.api.v1
       .users({ id: user.id })
-      .patch({ name, phone, role, credit: Number(credit) || 0 });
+      .patch({
+        name,
+        phone,
+        role,
+        credit: Number(credit) || 0,
+        shopName: shopName.trim() || null,
+        lineId: lineId.trim() || null,
+      });
     setSaving(false);
     if (error) {
       const value = error.value as { message?: string } | undefined;
@@ -448,6 +493,17 @@ function UserEditModal({
               เบอร์โทร
             </label>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink" />
+          </div>
+          <div>
+            <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">ชื่อร้านปัจจุบัน</label>
+            <input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="ไม่มีข้อมูลร้าน" className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink" />
+          </div>
+          <div>
+            <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
+              <span className="text-brand-green font-black">LINE</span>
+              ไอดีไลน์ปัจจุบันที่ใช้เติม Coins
+            </label>
+            <input value={lineId} onChange={(e) => setLineId(e.target.value)} placeholder="ไม่มีไลน์เติมเงิน" className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink" />
           </div>
           <div>
             <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">

@@ -26,6 +26,7 @@ export const ProductBody = t.Object({
   description: t.String(),
 
   price: t.Number({ minimum: 0, error: "ราคาทั่วไปต้องไม่ติดลบ" }),
+  cost: t.Number({ minimum: 0, error: "ต้นทุนต้องไม่ติดลบ" }),
   agentPrice: t.Number({ minimum: 0, error: "ราคา Agent ต้องไม่ติดลบ" }),
 
   stockEnabled: t.Boolean(),

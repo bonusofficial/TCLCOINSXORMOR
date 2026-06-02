@@ -325,6 +325,21 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
                 {LINE_GROUPS[qrTab].desc}
               </p>
 
+              {/* ปุ่มกดเข้ากลุ่ม LINE — ลิงก์แก้ได้ในแอดมิน (lineGroupNormal/lineGroupAgent) */}
+              <a
+                href={
+                  qrTab === "member"
+                    ? config.lineGroupNormal?.trim() || LINE_GROUPS.member.href
+                    : config.lineGroupAgent?.trim() || LINE_GROUPS.agent.href
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#06C755] py-2.5 text-[13px] font-black text-white shadow-md shadow-[#06C755]/30 transition hover:-translate-y-0.5 hover:bg-[#05b34c]"
+              >
+                <MessageCircle className="h-4 w-4 fill-white" strokeWidth={0} />
+                กดเพื่อเข้ากลุ่ม LINE
+              </a>
+
             </div>
           </div>
         </div>
@@ -343,14 +358,17 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
                 ม
               </span>
               <span className="w-9.5 h-9.5 rounded-full border-[2.5px] border-white text-xs font-bold text-white bg-brand-green-700 flex items-center justify-center shadow-sm">
-                +99
+                {/* จำนวนผู้ใช้จริง (realtime) — ไม่ใช่ค่าปลอม +99 */}
+                {(config?.stats?.totalUsers ?? 0) > 99
+                  ? "99+"
+                  : `+${config?.stats?.totalUsers ?? 0}`}
               </span>
             </div>
             <div className="text-xs font-bold leading-relaxed text-brand-ink-soft">
               รีวิวจากผู้ใช้จริง
               <br />
               <b className="text-brand-ink text-sm font-black">
-                +{Number(config?.stats?.totalCompleted || 10000).toLocaleString()} ออเดอร์
+                +{Number(config?.stats?.totalCompleted ?? 0).toLocaleString()} ออเดอร์
               </b>
             </div>
           </div>
@@ -359,7 +377,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
 
           <div className="flex flex-col">
             <span className="font-display font-black text-2xl lg:text-3xl text-brand-green leading-none">
-              99.9%
+              {config?.stats?.successRate ?? 100}%
             </span>
             <span className="text-[11.5px] font-bold text-brand-ink-soft mt-1">
               เสถียรภาพระบบการทำงาน
@@ -369,7 +387,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
           <div className="hidden md:block w-px h-9.5 bg-brand-green-100" />
 
           <a
-            href="https://line.me/R/ti/p/@ormorcoins"
+            href={config.reviewLink?.trim() || "https://line.me/R/ti/p/@ormorcoins"}
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col group/stat transition duration-200"

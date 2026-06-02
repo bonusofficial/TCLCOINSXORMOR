@@ -26,6 +26,7 @@ import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
 import { publicApi } from "@/lib/eden";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
+import { Marquee } from "@/components/ui/Marquee";
 import { getProductAvailability, fmt } from "@/lib/product-utils";
 
 type UserRole = "member" | "agent" | "admin";
@@ -122,20 +123,22 @@ export default function OrdersHistoryPage() {
 
   // Copy booking detail handler (Precisely formatted as requested)
   const handleCopyBooking = (b: BookingItem) => {
-    let datePart = "";
-    try {
-      const d = new Date(b.bookingDate);
-      const pad = (n: number) => String(n).padStart(2, "0");
-      datePart = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} 00:00:00`;
-    } catch (e) {
-      datePart = String(b.bookingDate).slice(0, 10) + " 00:00:00";
-    }
+    const datePart = formatThaiDateFull(b.bookingDate);
+    // ยศจาก prefix ของรหัสการจอง: MB=ลูกค้าทั่วไป, AG=ตัวแทน, ADM=แอดมิน
+    const prefix = (b.bookingCode.split("-")[0] || "").toUpperCase();
+    const roleLabel =
+      prefix === "AG" ? "ตัวแทน" : prefix === "ADM" ? "แอดมิน" : "ลูกค้าทั่วไป";
 
     const textToCopy = `รหัสการจอง: ${b.bookingCode}
 สินค้า: ${b.productName}
+ชื่อผู้ใช้: ${b.username || "-"} (UID: ${b.userId || "-"})
+ยศ: ${roleLabel}
+เบอร์โทร: ${b.phone || "-"}
 วันที่: ${datePart}
 เวลา: ${b.bookingTime || "00:00 - 23:59"} น.
 ราคา: ${fmt(b.price)} บาท
+สถานะ: ${getStatusBadge(b.status).emoji} ${getStatusBadge(b.status).label}
+จองเมื่อ: ${formatPressedAt(b.createdAt)}
 รายละเอียด: ${b.content || "-"}`;
 
     navigator.clipboard.writeText(textToCopy);
@@ -166,15 +169,30 @@ export default function OrdersHistoryPage() {
     }
   };
 
-  // Buddhist Era Date formatter helper (e.g. 28/5/2569 15:06:14)
-  const formatThaiBuddhistDateTime = (dateStr: string) => {
+  // วันที่จองคิว แบบไทยเต็ม — "2 เมษายน พ.ศ. 2569"
+  const formatThaiDateFull = (dateStr: string) => {
+    const THAI_MONTHS = [
+      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+    ];
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return String(dateStr).slice(0, 10);
+      return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} พ.ศ. ${d.getFullYear() + 543}`;
+    } catch {
+      return String(dateStr).slice(0, 10);
+    }
+  };
+
+  // เวลาที่ลูกค้ากดจองจริง — เวลาไทย (UTC+7) — "02/06/2026 เวลา 21.30 น."
+  const formatPressedAt = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
+      const bkk = new Date(d.getTime() + 7 * 60 * 60 * 1000); // แปลงเป็นเวลาไทย
       const pad = (n: number) => String(n).padStart(2, "0");
-      const year = d.getFullYear() + 543;
-      return `${d.getDate()}/${d.getMonth() + 1}/${year} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-    } catch (e) {
+      return `${pad(bkk.getUTCDate())}/${pad(bkk.getUTCMonth() + 1)}/${bkk.getUTCFullYear()} เวลา ${pad(bkk.getUTCHours())}.${pad(bkk.getUTCMinutes())} น.`;
+    } catch {
       return dateStr;
     }
   };
@@ -410,17 +428,8 @@ export default function OrdersHistoryPage() {
           </div>
         </div>
 
-        {/* Warning notification banner */}
-        <div className="bg-gradient-to-r from-[#FFF1EF] to-[#FFE7E3] border border-[#FFD5CE] rounded-[24px] p-4 flex items-start sm:items-center gap-3.5 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="flex items-center justify-center w-9.5 h-9.5 rounded-full bg-brand-coral/10 text-brand-coral flex-shrink-0">
-            <AlertOctagon className="h-5 w-5" />
-          </div>
-          <p className="text-xs font-bold leading-relaxed text-[#C4382A]">
-            <span className="font-extrabold text-brand-coral">คำเตือน :</span> กรุณาเข้าห้องแชต LINE
-            เพื่อแชตคุยกับแอดมินอย่างใกล้ชิด เนื่องจากวันและเวลาคิวงานอาจมีการเปลี่ยนแปลงได้
-            <b className="font-black underline mx-1 text-glow-coral">กรุณาอย่าโอนเงินล่วงหน้า</b> จนกว่าแอดมินจะติดต่อหรือแจ้งยืนยันคิวให้โอนในแชตเท่านั้น
-          </p>
-        </div>
+        {/* ข้อความวิ่ง marquee (จาก config) */}
+        <Marquee text={config.marqueeText} />
 
         {/* Bookings/Orders List Grid */}
         {loadingBookings ? (
@@ -481,7 +490,7 @@ export default function OrdersHistoryPage() {
                       <span className="text-[11px] font-bold text-brand-ink-soft/90 flex items-center gap-1.5">
                         <span className="h-1 w-1 bg-zinc-300 rounded-full" />
                         <Calendar className="h-3 w-3 text-brand-ink-soft" />
-                        {formatThaiBuddhistDateTime(b.createdAt)}
+                        จองเมื่อ {formatPressedAt(b.createdAt)}
                       </span>
                     </div>
 
@@ -528,11 +537,16 @@ export default function OrdersHistoryPage() {
                   {/* Card Footer actions */}
                   <div className="px-5 sm:px-6 py-4 bg-brand-surface-soft/40 border-t border-brand-green-100/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     
-                    {/* Booking time details */}
+                    {/* Booking date + time slot */}
                     <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-brand-ink-soft">
                       <div className="flex items-center gap-1.5 bg-brand-green-50/50 py-1 px-3 rounded-full border border-brand-green-100/50">
+                        <Calendar className="h-3.5 w-3.5 text-brand-green" />
+                        <span>วันที่จอง:</span>
+                        <span className="text-brand-ink font-black">{formatThaiDateFull(b.bookingDate)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-brand-green-50/50 py-1 px-3 rounded-full border border-brand-green-100/50">
                         <Clock className="h-3.5 w-3.5 text-brand-green" />
-                        <span>ข้อมูลเพิ่มเติม/เวลาที่จอง:</span>
+                        <span>ช่วงเวลา:</span>
                         <span className="text-brand-ink font-black">{b.bookingTime || "00:00 - 23:59"} น.</span>
                       </div>
                       

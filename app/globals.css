@@ -273,6 +273,28 @@
 .animate-pulse-ring {
   animation: ring 2s infinite;
 }
+
+/* กระดิ่งประกาศ — แกว่งเรียกความสนใจเป็นจังหวะ (สั่นแล้วพัก) */
+@keyframes bell-swing {
+  0%, 38%, 100% { transform: rotate(0deg); }
+  6%  { transform: rotate(16deg); }
+  12% { transform: rotate(-14deg); }
+  18% { transform: rotate(11deg); }
+  24% { transform: rotate(-8deg); }
+  30% { transform: rotate(5deg); }
+  34% { transform: rotate(-3deg); }
+}
+.animate-bell-swing {
+  transform-origin: 50% 12%;
+  animation: bell-swing 2.6s ease-in-out infinite;
+}
+@keyframes announce-panel-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-announce-panel-in {
+  animation: announce-panel-in 0.22s cubic-bezier(0.22, 0.8, 0.3, 1);
+}
 .animate-marquee {
   animation: marquee-x 45s linear infinite;
 }

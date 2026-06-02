@@ -50,6 +50,8 @@ export type UserMinAggregateOutputType = {
   total_credit: number | null
   role: string | null
   phone: string | null
+  shopName: string | null
+  lineId: string | null
 }
 
 export type UserMaxAggregateOutputType = {
@@ -66,6 +68,8 @@ export type UserMaxAggregateOutputType = {
   total_credit: number | null
   role: string | null
   phone: string | null
+  shopName: string | null
+  lineId: string | null
 }
 
 export type UserCountAggregateOutputType = {
@@ -82,6 +86,8 @@ export type UserCountAggregateOutputType = {
   total_credit: number
   role: number
   phone: number
+  shopName: number
+  lineId: number
   _all: number
 }
 
@@ -110,6 +116,8 @@ export type UserMinAggregateInputType = {
   total_credit?: true
   role?: true
   phone?: true
+  shopName?: true
+  lineId?: true
 }
 
 export type UserMaxAggregateInputType = {
@@ -126,6 +134,8 @@ export type UserMaxAggregateInputType = {
   total_credit?: true
   role?: true
   phone?: true
+  shopName?: true
+  lineId?: true
 }
 
 export type UserCountAggregateInputType = {
@@ -142,6 +152,8 @@ export type UserCountAggregateInputType = {
   total_credit?: true
   role?: true
   phone?: true
+  shopName?: true
+  lineId?: true
   _all?: true
 }
 
@@ -245,6 +257,8 @@ export type UserGroupByOutputType = {
   total_credit: number | null
   role: string | null
   phone: string | null
+  shopName: string | null
+  lineId: string | null
   _count: UserCountAggregateOutputType | null
   _avg: UserAvgAggregateOutputType | null
   _sum: UserSumAggregateOutputType | null
@@ -284,6 +298,8 @@ export type UserWhereInput = {
   total_credit?: Prisma.IntNullableFilter<"User"> | number | null
   role?: Prisma.StringNullableFilter<"User"> | string | null
   phone?: Prisma.StringNullableFilter<"User"> | string | null
+  shopName?: Prisma.StringNullableFilter<"User"> | string | null
+  lineId?: Prisma.StringNullableFilter<"User"> | string | null
   accounts?: Prisma.AccountListRelationFilter
   sessions?: Prisma.SessionListRelationFilter
 }
@@ -302,6 +318,8 @@ export type UserOrderByWithRelationInput = {
   total_credit?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrderInput | Prisma.SortOrder
   phone?: Prisma.SortOrderInput | Prisma.SortOrder
+  shopName?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineId?: Prisma.SortOrderInput | Prisma.SortOrder
   accounts?: Prisma.AccountOrderByRelationAggregateInput
   sessions?: Prisma.SessionOrderByRelationAggregateInput
   _relevance?: Prisma.UserOrderByRelevanceInput
@@ -324,6 +342,8 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   total_credit?: Prisma.IntNullableFilter<"User"> | number | null
   role?: Prisma.StringNullableFilter<"User"> | string | null
   phone?: Prisma.StringNullableFilter<"User"> | string | null
+  shopName?: Prisma.StringNullableFilter<"User"> | string | null
+  lineId?: Prisma.StringNullableFilter<"User"> | string | null
   accounts?: Prisma.AccountListRelationFilter
   sessions?: Prisma.SessionListRelationFilter
 }, "id" | "email" | "username">
@@ -342,6 +362,8 @@ export type UserOrderByWithAggregationInput = {
   total_credit?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrderInput | Prisma.SortOrder
   phone?: Prisma.SortOrderInput | Prisma.SortOrder
+  shopName?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
   _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
@@ -366,6 +388,8 @@ export type UserScalarWhereWithAggregatesInput = {
   total_credit?: Prisma.IntNullableWithAggregatesFilter<"User"> | number | null
   role?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   phone?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  shopName?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  lineId?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
 }
 
 export type UserCreateInput = {
@@ -382,6 +406,8 @@ export type UserCreateInput = {
   total_credit?: number | null
   role?: string | null
   phone?: string | null
+  shopName?: string | null
+  lineId?: string | null
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
 }
@@ -400,6 +426,8 @@ export type UserUncheckedCreateInput = {
   total_credit?: number | null
   role?: string | null
   phone?: string | null
+  shopName?: string | null
+  lineId?: string | null
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
 }
@@ -418,6 +446,8 @@ export type UserUpdateInput = {
   total_credit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
 }
@@ -436,6 +466,8 @@ export type UserUncheckedUpdateInput = {
   total_credit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
 }
@@ -454,6 +486,8 @@ export type UserCreateManyInput = {
   total_credit?: number | null
   role?: string | null
   phone?: string | null
+  shopName?: string | null
+  lineId?: string | null
 }
 
 export type UserUpdateManyMutationInput = {
@@ -470,6 +504,8 @@ export type UserUpdateManyMutationInput = {
   total_credit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type UserUncheckedUpdateManyInput = {
@@ -486,6 +522,8 @@ export type UserUncheckedUpdateManyInput = {
   total_credit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type UserOrderByRelevanceInput = {
@@ -508,6 +546,8 @@ export type UserCountOrderByAggregateInput = {
   total_credit?: Prisma.SortOrder
   role?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  shopName?: Prisma.SortOrder
+  lineId?: Prisma.SortOrder
 }
 
 export type UserAvgOrderByAggregateInput = {
@@ -529,6 +569,8 @@ export type UserMaxOrderByAggregateInput = {
   total_credit?: Prisma.SortOrder
   role?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  shopName?: Prisma.SortOrder
+  lineId?: Prisma.SortOrder
 }
 
 export type UserMinOrderByAggregateInput = {
@@ -545,6 +587,8 @@ export type UserMinOrderByAggregateInput = {
   total_credit?: Prisma.SortOrder
   role?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  shopName?: Prisma.SortOrder
+  lineId?: Prisma.SortOrder
 }
 
 export type UserSumOrderByAggregateInput = {
@@ -623,6 +667,8 @@ export type UserCreateWithoutSessionsInput = {
   total_credit?: number | null
   role?: string | null
   phone?: string | null
+  shopName?: string | null
+  lineId?: string | null
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
 }
 
@@ -640,6 +686,8 @@ export type UserUncheckedCreateWithoutSessionsInput = {
   total_credit?: number | null
   role?: string | null
   phone?: string | null
+  shopName?: string | null
+  lineId?: string | null
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
 }
 
@@ -673,6 +721,8 @@ export type UserUpdateWithoutSessionsInput = {
   total_credit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
 }
 
@@ -690,6 +740,8 @@ export type UserUncheckedUpdateWithoutSessionsInput = {
   total_credit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -707,6 +759,8 @@ export type UserCreateWithoutAccountsInput = {
   total_credit?: number | null
   role?: string | null
   phone?: string | null
+  shopName?: string | null
+  lineId?: string | null
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
 }
 
@@ -724,6 +778,8 @@ export type UserUncheckedCreateWithoutAccountsInput = {
   total_credit?: number | null
   role?: string | null
   phone?: string | null
+  shopName?: string | null
+  lineId?: string | null
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
 }
 
@@ -757,6 +813,8 @@ export type UserUpdateWithoutAccountsInput = {
   total_credit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
 }
 
@@ -774,6 +832,8 @@ export type UserUncheckedUpdateWithoutAccountsInput = {
   total_credit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -831,6 +891,8 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   total_credit?: boolean
   role?: boolean
   phone?: boolean
+  shopName?: boolean
+  lineId?: boolean
   accounts?: boolean | Prisma.User$accountsArgs<ExtArgs>
   sessions?: boolean | Prisma.User$sessionsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -852,9 +914,11 @@ export type UserSelectScalar = {
   total_credit?: boolean
   role?: boolean
   phone?: boolean
+  shopName?: boolean
+  lineId?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "email" | "emailVerified" | "image" | "createdAt" | "updatedAt" | "username" | "displayUsername" | "credit" | "total_credit" | "role" | "phone", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "email" | "emailVerified" | "image" | "createdAt" | "updatedAt" | "username" | "displayUsername" | "credit" | "total_credit" | "role" | "phone" | "shopName" | "lineId", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   accounts?: boolean | Prisma.User$accountsArgs<ExtArgs>
   sessions?: boolean | Prisma.User$sessionsArgs<ExtArgs>
@@ -881,6 +945,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     total_credit: number | null
     role: string | null
     phone: string | null
+    shopName: string | null
+    lineId: string | null
   }, ExtArgs["result"]["user"]>
   composites: {}
 }
@@ -1265,6 +1331,8 @@ export interface UserFieldRefs {
   readonly total_credit: Prisma.FieldRef<"User", 'Int'>
   readonly role: Prisma.FieldRef<"User", 'String'>
   readonly phone: Prisma.FieldRef<"User", 'String'>
+  readonly shopName: Prisma.FieldRef<"User", 'String'>
+  readonly lineId: Prisma.FieldRef<"User", 'String'>
 }
     
 

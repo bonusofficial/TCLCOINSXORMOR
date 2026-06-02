@@ -28,6 +28,8 @@ const app = new Elysia({ prefix: "/api/v1/users" })
           credit: true,
           total_credit: true,
           emailVerified: true,
+          shopName: true,
+          lineId: true,
           createdAt: true,
           updatedAt: true,
         },
