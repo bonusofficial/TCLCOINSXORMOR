@@ -15,6 +15,17 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "mysql",
   }),
+  trustedOrigins: [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://147.50.231.57:3000",
+    "http://ormorstore.rdcw.xyz",
+    "https://ormorstore.rdcw.xyz",
+    "http://ormorxtc.com",
+    "https://ormorxtc.com",
+    "http://www.ormorxtc.com",
+    "https://www.ormorxtc.com",
+  ],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
