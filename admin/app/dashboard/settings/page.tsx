@@ -1490,7 +1490,7 @@ export default function SettingsPage() {
                         <div className="absolute top-2 left-2 bg-brand-surface-soft/95 backdrop-blur text-brand-ink text-[10px] font-black py-1 px-2 rounded">
                           #{i + 1}
                         </div>
-                        <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition">
+                        <div className="absolute top-2 right-2 flex gap-1.5 transition">
                           {i > 0 && (
                             <button
                               onClick={() => moveBannerUp(i)}

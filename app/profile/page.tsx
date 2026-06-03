@@ -508,6 +508,7 @@ export default function ProfilePage() {
                 className={inputCls}
               />
             </div>
+            {userRole === "agent" && (
             <div>
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
                 <AtSign className="h-3.5 w-3.5 text-brand-green" />
@@ -535,6 +536,7 @@ export default function ProfilePage() {
                 </button>
               </div>
             </div>
+            )}
             <div>
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
                 <Phone className="h-3.5 w-3.5 text-brand-green" />

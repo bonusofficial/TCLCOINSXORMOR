@@ -232,7 +232,6 @@ function QueueContent() {
 
   return (
     <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col">
-      <AnnouncementBell />
       <Navbar
         onOpenAuth={(tab) => {
           setAuthTab(tab);

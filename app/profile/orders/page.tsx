@@ -141,7 +141,7 @@ export default function OrdersHistoryPage() {
 
     const textToCopy = `รหัสการจอง: ${b.bookingCode}
 สินค้า: ${b.productName}
-ชื่อผู้ใช้: ${b.username || "-"} (UID: ${formatDisplayID(user?.memberNo, b.userId) || "-"})
+ชื่อผู้ใช้: ${b.username || "-"}${prefix === "AG" ? ` (UID: ${formatDisplayID(user?.memberNo, b.userId) || "-"})` : ""}
 ยศ: ${roleLabel}
 เบอร์โทร: ${b.phone || "-"}
 วันที่: ${datePart}

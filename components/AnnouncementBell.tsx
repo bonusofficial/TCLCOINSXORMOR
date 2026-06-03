@@ -109,10 +109,29 @@ export default function AnnouncementBell() {
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  /* แสดงประกาศทุกครั้งที่เข้าหน้า (ไม่มีระบบรับทราบ/ซ่อน 1 วัน) */
+  /* แสดงประกาศทุกครั้งที่เข้าหน้า แต่ถ้ารับทราบแล้วจะซ่อน 1 วัน */
   useEffect(() => {
-    setPopupOpen(enabled);
-    setUnread(enabled);
+    if (!enabled) return;
+
+    const storageKey = "announcement-acknowledged";
+    const stored = localStorage.getItem(storageKey);
+
+    if (stored) {
+      const acknowledgedTime = parseInt(stored, 10);
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      const now = Date.now();
+
+      // ถ้ายังไม่ครบ 1 วัน ให้ซ่อน popup (แต่กระดิ่งยังคงมี)
+      if (now - acknowledgedTime < oneDayMs) {
+        setPopupOpen(false);
+        setUnread(false);
+        return;
+      }
+    }
+
+    // แสดง popup และ unread
+    setPopupOpen(true);
+    setUnread(true);
   }, [enabled]);
 
   useEffect(() => {
@@ -139,8 +158,10 @@ export default function AnnouncementBell() {
 
   if (!enabled) return null;
 
-  /* ปิดเฉพาะตอนนี้ — ไม่จำสถานะ จะกลับมาแสดงอีกเมื่อเข้าหน้าใหม่ */
+  /* ปิดและบันทึกสถานะรับทราบ — จะไม่แสดงอีกใน 1 วัน */
   const close = () => {
+    const storageKey = "announcement-acknowledged";
+    localStorage.setItem(storageKey, String(Date.now()));
     setPopupOpen(false);
     setPanelOpen(false);
     setUnread(false);
@@ -159,19 +180,17 @@ export default function AnnouncementBell() {
           }}
           aria-label="ประกาศจากระบบ"
           aria-expanded={panelOpen}
-          className={`relative ml-auto flex h-13 w-13 items-center justify-center rounded-full border border-brand-green-100 bg-brand-surface/90 shadow-lg shadow-black/40 ring-1 ring-brand-green/15 backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-brand-green active:scale-95 cursor-pointer ${
-            unread ? "animate-pulse-ring" : ""
-          }`}
+          className="relative ml-auto flex h-13 w-13 items-center justify-center rounded-full border border-brand-green-100 bg-brand-surface/90 shadow-lg shadow-black/40 ring-1 ring-brand-green/15 backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-brand-green active:scale-95 cursor-pointer animate-bounce"
         >
           <Bell
-            className={`h-6 w-6 text-brand-gold ${
-              unread && !panelOpen ? "animate-bell-swing" : ""
-            }`}
+            className="h-6 w-6 text-brand-gold animate-bell-swing"
             strokeWidth={2.3}
             fill="currentColor"
           />
           {unread && (
-            <span className="absolute right-3 top-3 h-3 w-3 rounded-full border-2 border-brand-surface bg-rose-500 animate-pulse" />
+            <span className="absolute right-3 top-3 h-3 w-3 rounded-full border-2 border-brand-surface bg-rose-500 shadow-md shadow-rose-500/50">
+              <span className="absolute inset-0 rounded-full bg-rose-500 animate-ping" />
+            </span>
           )}
         </button>
 
