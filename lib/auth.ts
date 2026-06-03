@@ -11,6 +11,8 @@ import {
   sendPasswordResetEmail,
 } from "@/lib/server/mail";
 
+const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 15;
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "mysql",
@@ -25,7 +27,15 @@ export const auth = betterAuth({
     "https://ormorxtc.com",
     "http://www.ormorxtc.com",
     "https://www.ormorxtc.com",
+    "http://tclcoinsxormor.com",
+    "https://tclcoinsxormor.com",
+    "http://www.tclcoinsxormor.com",
+    "https://www.tclcoinsxormor.com",
   ],
+  session: {
+    expiresIn: AUTH_SESSION_MAX_AGE_SECONDS,
+    updateAge: AUTH_SESSION_MAX_AGE_SECONDS,
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
