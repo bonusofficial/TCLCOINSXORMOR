@@ -1,0 +1,372 @@
+/**
+ * Migrate ข้อมูลจากระบบเก่า (Laravel SQL dump) → schema ใหม่ (Prisma relational/JSON)
+ *
+ *   # 1) ดูตัวอย่าง (dry-run — ไม่เขียน DB):
+ *   npx tsx scripts/migrate-legacy.ts /path/to/old.sql
+ *
+ *   # 2) รันจริง (ล้างตารางที่เกี่ยวข้องใน DB ปลายทาง แล้ว import ใหม่):
+ *   MIGRATE_CONFIRM=yes npx tsx scripts/migrate-legacy.ts /path/to/old.sql
+ *
+ * ENV:
+ *   MIGRATE_TARGET_URL  ปลายทาง (ดีฟอลต์ = DATABASE_URL ใน .env)
+ *   MIGRATE_CONFIRM     ต้อง = "yes" ถึงจะเขียนจริง (ไม่งั้น dry-run)
+ *   MIGRATE_WIPE_ALL    "1" = ล้าง banners/reviews/audit_logs ด้วย (ดีฟอลต์เก็บไว้)
+ *
+ * การแปลงหลัก:
+ *   - products + product_dates + time_slots → products (saleDates/timeSlots เป็น JSON)
+ *   - users (Laravel) → User + Account(credential, bcrypt) · gen memberNo ใหม่ · login ด้วย email
+ *   - settings → config (howItWorks, announce*)
+ *   - account(รายรับ/รายจ่าย) → accounts · bookings → bookings (map productId จาก product_code)
+ */
+import "dotenv/config";
+import { readFileSync } from "fs";
+import { randomUUID } from "crypto";
+import { makeClient } from "./_db-helpers";
+
+/* ───────── SQL dump parser (รูปแบบ mysqldump: INSERT INTO `t` VALUES (...),(...);) ───────── */
+type Cell = string | number | null;
+
+function parseInsert(sql: string, table: string): Cell[][] {
+  const marker = "INSERT INTO `" + table + "` VALUES";
+  const start = sql.indexOf(marker);
+  if (start === -1) return [];
+  let i = start + marker.length;
+  const rows: Cell[][] = [];
+  let row: Cell[] | null = null;
+  let field = "";
+  let inString = false;
+  let inField = false;
+  let isStr = false;
+
+  const flush = () => {
+    if (!inField || !row) return;
+    let v: Cell;
+    if (isStr) v = field;
+    else {
+      const t = field.trim();
+      v = t === "NULL" || t === "" ? null : /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : t;
+    }
+    row.push(v);
+    field = "";
+    inField = false;
+    isStr = false;
+  };
+
+  for (; i < sql.length; i++) {
+    const c = sql[i];
+    if (inString) {
+      if (c === "\\") {
+        const n = sql[++i];
+        field += n === "n" ? "\n" : n === "r" ? "\r" : n === "t" ? "\t" : n === "0" ? "\0" : n;
+      } else if (c === "'") {
+        inString = false;
+      } else field += c;
+      continue;
+    }
+    if (c === "'") { inString = true; inField = true; isStr = true; continue; }
+    if (c === "(") { row = []; continue; }
+    if (c === ")") { flush(); if (row) rows.push(row); row = null; continue; }
+    if (c === ",") { if (row) flush(); continue; }
+    if (c === ";") break; // จบ statement
+    if (/\s/.test(c)) { if (inField && !isStr) field += c; continue; }
+    inField = true;
+    field += c;
+  }
+  return rows;
+}
+
+function toObjects(rows: Cell[][], cols: string[]): Record<string, Cell>[] {
+  return rows.map((r) => {
+    const o: Record<string, Cell> = {};
+    cols.forEach((c, idx) => (o[c] = r[idx] ?? null));
+    return o;
+  });
+}
+
+/* ───────── helpers ───────── */
+function toDate(v: Cell): Date | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s + "T00:00:00Z");
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) return new Date(s.replace(" ", "T") + "Z");
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+const str = (v: Cell): string => (v == null ? "" : String(v));
+const num = (v: Cell): number => (v == null ? 0 : Number(v));
+const hhmm = (v: Cell): string => str(v).slice(0, 5); // "23:00:00" → "23:00"
+const capRole = (lv: Cell): string => {
+  const v = str(lv).toLowerCase();
+  return v === "admin" ? "Admin" : v === "agent" ? "Agent" : "Member";
+};
+function parseDiscountUsers(v: Cell): string[] {
+  const s = str(v).trim();
+  if (!s) return [];
+  try {
+    const j = JSON.parse(s);
+    if (Array.isArray(j)) return j.map((x) => String(x)).filter(Boolean);
+  } catch {
+    /* not json */
+  }
+  return s.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
+}
+
+/* ───────── column orders (ตามลำดับใน CREATE TABLE) ───────── */
+const COLS = {
+  users: ["id", "users_code", "name", "email", "phone", "shop_name", "line_id", "email_verified_at", "password", "level", "remember_token", "created_at", "updated_at"],
+  products: ["id", "product_code", "product_name", "main_price", "agent_price", "stock", "status", "date", "created_at", "updated_at", "note", "discount_users", "discount_amount"],
+  product_dates: ["id", "product_id", "date", "created_at", "updated_at"],
+  time_slots: ["id", "product_id", "start_time", "end_time", "is_available", "created_at", "updated_at"],
+  bookings: ["id", "product_code", "booking_code", "username", "product_name", "content", "price", "status", "booking_date", "booking_time", "created_at", "updated_at"],
+  account: ["id", "date", "description", "category", "income", "expense", "created_at", "updated_at"],
+  settings: ["id", "logo", "qr_code", "site_name", "description", "website_url", "warning_text", "maintenance_mode", "facebook", "line", "popup_image", "popup_title", "popup_desc", "step_1_icon", "step_1_title", "step_1_desc", "step_2_icon", "step_2_title", "step_2_desc", "step_3_icon", "step_3_title", "step_3_desc", "step_4_icon", "step_4_title", "step_4_desc", "created_at", "updated_at"],
+};
+
+async function main() {
+  const file = process.argv[2] || process.env.LEGACY_SQL_FILE;
+  if (!file) throw new Error("ระบุ path ไฟล์ .sql เป็น argument (หรือ LEGACY_SQL_FILE)");
+  const confirm = process.env.MIGRATE_CONFIRM === "yes";
+  const targetUrl = process.env.MIGRATE_TARGET_URL || process.env.DATABASE_URL;
+  if (!targetUrl) throw new Error("ไม่พบ DATABASE_URL (หรือ MIGRATE_TARGET_URL)");
+
+  const sql = readFileSync(file, "utf8");
+
+  const users = toObjects(parseInsert(sql, "users"), COLS.users);
+  const products = toObjects(parseInsert(sql, "products"), COLS.products);
+  const pdates = toObjects(parseInsert(sql, "product_dates"), COLS.product_dates);
+  const slots = toObjects(parseInsert(sql, "time_slots"), COLS.time_slots);
+  const bookings = toObjects(parseInsert(sql, "bookings"), COLS.bookings);
+  const account = toObjects(parseInsert(sql, "account"), COLS.account);
+  const settings = toObjects(parseInsert(sql, "settings"), COLS.settings);
+
+  console.log(`📄 อ่านไฟล์: ${file}`);
+  console.log(`   users=${users.length} products=${products.length} product_dates=${pdates.length} time_slots=${slots.length} bookings=${bookings.length} account=${account.length} settings=${settings.length}\n`);
+
+  // ── เตรียมข้อมูลฝั่งใหม่ ──
+  // products: รวม dates + slots
+  const datesByProduct = new Map<number, string[]>();
+  for (const d of pdates) {
+    const pid = num(d.product_id);
+    const arr = datesByProduct.get(pid) ?? [];
+    arr.push(str(d.date).slice(0, 10));
+    datesByProduct.set(pid, arr);
+  }
+  const slotsByProduct = new Map<number, { start: string; end: string }[]>();
+  for (const s of slots) {
+    const pid = num(s.product_id);
+    const arr = slotsByProduct.get(pid) ?? [];
+    arr.push({ start: hhmm(s.start_time), end: hhmm(s.end_time) });
+    slotsByProduct.set(pid, arr);
+  }
+  // map product_code → product id (สำหรับ bookings)
+  const codeToProductId = new Map<string, number>();
+  for (const p of products) codeToProductId.set(str(p.product_code), num(p.id));
+
+  // users → memberNo ใหม่ (เรียงตาม id เก่า) + ตัด email ซ้ำ (กัน unique ชน)
+  const seenEmail = new Set<string>();
+  const sortedUsers = [...users]
+    .sort((a, b) => num(a.id) - num(b.id))
+    .filter((u) => {
+      const e = str(u.email).toLowerCase().trim();
+      if (!e || seenEmail.has(e)) return false;
+      seenEmail.add(e);
+      return true;
+    });
+
+  // bookings → ตัด booking_code ซ้ำ (กัน unique ชน)
+  const seenCode = new Set<string>();
+  const uniqueBookings = bookings.filter((b) => {
+    const c = str(b.booking_code).trim();
+    if (!c || seenCode.has(c)) return false;
+    seenCode.add(c);
+    return true;
+  });
+
+  if (!confirm) {
+    console.log("🔍 DRY RUN (ยังไม่เขียน DB) — ตัวอย่างผลลัพธ์:");
+    const p0 = products[0];
+    if (p0)
+      console.log(`   product#${str(p0.id)} "${str(p0.product_name)}" → saleDates=${(datesByProduct.get(num(p0.id)) ?? []).length} วัน, timeSlots=${(slotsByProduct.get(num(p0.id)) ?? []).length} ช่วง`);
+    const u0 = sortedUsers[0];
+    if (u0)
+      console.log(`   user "${str(u0.email)}" → memberNo=1 (OMTC-00001), role=${capRole(u0.level)}, login=email, bcrypt ${str(u0.password).slice(0, 7)}`);
+    console.log(`\n   จะเขียน: config=1, user=${sortedUsers.length}, account(auth)=${sortedUsers.length}, products=${products.length}, accounts(การเงิน)=${account.length}, bookings=${uniqueBookings.length}`);
+    console.log(`\n👉 ตรวจสอบแล้วรันจริงด้วย:  MIGRATE_CONFIRM=yes npx tsx scripts/migrate-legacy.ts "${file}"`);
+    return;
+  }
+
+  // ── รันจริง ──
+  const prisma = makeClient(targetUrl);
+  const wipeAll = process.env.MIGRATE_WIPE_ALL === "1";
+  try {
+    console.log("🧹 ล้างตารางปลายทาง...");
+    // FK-safe: ลบ child (session/account) ก่อน user
+    await prisma.session.deleteMany({});
+    await prisma.account.deleteMany({});
+    await prisma.bookings.deleteMany({});
+    await prisma.accounts.deleteMany({});
+    await prisma.products.deleteMany({});
+    await prisma.config.deleteMany({});
+    await prisma.user.deleteMany({});
+    if (wipeAll) {
+      await prisma.reviews.deleteMany({});
+      await prisma.banners.deleteMany({});
+      await prisma.audit_logs.deleteMany({});
+      await prisma.verification.deleteMany({});
+      console.log("   (ล้าง reviews/banners/audit_logs ด้วย)");
+    } else {
+      console.log("   (เก็บ reviews/banners/audit_logs ไว้ — ใช้ MIGRATE_WIPE_ALL=1 ถ้าต้องการล้างด้วย)");
+    }
+
+    // config (จาก settings แถวแรก)
+    const st = settings[0];
+    if (st) {
+      const steps = [1, 2, 3, 4]
+        .map((n) => ({ title: str(st[`step_${n}_title`]), desc: str(st[`step_${n}_desc`]) }))
+        .filter((s) => s.title || s.desc);
+      await prisma.config.create({
+        data: {
+          logo: str(st.logo),
+          title: str(st.site_name) || "ORMOR TOPUP COINS",
+          description: str(st.description),
+          keywords: "",
+          agentLink: "",
+          contactLine: str(st.line),
+          phone: "",
+          qrcodenormal: str(st.qr_code),
+          qrcodeagent: str(st.qr_code),
+          qrcodesupport: "",
+          warningMessage: str(st.warning_text),
+          agentPrivileges: "",
+          lineGroupNormal: "",
+          lineGroupAgent: "",
+          welcomeTitle: str(st.popup_title),
+          welcomeAgentDesc: "",
+          welcomeMemberDesc: "",
+          howItWorks: steps,
+          termsContent: "",
+          privacyContent: "",
+          reviewLink: "",
+          announceEnabled: !!(str(st.popup_title) || str(st.popup_desc)),
+          announceBanner: str(st.popup_image),
+          announceBadge: "",
+          announceTitle: str(st.popup_title),
+          announceContent: str(st.popup_desc),
+          marqueeText: "",
+          footerFacebook: str(st.facebook),
+        },
+      });
+    }
+
+    // users → User + Account(credential)
+    let memberNo = 0;
+    for (const u of sortedUsers) {
+      memberNo++;
+      const uid = randomUUID();
+      await prisma.user.create({
+        data: {
+          id: uid,
+          name: str(u.name),
+          email: str(u.email),
+          emailVerified: u.email_verified_at != null,
+          username: null, // login ด้วย email
+          memberNo,
+          role: capRole(u.level),
+          phone: str(u.phone) || null,
+          shopName: str(u.shop_name) || null,
+          lineId: str(u.line_id) || null,
+          createdAt: toDate(u.created_at) ?? new Date(),
+          updatedAt: toDate(u.updated_at) ?? new Date(),
+        },
+      });
+      await prisma.account.create({
+        data: {
+          id: randomUUID(),
+          accountId: uid,
+          providerId: "credential",
+          userId: uid,
+          password: str(u.password),
+          createdAt: toDate(u.created_at) ?? new Date(),
+          updatedAt: toDate(u.updated_at) ?? new Date(),
+        },
+      });
+    }
+
+    // products (รวม dates + slots)
+    for (const p of products) {
+      const pid = num(p.id);
+      const stockVal = p.stock; // null = ไม่จำกัด
+      await prisma.products.create({
+        data: {
+          id: pid,
+          image: "",
+          name: str(p.product_name),
+          description: str(p.note),
+          price: num(p.main_price),
+          cost: 0,
+          agentPrice: num(p.agent_price),
+          stockEnabled: stockVal != null,
+          stock: stockVal == null ? 0 : Number(stockVal),
+          maxPerUserPerDay: 0,
+          saleDates: datesByProduct.get(pid) ?? [],
+          timeSlots: slotsByProduct.get(pid) ?? [],
+          discountEligibleUsernames: parseDiscountUsers(p.discount_users),
+          discountAmount: num(p.discount_amount),
+          note: null,
+          createdAt: toDate(p.created_at) ?? new Date(),
+          updatedAt: toDate(p.updated_at) ?? new Date(),
+        },
+      });
+    }
+
+    // accounts (รายรับ/รายจ่าย)
+    for (const a of account) {
+      await prisma.accounts.create({
+        data: {
+          id: num(a.id),
+          date: toDate(a.date) ?? new Date(),
+          description: str(a.description) || null,
+          category: str(a.category),
+          income: num(a.income),
+          expense: num(a.expense),
+          createdAt: toDate(a.created_at) ?? new Date(),
+          updatedAt: toDate(a.updated_at) ?? new Date(),
+        },
+      });
+    }
+
+    // bookings (map productId จาก product_code; phone ไม่มีในข้อมูลเก่า)
+    for (const b of uniqueBookings) {
+      await prisma.bookings.create({
+        data: {
+          id: num(b.id),
+          bookingCode: str(b.booking_code),
+          productId: codeToProductId.get(str(b.product_code)) ?? null,
+          productCode: str(b.product_code) || null,
+          productName: str(b.product_name),
+          userId: null, // ข้อมูลเก่าไม่มี user_id (ผูกด้วย username เท่านั้น)
+          username: str(b.username),
+          phone: "-",
+          content: str(b.content) || null,
+          price: num(b.price),
+          status: str(b.status) || "รอตรวจสอบ",
+          bookingDate: toDate(b.booking_date) ?? new Date(),
+          bookingTime: str(b.booking_time) || null,
+          createdAt: toDate(b.created_at) ?? new Date(),
+          updatedAt: toDate(b.updated_at) ?? new Date(),
+        },
+      });
+    }
+
+    console.log(`\n✓ Migrate สำเร็จ — config=1, user=${sortedUsers.length}, products=${products.length}, accounts=${account.length}, bookings=${uniqueBookings.length}`);
+    console.log(`  ผู้ใช้เดิม login ด้วย "email" + รหัสผ่านเดิม · UID ใหม่ OMTC-00001..${String(memberNo).padStart(5, "0")}`);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main().catch((e) => {
+  console.error("✗ Migrate ล้มเหลว:", e);
+  process.exit(1);
+});

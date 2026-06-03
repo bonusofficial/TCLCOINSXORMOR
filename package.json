@@ -11,7 +11,8 @@
     "dbgenerate": "prisma generate",
     "db:backup": "tsx scripts/db-backup.ts",
     "db:restore": "tsx scripts/db-restore.ts",
-    "db:sync": "tsx scripts/db-sync.ts"
+    "db:sync": "tsx scripts/db-sync.ts",
+    "db:migrate-legacy": "tsx scripts/migrate-legacy.ts"
   },
   "dependencies": {
     "@elysia/cors": "^1.4.2",

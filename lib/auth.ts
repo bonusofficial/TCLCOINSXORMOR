@@ -31,7 +31,26 @@ export const auth = betterAuth({
     "https://tclcoinsxormor.com",
     "http://www.tclcoinsxormor.com",
     "https://www.tclcoinsxormor.com",
+    // ── ซับโดเมนแอดมิน (dashboard) ──
+    "https://dashboard.ormorxtc.com",
+    "http://dashboard.ormorxtc.com",
+    "https://dashboard.tclcoinsxormor.com",
+    "http://dashboard.tclcoinsxormor.com",
+    "https://dashboard.ormorstore.rdcw.xyz",
+    "http://dashboard.ormorstore.rdcw.xyz",
   ],
+  // แชร์ cookie session ข้ามซับโดเมน (www ↔ dashboard) — ตั้ง COOKIE_DOMAIN=".ormorxtc.com" ใน production
+  // เว้นว่าง (เช่น localhost) = cookie แบบ host-only ปกติ
+  ...(process.env.COOKIE_DOMAIN?.trim()
+    ? {
+        advanced: {
+          crossSubDomainCookies: {
+            enabled: true,
+            domain: process.env.COOKIE_DOMAIN.trim(),
+          },
+        },
+      }
+    : {}),
   session: {
     expiresIn: AUTH_SESSION_MAX_AGE_SECONDS,
     updateAge: AUTH_SESSION_MAX_AGE_SECONDS,
