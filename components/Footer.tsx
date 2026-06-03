@@ -55,11 +55,11 @@ export default function Footer() {
           {/* Col 1: Brand info */}
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden">
+              <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center">
                 <img
                   src={siteLogo}
                   alt={siteTitle}
-                  className="h-full w-full object-contain p-1.5"
+                  className="h-full w-full"
                 />
               </div>
               <h3 className="font-display font-black text-2xl tracking-tight leading-none">
