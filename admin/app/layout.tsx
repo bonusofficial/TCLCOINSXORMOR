@@ -4,6 +4,9 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { PublicDataProvider } from "@/lib/contexts/PublicDataContext";
 import { cn } from "@/lib/utils";
+import { getSiteMetadata } from "@/lib/server/site-metadata";
+
+export const revalidate = 60;
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,13 +23,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "ORMOR Admin",
-  description: "ORMOR administration dashboard",
-  icons: {
-    icon: "/favicon.ico",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return getSiteMetadata({
+    titleSuffix: "Admin",
+    defaultTitle: "TCLCOINSXORMOR",
+    defaultDescription: "ORMOR administration dashboard",
+  });
+}
 
 export default function RootLayout({
   children,

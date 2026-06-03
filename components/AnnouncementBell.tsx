@@ -109,7 +109,7 @@ export default function AnnouncementBell() {
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  /* แสดงประกาศทุกครั้งที่เข้าหน้า แต่ถ้ารับทราบแล้วจะซ่อน 1 วัน */
+  /* แสดงประกาศทุกครั้งที่เข้าหน้า แต่ถ้ารับทราบแล้วจะซ่อน 5 ชั่วโมง */
   useEffect(() => {
     if (!enabled) return;
 
@@ -118,11 +118,11 @@ export default function AnnouncementBell() {
 
     if (stored) {
       const acknowledgedTime = parseInt(stored, 10);
-      const oneDayMs = 24 * 60 * 60 * 1000;
+      const fiveHoursMs = 5 * 60 * 60 * 1000;
       const now = Date.now();
 
-      // ถ้ายังไม่ครบ 1 วัน ให้ซ่อน popup (แต่กระดิ่งยังคงมี)
-      if (now - acknowledgedTime < oneDayMs) {
+      // ถ้ายังไม่ครบ 5 ชั่วโมง ให้ซ่อน popup (แต่กระดิ่งยังคงมี)
+      if (now - acknowledgedTime < fiveHoursMs) {
         setPopupOpen(false);
         setUnread(false);
         return;
@@ -158,7 +158,7 @@ export default function AnnouncementBell() {
 
   if (!enabled) return null;
 
-  /* ปิดและบันทึกสถานะรับทราบ — จะไม่แสดงอีกใน 1 วัน */
+  /* ปิดและบันทึกสถานะรับทราบ — จะไม่แสดงอีกใน 5 ชั่วโมง */
   const close = () => {
     const storageKey = "announcement-acknowledged";
     localStorage.setItem(storageKey, String(Date.now()));

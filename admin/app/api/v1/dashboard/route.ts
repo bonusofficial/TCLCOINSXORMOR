@@ -95,6 +95,35 @@ function pctDelta(current: number, previous: number): number {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
+const SUCCESS_STATUSES = ["สำเร็จ", "ชำระแล้ว"];
+
+type SalesUser = {
+  id: string;
+  name: string;
+  username: string | null;
+  displayUsername: string | null;
+  role: string | null;
+};
+
+function normalizeIdentity(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function indexSalesUsers(users: SalesUser[]) {
+  const byId = new Map<string, SalesUser>();
+  const byIdentity = new Map<string, SalesUser>();
+
+  for (const user of users) {
+    byId.set(user.id, user);
+    for (const value of [user.username, user.displayUsername, user.name]) {
+      const key = normalizeIdentity(value);
+      if (key && !byIdentity.has(key)) byIdentity.set(key, user);
+    }
+  }
+
+  return { byId, byIdentity };
+}
+
 /* ─────────────────────────────────────────────
  * Dashboard Stats API
  * ───────────────────────────────────────────── */
@@ -223,7 +252,7 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
         }),
         // 11. All successful bookings for aggregation
         prisma.bookings.findMany({
-          where: { status: { in: ["สำเร็จ", "ชำระแล้ว"] } },
+          where: { status: { in: SUCCESS_STATUSES } },
           select: {
             productName: true,
             price: true,
@@ -234,7 +263,7 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
         // 12. Revenue bookings for chart (สำเร็จ only)
         prisma.bookings.findMany({
           where: {
-            status: "สำเร็จ",
+            status: { in: SUCCESS_STATUSES },
             createdAt: { gte: chartStart, lt: nextYear },
           },
           select: {
@@ -368,41 +397,48 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
       }));
 
       // ─── Top Agents ───
-      const agentMap = new Map<string, { userId: string; username: string; revenue: number; orders: number }>();
+      const salesUsers = await prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          displayUsername: true,
+          role: true,
+        },
+      });
+      const { byId: usersById, byIdentity: usersByIdentity } = indexSalesUsers(salesUsers);
+      const agentMap = new Map<string, { key: string; user: SalesUser | null; username: string; revenue: number; orders: number }>();
+
       for (const b of allSuccessBookings) {
-        if (!b.userId) continue;
-        const existing = agentMap.get(b.userId);
+        const user = b.userId
+          ? usersById.get(b.userId) ?? null
+          : usersByIdentity.get(normalizeIdentity(b.username)) ?? null;
+        const normalizedUsername = normalizeIdentity(b.username);
+        const key = user?.id ? `user:${user.id}` : normalizedUsername ? `legacy:${normalizedUsername}` : "";
+        if (!key) continue;
+
+        const existing = agentMap.get(key);
         if (existing) {
           existing.orders++;
           existing.revenue += Number(b.price);
         } else {
-          agentMap.set(b.userId, {
-            userId: b.userId,
+          agentMap.set(key, {
+            key,
+            user,
             username: b.username,
             revenue: Number(b.price),
             orders: 1,
           });
         }
       }
-      // Filter only agents
-      const agentUserIds = Array.from(agentMap.keys());
-      const agentUsers = agentUserIds.length > 0
-        ? await prisma.user.findMany({
-            where: { id: { in: agentUserIds }, role: "Agent" },
-            select: { id: true, name: true, username: true },
-          })
-        : [];
-      const agentIdSet = new Set(agentUsers.map((u) => u.id));
-      const agentNameMap = new Map(agentUsers.map((u) => [u.id, u.name]));
 
       const topAgents = Array.from(agentMap.values())
-        .filter((a) => agentIdSet.has(a.userId))
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5)
         .map((a, i) => ({
           rank: i + 1,
-          name: agentNameMap.get(a.userId) ?? a.username,
-          username: `@${a.username}`,
+          name: a.user?.name ?? a.username,
+          username: a.user?.username ? `@${a.user.username}` : a.username,
           revenue: a.revenue,
           orders: a.orders,
         }));

@@ -40,7 +40,6 @@ const app = new Elysia({ prefix: "/api/v1/accounts" })
     async () => {
       const items = await prisma.accounts.findMany({
         orderBy: [{ date: "desc" }, { id: "desc" }],
-        take: 500,
       });
       const totalIncome = items.reduce((s, i) => s + Number(i.income), 0);
       const totalExpense = items.reduce((s, i) => s + Number(i.expense), 0);

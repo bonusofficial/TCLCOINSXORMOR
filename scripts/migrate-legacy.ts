@@ -26,11 +26,8 @@ import { makeClient } from "./_db-helpers";
 /* ───────── SQL dump parser (รูปแบบ mysqldump: INSERT INTO `t` VALUES (...),(...);) ───────── */
 type Cell = string | number | null;
 
-function parseInsert(sql: string, table: string): Cell[][] {
-  const marker = "INSERT INTO `" + table + "` VALUES";
-  const start = sql.indexOf(marker);
-  if (start === -1) return [];
-  let i = start + marker.length;
+function parseRows(sql: string, startIndex: number): { rows: Cell[][]; end: number } {
+  let i = startIndex;
   const rows: Cell[][] = [];
   let row: Cell[] | null = null;
   let field = "";
@@ -72,6 +69,35 @@ function parseInsert(sql: string, table: string): Cell[][] {
     inField = true;
     field += c;
   }
+  return { rows, end: i };
+}
+
+function parseInsert(sql: string, table: string, expectedCols: string[]): Cell[][] {
+  const inserts = new RegExp(
+    `INSERT\\s+INTO\\s+\`${table}\`\\s*(?:\\(([^)]*)\\)\\s*)?VALUES`,
+    "gi"
+  );
+  const rows: Cell[][] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = inserts.exec(sql))) {
+    const statementCols = match[1]
+      ? Array.from(match[1].matchAll(/`([^`]+)`/g), (m) => m[1])
+      : expectedCols;
+    const parsed = parseRows(sql, inserts.lastIndex);
+
+    for (const row of parsed.rows) {
+      rows.push(
+        expectedCols.map((col) => {
+          const idx = statementCols.indexOf(col);
+          return idx >= 0 ? row[idx] ?? null : null;
+        })
+      );
+    }
+
+    inserts.lastIndex = parsed.end + 1;
+  }
+
   return rows;
 }
 
@@ -100,6 +126,43 @@ const capRole = (lv: Cell): string => {
   const v = str(lv).toLowerCase();
   return v === "admin" ? "Admin" : v === "agent" ? "Agent" : "Member";
 };
+function normalizeIdentity(v: Cell | string | null | undefined): string {
+  return str(v ?? "").trim().toLowerCase();
+}
+function rememberLegacyUserIdentity(
+  map: Map<string, string>,
+  uid: string,
+  values: Array<Cell | string | null | undefined>
+) {
+  for (const value of values) {
+    const key = normalizeIdentity(value);
+    if (key && !map.has(key)) map.set(key, uid);
+  }
+}
+function makeUniqueUsername(
+  u: Record<string, Cell>,
+  fallbackNo: number,
+  used: Set<string>
+): string {
+  const candidates = [
+    str(u.name).trim(),
+    str(u.users_code).trim(),
+    str(u.email).split("@")[0]?.trim() ?? "",
+    `user-${fallbackNo}`,
+  ];
+  const raw = candidates.find((x) => x.length >= 3) ?? `user-${fallbackNo}`;
+  const base = raw.slice(0, 180);
+  let username = base;
+  let suffix = 1;
+
+  while (used.has(username)) {
+    const tail = `-${suffix++}`;
+    username = `${base.slice(0, 180 - tail.length)}${tail}`;
+  }
+
+  used.add(username);
+  return username;
+}
 function parseDiscountUsers(v: Cell): string[] {
   const s = str(v).trim();
   if (!s) return [];
@@ -132,13 +195,13 @@ async function main() {
 
   const sql = readFileSync(file, "utf8");
 
-  const users = toObjects(parseInsert(sql, "users"), COLS.users);
-  const products = toObjects(parseInsert(sql, "products"), COLS.products);
-  const pdates = toObjects(parseInsert(sql, "product_dates"), COLS.product_dates);
-  const slots = toObjects(parseInsert(sql, "time_slots"), COLS.time_slots);
-  const bookings = toObjects(parseInsert(sql, "bookings"), COLS.bookings);
-  const account = toObjects(parseInsert(sql, "account"), COLS.account);
-  const settings = toObjects(parseInsert(sql, "settings"), COLS.settings);
+  const users = toObjects(parseInsert(sql, "users", COLS.users), COLS.users);
+  const products = toObjects(parseInsert(sql, "products", COLS.products), COLS.products);
+  const pdates = toObjects(parseInsert(sql, "product_dates", COLS.product_dates), COLS.product_dates);
+  const slots = toObjects(parseInsert(sql, "time_slots", COLS.time_slots), COLS.time_slots);
+  const bookings = toObjects(parseInsert(sql, "bookings", COLS.bookings), COLS.bookings);
+  const account = toObjects(parseInsert(sql, "account", COLS.account), COLS.account);
+  const settings = toObjects(parseInsert(sql, "settings", COLS.settings), COLS.settings);
 
   console.log(`📄 อ่านไฟล์: ${file}`);
   console.log(`   users=${users.length} products=${products.length} product_dates=${pdates.length} time_slots=${slots.length} bookings=${bookings.length} account=${account.length} settings=${settings.length}\n`);
@@ -190,7 +253,7 @@ async function main() {
       console.log(`   product#${str(p0.id)} "${str(p0.product_name)}" → saleDates=${(datesByProduct.get(num(p0.id)) ?? []).length} วัน, timeSlots=${(slotsByProduct.get(num(p0.id)) ?? []).length} ช่วง`);
     const u0 = sortedUsers[0];
     if (u0)
-      console.log(`   user "${str(u0.email)}" → memberNo=1 (OMTC-00001), role=${capRole(u0.level)}, login=email, bcrypt ${str(u0.password).slice(0, 7)}`);
+      console.log(`   user "${str(u0.email)}" → username="${str(u0.name).trim() || str(u0.users_code).trim()}", memberNo=1 (OMTC-00001), role=${capRole(u0.level)}, bcrypt ${str(u0.password).slice(0, 7)}`);
     console.log(`\n   จะเขียน: config=1, user=${sortedUsers.length}, account(auth)=${sortedUsers.length}, products=${products.length}, accounts(การเงิน)=${account.length}, bookings=${uniqueBookings.length}`);
     console.log(`\n👉 ตรวจสอบแล้วรันจริงด้วย:  MIGRATE_CONFIRM=yes npx tsx scripts/migrate-legacy.ts "${file}"`);
     return;
@@ -261,16 +324,26 @@ async function main() {
 
     // users → User + Account(credential)
     let memberNo = 0;
+    const usedUsernames = new Set<string>();
+    const legacyUserIdByIdentity = new Map<string, string>();
     for (const u of sortedUsers) {
       memberNo++;
       const uid = randomUUID();
+      const username = makeUniqueUsername(u, memberNo, usedUsernames);
+      rememberLegacyUserIdentity(legacyUserIdByIdentity, uid, [
+        u.name,
+        u.users_code,
+        u.email,
+        username,
+      ]);
       await prisma.user.create({
         data: {
           id: uid,
           name: str(u.name),
           email: str(u.email),
           emailVerified: u.email_verified_at != null,
-          username: null, // login ด้วย email
+          username,
+          displayUsername: username,
           memberNo,
           role: capRole(u.level),
           phone: str(u.phone) || null,
@@ -338,6 +411,7 @@ async function main() {
 
     // bookings (map productId จาก product_code; phone ไม่มีในข้อมูลเก่า)
     for (const b of uniqueBookings) {
+      const username = str(b.username);
       await prisma.bookings.create({
         data: {
           id: num(b.id),
@@ -345,8 +419,8 @@ async function main() {
           productId: codeToProductId.get(str(b.product_code)) ?? null,
           productCode: str(b.product_code) || null,
           productName: str(b.product_name),
-          userId: null, // ข้อมูลเก่าไม่มี user_id (ผูกด้วย username เท่านั้น)
-          username: str(b.username),
+          userId: legacyUserIdByIdentity.get(normalizeIdentity(username)) ?? null,
+          username,
           phone: "-",
           content: str(b.content) || null,
           price: num(b.price),
@@ -360,7 +434,7 @@ async function main() {
     }
 
     console.log(`\n✓ Migrate สำเร็จ — config=1, user=${sortedUsers.length}, products=${products.length}, accounts=${account.length}, bookings=${uniqueBookings.length}`);
-    console.log(`  ผู้ใช้เดิม login ด้วย "email" + รหัสผ่านเดิม · UID ใหม่ OMTC-00001..${String(memberNo).padStart(5, "0")}`);
+    console.log(`  ผู้ใช้เดิม login ด้วย "username หรือ email" + รหัสผ่านเดิม · UID ใหม่ OMTC-00001..${String(memberNo).padStart(5, "0")}`);
   } finally {
     await prisma.$disconnect();
   }

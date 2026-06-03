@@ -37,7 +37,6 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
       const bookings = await prisma.bookings.findMany({
         where: { status: "สำเร็จ" },
         orderBy: { updatedAt: "desc" },
-        take: 500,
       });
 
       // map productId → ต้นทุน (ดึงครั้งเดียว)

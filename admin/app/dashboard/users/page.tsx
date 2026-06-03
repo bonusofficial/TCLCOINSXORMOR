@@ -494,10 +494,26 @@ function UserSummaryTab() {
   const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [month, setMonth] = useState(""); // "" = ทุกเดือน · "YYYY-MM" = เดือนที่เลือก
+
+  const monthOptions = useMemo(() => {
+    const THAI = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    const now = new Date();
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const m = d.getMonth();
+      return {
+        value: `${d.getFullYear()}-${String(m + 1).padStart(2, "0")}`,
+        label: `${THAI[m]} ${d.getFullYear() + 543}`,
+      };
+    });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await usersApi.summary.api.v1.users.summary.get();
+    const { data, error } = await usersApi.summary.api.v1.users.summary.get({
+      query: { month },
+    });
     if (error) {
       const v = error.value as { message?: string } | undefined;
       toast.error(v?.message ?? "โหลดสรุปยอดไม่สำเร็จ");
@@ -506,7 +522,7 @@ function UserSummaryTab() {
     }
     if (data.ok) setRows(data.data as SummaryRow[]);
     setLoading(false);
-  }, []);
+  }, [month]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -538,7 +554,7 @@ function UserSummaryTab() {
     );
   }
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && !month) {
     return (
       <div className="bg-brand-surface border border-brand-green-100 rounded-2xl py-16 text-center text-brand-ink-soft text-sm font-bold">
         ยังไม่มีข้อมูลการจอง
@@ -583,6 +599,22 @@ function UserSummaryTab() {
             </button>
           ))}
         </div>
+        {/* เลือกเดือน */}
+        <select
+          value={month}
+          onChange={(e) => {
+            setMonth(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3 text-sm font-bold text-brand-ink outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 cursor-pointer"
+        >
+          <option value="">ทุกเดือน</option>
+          {monthOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
         <button
           onClick={load}
           disabled={loading}

@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { PublicDataProvider } from "@/lib/contexts/PublicDataContext";
 import ConditionalFooter from "@/components/ConditionalFooter";
+import { getSiteMetadata } from "@/lib/server/site-metadata";
+
+export const revalidate = 60;
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -18,34 +21,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-import { prisma } from "@/lib/prisma";
-
 export async function generateMetadata(): Promise<Metadata> {
-  let title = "TCLCOINSXORMOR — ระบบเติมเหรียญไลน์";
-  let description = "TCLCOINSXORMOR Top-up Coins · เติมเหรียญไลน์รวดเร็ว ปลอดภัย เหรียญแท้ 100%";
-  let keywords = "";
-  let icon = "/favicon.ico";
-
-  try {
-    const config = await prisma.config.findFirst();
-    if (config) {
-      if (config.title) title = config.title;
-      if (config.description) description = config.description;
-      if (config.keywords) keywords = config.keywords;
-      if (config.logo) icon = config.logo;
-    }
-  } catch (error) {
-    console.error("Failed to load metadata config:", error);
-  }
-
-  return {
-    title,
-    description,
-    keywords,
-    icons: {
-      icon,
-    },
-  };
+  return getSiteMetadata();
 }
 
 export default function RootLayout({

@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import {
   authMacros,
@@ -152,6 +153,8 @@ const app = new Elysia({ prefix: "/api/v1/setting/normal" })
                footerCopyright: body.footerCopyright ?? "",
              },
            });
+
+      revalidatePath("/", "layout");
 
       return {
         ok: true,
