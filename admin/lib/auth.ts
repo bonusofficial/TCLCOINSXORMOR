@@ -12,8 +12,10 @@ import {
 } from "@/lib/server/mail";
 
 const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 15;
+const authSecret = process.env.BETTER_AUTH_SECRET?.trim() || undefined;
 
 export const auth = betterAuth({
+  secret: authSecret,
   database: prismaAdapter(prisma, {
     provider: "mysql",
   }),

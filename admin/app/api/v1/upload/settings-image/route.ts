@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { auth } from "@/lib/auth";
+import { getUploadFileTarget } from "@/lib/server/upload-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -153,17 +153,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const uploadRoot = path.resolve(process.cwd(), "public", UPLOAD_PUBLIC_DIR);
   const fileName = `${randomBytes(24).toString("hex")}.${detected.ext}`;
-  const filePath = path.resolve(uploadRoot, fileName);
-  const relativePath = path.relative(uploadRoot, filePath);
+  let target: ReturnType<typeof getUploadFileTarget>;
 
-  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+  try {
+    target = getUploadFileTarget(UPLOAD_PUBLIC_DIR, fileName);
+  } catch {
     return json(
       { ok: false, message: "ตำแหน่งจัดเก็บไฟล์ไม่ถูกต้อง" },
       { status: 400 }
     );
   }
+
+  const { uploadRoot, filePath, publicPath, publicUrl } = target;
 
   await mkdir(uploadRoot, { recursive: true });
   await writeFile(filePath, buffer, { flag: "wx" });
@@ -171,7 +173,8 @@ export async function POST(request: Request) {
   return json(
     {
       ok: true,
-      url: `/${UPLOAD_PUBLIC_DIR}/${fileName}`,
+      url: publicUrl,
+      publicPath,
       fileName,
       size: file.size,
       contentType: detected.mime,

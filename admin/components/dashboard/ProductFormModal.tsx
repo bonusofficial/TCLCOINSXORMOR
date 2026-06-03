@@ -202,7 +202,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
     setImageUploading(true);
     const tId = toast.loading("กำลังอัปโหลดรูป...");
     try {
-      // อัปโหลดเป็นไฟล์จริง → ได้ URL (/uploads/images/xxx) ไม่ใช่ base64
+      // อัปโหลดเป็นไฟล์จริง → ได้ URL ไม่ใช่ base64
       const url = await uploadImage(file);
       setImage(url);
       toast.success("อัปโหลดรูปแล้ว", { id: tId });

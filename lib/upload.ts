@@ -1,5 +1,5 @@
 /**
- * อัปโหลดรูปไปเก็บเป็นไฟล์จริงใน public/uploads/images แล้วคืน URL
+ * อัปโหลดรูปไปเก็บเป็นไฟล์จริงใน configured public/uploads/images แล้วคืน URL
  * (แทนการเก็บเป็น base64 data URL)
  */
 export async function uploadImage(file: File): Promise<string> {

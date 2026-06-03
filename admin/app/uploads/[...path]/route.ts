@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import { getUploadPublicRoot } from "@/lib/server/upload-storage";
 
 const MIME_TYPES: Record<string, string> = {
   png: "image/png",
@@ -21,8 +22,8 @@ export async function GET(
       return new Response("Not Found", { status: 404 });
     }
 
-    // Resolve path to the physical file in public/uploads
-    const uploadRoot = path.resolve(process.cwd(), "public", "uploads");
+    // Resolve path to the configured user-project public/uploads directory.
+    const uploadRoot = path.resolve(getUploadPublicRoot(), "uploads");
     const filePath = path.resolve(uploadRoot, ...pathSegments);
 
     // Safeguard against Directory Traversal attacks
