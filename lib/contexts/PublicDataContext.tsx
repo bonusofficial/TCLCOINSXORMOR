@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { publicApi } from "@/lib/eden";
@@ -103,12 +104,23 @@ interface PublicDataValue {
     products: boolean;
     reviews: boolean;
   };
+  loaded: {
+    config: boolean;
+    products: boolean;
+    reviews: boolean;
+  };
   /** Refresh individual sections (เรียกได้หลัง admin บันทึก) */
   refresh: {
     config: () => Promise<void>;
     products: () => Promise<void>;
     reviews: () => Promise<void>;
     all: () => Promise<void>;
+  };
+  /** Load only when a section is actually used on the current route */
+  ensure: {
+    config: () => Promise<void>;
+    products: () => Promise<void>;
+    reviews: () => Promise<void>;
   };
 }
 
@@ -167,147 +179,187 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
   const [reviews, setReviews] = useState<PublicReview[]>([]);
 
   const [loadingConfig, setLoadingConfig] = useState(true);
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [loadedConfig, setLoadedConfig] = useState(false);
+  const [loadedProducts, setLoadedProducts] = useState(false);
+  const [loadedReviews, setLoadedReviews] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
+  const inFlightRef = useRef<{
+    config?: Promise<void>;
+    products?: Promise<void>;
+    reviews?: Promise<void>;
+  }>({});
 
   /* ── fetchers ── */
-  const fetchConfig = useCallback(async () => {
-    setLoadingConfig(true);
-    try {
-      const { data, error } = await publicApi.config.api.v0.config.get();
-      if (error || !data?.ok) {
-        setConfig(DEFAULT_CONFIG);
-        return;
-      }
-      setConfig(data.data as PublicConfig);
-    } catch (err) {
-      console.error("[PublicData] config failed:", err);
-      setConfig(DEFAULT_CONFIG);
-    } finally {
-      setLoadingConfig(false);
-    }
-  }, []);
+  const fetchConfig = useCallback(async (force = false) => {
+    if (!force && loadedConfig) return;
+    if (inFlightRef.current.config) return inFlightRef.current.config;
 
-  const fetchProducts = useCallback(async () => {
-    setLoadingProducts(true);
-    try {
-      const { data, error } = await publicApi.products.api.v0.products.get();
-      if (error || !data?.ok) {
-        setProducts([]);
-        return;
-      }
-      // MariaDB JSON บางครั้ง Prisma คืนเป็น string — parse safely ทั้งสองทาง
-      const toArray = (v: unknown): unknown[] => {
-        if (Array.isArray(v)) return v;
-        if (typeof v === "string") {
-          try {
-            const parsed = JSON.parse(v);
-            return Array.isArray(parsed) ? parsed : [];
-          } catch {
-            return [];
-          }
+    const task = (async () => {
+      setLoadingConfig(true);
+      try {
+        const { data, error } = await publicApi.config.api.v0.config.get();
+        if (error || !data?.ok) {
+          setConfig(DEFAULT_CONFIG);
+          return;
         }
-        return [];
-      };
-      setProducts(
-        (data.data as Record<string, unknown>[]).map((p) => ({
-          id: p.id as number,
-          image: (p.image as string) ?? "",
-          name: (p.name as string) ?? "",
-          description: (p.description as string) ?? "",
-          price: (p.price as string) ?? "0",
-          agentPrice: (p.agentPrice as string) ?? "0",
-          discountAmount: (p.discountAmount as string) ?? "0",
-          stockEnabled: (p.stockEnabled as boolean) ?? false,
-          stock: (p.stock as number) ?? 0,
-          maxPerUserPerDay: (p.maxPerUserPerDay as number) ?? 0,
-          saleDates: toArray(p.saleDates)
-            .map((d) => {
-              if (!d) return null;
-              const str = typeof d === "string" 
-                ? d 
-                : (d instanceof Date 
-                  ? d.toISOString() 
-                  : String(d));
-              const m = str.match(/^(\d{4}-\d{2}-\d{2})/);
-              return m ? m[1] : null;
-            })
-            .filter((d): d is string => d !== null),
-          timeSlots: toArray(p.timeSlots).filter(
-            (s): s is TimeSlot =>
-              !!s &&
-              typeof s === "object" &&
-              typeof (s as TimeSlot).start === "string" &&
-              typeof (s as TimeSlot).end === "string"
-          ),
-          discountEligibleUsernames: toArray(
-            p.discountEligibleUsernames
-          ).filter((u): u is string => typeof u === "string"),
-          note: (p.note as string | null) ?? null,
-          queueCount: (p.queueCount as number) ?? 0,
-        }))
-      );
-    } catch (err) {
-      console.error("[PublicData] products failed:", err);
-      setProducts([]);
-    } finally {
-      setLoadingProducts(false);
-    }
-  }, []);
-
-  const fetchReviews = useCallback(async () => {
-    setLoadingReviews(true);
-    try {
-      // ใช้ v0 public endpoint — คืนเฉพาะรีวิวที่แอดมินอนุมัติแล้ว
-      const { data, error } = await publicApi.reviews.api.v0.reviews.get();
-      if (error || !data?.ok) {
-        setReviews([]);
-        return;
+        setConfig(data.data as PublicConfig);
+      } catch (err) {
+        console.error("[PublicData] config failed:", err);
+        setConfig(DEFAULT_CONFIG);
+      } finally {
+        setLoadedConfig(true);
+        setLoadingConfig(false);
+        inFlightRef.current.config = undefined;
       }
-      setReviews(
-        data.data.map((r) => ({
-          id: r.id,
-          avatar: r.avatar ?? null,
-          name: r.name,
-          detail: r.detail ?? null,
-          review: r.review,
-          rating: r.rating,
-          timeValue: r.timeValue,
-          timeUnit: r.timeUnit,
-          createdAt: r.createdAt,
-        }))
-      );
-    } catch (err) {
-      console.error("[PublicData] reviews failed:", err);
-      setReviews([]);
-    } finally {
-      setLoadingReviews(false);
-    }
-  }, []);
+    })();
 
-  const fetchAll = useCallback(async () => {
-    await Promise.all([fetchConfig(), fetchProducts(), fetchReviews()]);
-  }, [fetchConfig, fetchProducts, fetchReviews]);
+    inFlightRef.current.config = task;
+    return task;
+  }, [loadedConfig]);
 
-  // โหลดครั้งแรกที่ mount พร้อมตั้งเวลาโพลล์อัปเดตสถานะ + จำนวนคิวแบบ Realtime ทุกๆ 10 วินาที
+  const fetchProducts = useCallback(async (force = false) => {
+    if (!force && loadedProducts) return;
+    if (inFlightRef.current.products) return inFlightRef.current.products;
+
+    const task = (async () => {
+      setLoadingProducts(true);
+      try {
+        const { data, error } = await publicApi.products.api.v0.products.get();
+        if (error || !data?.ok) {
+          setProducts([]);
+          return;
+        }
+        // MariaDB JSON บางครั้ง Prisma คืนเป็น string — parse safely ทั้งสองทาง
+        const toArray = (v: unknown): unknown[] => {
+          if (Array.isArray(v)) return v;
+          if (typeof v === "string") {
+            try {
+              const parsed = JSON.parse(v);
+              return Array.isArray(parsed) ? parsed : [];
+            } catch {
+              return [];
+            }
+          }
+          return [];
+        };
+        setProducts(
+          (data.data as Record<string, unknown>[]).map((p) => ({
+            id: p.id as number,
+            image: (p.image as string) ?? "",
+            name: (p.name as string) ?? "",
+            description: (p.description as string) ?? "",
+            price: (p.price as string) ?? "0",
+            agentPrice: (p.agentPrice as string) ?? "0",
+            discountAmount: (p.discountAmount as string) ?? "0",
+            stockEnabled: (p.stockEnabled as boolean) ?? false,
+            stock: (p.stock as number) ?? 0,
+            maxPerUserPerDay: (p.maxPerUserPerDay as number) ?? 0,
+            saleDates: toArray(p.saleDates)
+              .map((d) => {
+                if (!d) return null;
+                const str = typeof d === "string"
+                  ? d
+                  : (d instanceof Date
+                    ? d.toISOString()
+                    : String(d));
+                const m = str.match(/^(\d{4}-\d{2}-\d{2})/);
+                return m ? m[1] : null;
+              })
+              .filter((d): d is string => d !== null),
+            timeSlots: toArray(p.timeSlots).filter(
+              (s): s is TimeSlot =>
+                !!s &&
+                typeof s === "object" &&
+                typeof (s as TimeSlot).start === "string" &&
+                typeof (s as TimeSlot).end === "string"
+            ),
+            discountEligibleUsernames: toArray(
+              p.discountEligibleUsernames
+            ).filter((u): u is string => typeof u === "string"),
+            note: (p.note as string | null) ?? null,
+            queueCount: (p.queueCount as number) ?? 0,
+          }))
+        );
+      } catch (err) {
+        console.error("[PublicData] products failed:", err);
+        setProducts([]);
+      } finally {
+        setLoadedProducts(true);
+        setLoadingProducts(false);
+        inFlightRef.current.products = undefined;
+      }
+    })();
+
+    inFlightRef.current.products = task;
+    return task;
+  }, [loadedProducts]);
+
+  const fetchReviews = useCallback(async (force = false) => {
+    if (!force && loadedReviews) return;
+    if (inFlightRef.current.reviews) return inFlightRef.current.reviews;
+
+    const task = (async () => {
+      setLoadingReviews(true);
+      try {
+        // ใช้ v0 public endpoint — คืนเฉพาะรีวิวที่แอดมินอนุมัติแล้ว
+        const { data, error } = await publicApi.reviews.api.v0.reviews.get();
+        if (error || !data?.ok) {
+          setReviews([]);
+          return;
+        }
+        setReviews(
+          data.data.map((r) => ({
+            id: r.id,
+            avatar: r.avatar ?? null,
+            name: r.name,
+            detail: r.detail ?? null,
+            review: r.review,
+            rating: r.rating,
+            timeValue: r.timeValue,
+            timeUnit: r.timeUnit,
+            createdAt: r.createdAt,
+          }))
+        );
+      } catch (err) {
+        console.error("[PublicData] reviews failed:", err);
+        setReviews([]);
+      } finally {
+        setLoadedReviews(true);
+        setLoadingReviews(false);
+        inFlightRef.current.reviews = undefined;
+      }
+    })();
+
+    inFlightRef.current.reviews = task;
+    return task;
+  }, [loadedReviews]);
+
+  const ensureConfig = useCallback(() => fetchConfig(false), [fetchConfig]);
+  const ensureProducts = useCallback(() => fetchProducts(false), [fetchProducts]);
+  const ensureReviews = useCallback(() => fetchReviews(false), [fetchReviews]);
+
+  const refreshConfig = useCallback(() => fetchConfig(true), [fetchConfig]);
+  const refreshProducts = useCallback(() => fetchProducts(true), [fetchProducts]);
+  const refreshReviews = useCallback(() => fetchReviews(true), [fetchReviews]);
+  const refreshAll = useCallback(async () => {
+    await Promise.all([refreshConfig(), refreshProducts(), refreshReviews()]);
+  }, [refreshConfig, refreshProducts, refreshReviews]);
+
+  // โหลดเฉพาะ config ตอน mount; products/reviews จะ lazy-load เมื่อ hook นั้นถูกใช้จริง
   useEffect(() => {
     let mounted = true;
     const bootId = window.setTimeout(() => {
-      fetchAll().finally(() => {
+      ensureConfig().finally(() => {
         if (mounted) setInitialLoaded(true);
       });
     }, 0);
-    const id = window.setInterval(() => {
-      fetchConfig();
-      fetchProducts();
-    }, 10_000);
     return () => {
       mounted = false;
       window.clearTimeout(bootId);
-      window.clearInterval(id);
     };
-  }, [fetchAll, fetchConfig, fetchProducts]);
+  }, [ensureConfig]);
 
   const value: PublicDataValue = useMemo(
     () => ({
@@ -320,11 +372,21 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
         products: loadingProducts,
         reviews: loadingReviews,
       },
+      loaded: {
+        config: loadedConfig,
+        products: loadedProducts,
+        reviews: loadedReviews,
+      },
       refresh: {
-        config: fetchConfig,
-        products: fetchProducts,
-        reviews: fetchReviews,
-        all: fetchAll,
+        config: refreshConfig,
+        products: refreshProducts,
+        reviews: refreshReviews,
+        all: refreshAll,
+      },
+      ensure: {
+        config: ensureConfig,
+        products: ensureProducts,
+        reviews: ensureReviews,
       },
     }),
     [
@@ -335,10 +397,16 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
       loadingConfig,
       loadingProducts,
       loadingReviews,
-      fetchConfig,
-      fetchProducts,
-      fetchReviews,
-      fetchAll,
+      loadedConfig,
+      loadedProducts,
+      loadedReviews,
+      refreshConfig,
+      refreshProducts,
+      refreshReviews,
+      refreshAll,
+      ensureConfig,
+      ensureProducts,
+      ensureReviews,
     ]
   );
 
@@ -376,9 +444,19 @@ export function useConfig() {
 /** ใช้กับ products (สินค้า) */
 export function useProducts() {
   const ctx = useCtx();
+  const ensureProducts = ctx.ensure.products;
+
+  useEffect(() => {
+    if (ctx.loaded.products) return;
+    const id = window.setTimeout(() => {
+      void ensureProducts();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [ctx.loaded.products, ensureProducts]);
+
   return {
     products: ctx.products,
-    loading: ctx.loading.products,
+    loading: ctx.loading.products || !ctx.loaded.products,
     refresh: ctx.refresh.products,
   };
 }
@@ -386,9 +464,19 @@ export function useProducts() {
 /** ใช้กับ reviews */
 export function useReviews() {
   const ctx = useCtx();
+  const ensureReviews = ctx.ensure.reviews;
+
+  useEffect(() => {
+    if (ctx.loaded.reviews) return;
+    const id = window.setTimeout(() => {
+      void ensureReviews();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [ctx.loaded.reviews, ensureReviews]);
+
   return {
     reviews: ctx.reviews,
-    loading: ctx.loading.reviews,
+    loading: ctx.loading.reviews || !ctx.loaded.reviews,
     refresh: ctx.refresh.reviews,
   };
 }

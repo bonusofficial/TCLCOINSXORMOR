@@ -15,10 +15,11 @@ import { CustomerReviewBody } from "@/lib/server/schemas/review";
 const app = new Elysia({ prefix: "/api/v0/reviews" })
   .use(loggerPlugin)
   .use(errorPlugin)
-  .use(authMacros)
 
   /** GET — list เฉพาะรีวิวที่อนุมัติแล้ว (เรียงใหม่สุดก่อน) */
-  .get("/", async () => {
+  .get("/", async ({ set }) => {
+    set.headers["Cache-Control"] = "private, max-age=300, stale-while-revalidate=3600";
+
     const items = await prisma.reviews.findMany({
       where: { status: "approved" },
       orderBy: { id: "desc" },
@@ -38,6 +39,8 @@ const app = new Elysia({ prefix: "/api/v0/reviews" })
       })),
     };
   })
+
+  .use(authMacros)
 
   /** POST — ลูกค้าส่งรีวิว (รออนุมัติ) — ชื่อ/รูป ดึงจากบัญชีจริง */
   .post(

@@ -3,28 +3,24 @@
 import React, { useMemo, useState } from "react";
 import { TrendingUp, Tag, Loader2 } from "lucide-react";
 import { useProducts } from "@/lib/contexts/PublicDataContext";
-import { useSession } from "@/lib/auth-client";
 import { UserRole } from "@/lib/booking";
 import { PackageCard } from "@/components/PackageCard";
 import { getProductAvailability } from "@/lib/product-utils";
 
 interface PackagesSectionProps {
   onSelectPackage: (productId: number) => void;
+  userRole?: UserRole;
+  username?: string | null;
 }
 
-export default function PackagesSection({ onSelectPackage }: PackagesSectionProps) {
+export default function PackagesSection({
+  onSelectPackage,
+  userRole = "member",
+  username = null,
+}: PackagesSectionProps) {
   const [activeTab, setActiveTab] = useState<"popular" | "recommended">("popular");
   
   const { products, loading } = useProducts();
-  const { data: session } = useSession();
-  
-  const user = session?.user as any;
-  const userRole: UserRole = (() => {
-    const r = (user?.role ?? "").toLowerCase().trim();
-    if (r === "admin" || r === "agent" || r === "member") return r as UserRole;
-    return "member";
-  })();
-  const username = user?.username ?? null;
 
   // แสดงเฉพาะแพ็กที่เปิดจองอยู่จริง (อยู่ในวันขายและช่วงเวลา slot)
   // ตัวที่ไม่อยู่ในช่วงเวลา / ปิดรับ / สินค้าหมด จะถูกซ่อนเพื่อไม่ให้ลูกค้าสับสน

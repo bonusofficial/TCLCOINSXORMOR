@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   Clock,
   ArrowRight,
-  MessageCircle,
   AlertOctagon,
   Users,
   Crown,
@@ -18,11 +17,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { publicApi } from "@/lib/eden";
-import { useSession } from "@/lib/auth-client";
 
 interface HeroSectionProps {
-  onOpenBooking: () => void;
   onOpenAuth?: (tab: "login" | "register") => void;
+  isLoggedIn?: boolean;
+  userRole?: "member" | "agent" | "admin";
 }
 
 interface Banner {
@@ -46,13 +45,14 @@ const LINE_GROUPS = {
   }
 } as const;
 
-export default function HeroSection({ onOpenBooking, onOpenAuth }: HeroSectionProps) {
+export default function HeroSection({
+  onOpenAuth,
+  isLoggedIn = false,
+  userRole = "member",
+}: HeroSectionProps) {
   const { config } = useConfig();
-  const { data: session } = useSession();
-  const isLoggedIn = !!session?.user;
   // ตัวแทน/แอดมิน = เห็น QR กลุ่มตัวแทน · ลูกค้าทั่วไป = เห็นข้อความชวนสมัครแทน
-  const viewerRole = ((session?.user as { role?: string | null } | undefined)?.role ?? "").toLowerCase();
-  const isAgentViewer = viewerRole === "agent" || viewerRole === "admin";
+  const isAgentViewer = userRole === "agent" || userRole === "admin";
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
   const [bannerIndex, setBannerIndex] = useState(0);

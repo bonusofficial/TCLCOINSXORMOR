@@ -62,7 +62,7 @@ export function DashboardSidebar({ mobileOpen, onClose }: SidebarProps) {
   const { config } = useConfig();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loggingOut, setLoggingOut] = useState(false);
-  const siteLogo = config.logo?.trim() || "/logo.webp";
+  const siteLogo = config.logo?.trim() || "/logo.png";
   const siteTitle = config.title?.trim() || "TCLCOINSXORMOR";
 
   /** active state — รวมถึง children ด้วย (parent จะ active ถ้า child active) */

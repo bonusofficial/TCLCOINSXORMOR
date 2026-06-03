@@ -12,7 +12,9 @@ const app = new Elysia({ prefix: "/api/v0/config" })
   .use(errorPlugin)
 
   /** GET — โหลด config ทั่วไป พร้อมสถานะระบบ Real-time */
-  .get("/", async () => {
+  .get("/", async ({ set }) => {
+    set.headers["Cache-Control"] = "private, max-age=15, stale-while-revalidate=45";
+
     const [config, activeQueues, totalCompleted, cancelledCount, totalUsers, stockAgg] = await Promise.all([
       prisma.config.findFirst({ orderBy: { id: "desc" } }),
       prisma.bookings.count({

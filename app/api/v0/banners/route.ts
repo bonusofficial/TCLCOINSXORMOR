@@ -11,7 +11,9 @@ const app = new Elysia({ prefix: "/api/v0/banners" })
   .use(errorPlugin)
 
   /** GET — list ทั้งหมด เรียงตามลำดับความพรีเมียม (sortOrder asc, id asc) */
-  .get("/", async () => {
+  .get("/", async ({ set }) => {
+    set.headers["Cache-Control"] = "private, max-age=300, stale-while-revalidate=3600";
+
     const items = await prisma.banners.findMany({
       orderBy: [
         { sortOrder: "asc" },

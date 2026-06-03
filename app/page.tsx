@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  MessageCircle,
-  UserCheck,
-  ShieldCheck,
-  User,
-  AlertOctagon,
-} from "lucide-react";
+import { User } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
@@ -18,7 +12,6 @@ import StatsSection from "@/components/StatsSection";
 import SupportSection from "@/components/SupportSection";
 import AuthModal from "@/components/AuthModal";
 import AnnouncementBell from "@/components/AnnouncementBell";
-import { Marquee } from "@/components/ui/Marquee";
 import { useSession, signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
@@ -46,23 +39,15 @@ function resolveUserRole(user?: {
 }
 
 export default function Home() {
-  // Auth & User State — synced from better-auth session (persists across reloads)
   const { data: session } = useSession();
   const { config } = useConfig();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<UserRole>("member");
+  const [roleOverride, setRoleOverride] = useState<UserRole | null>(null);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
-
-  // Sync local UI state with cookie-backed session
-  useEffect(() => {
-    if (session?.user) {
-      setIsLoggedIn(true);
-      setUserRole(resolveUserRole(session.user as { role?: string | null; email?: string | null }));
-    } else {
-      setIsLoggedIn(false);
-      setUserRole("member");
-    }
-  }, [session]);
+  const sessionUser = session?.user as
+    | { role?: string | null; email?: string | null; username?: string | null }
+    | undefined;
+  const isLoggedIn = !!sessionUser || roleOverride !== null;
+  const userRole = roleOverride ?? resolveUserRole(sessionUser);
 
   // Modal states
   const [authOpen, setAuthOpen] = useState(false);
@@ -116,8 +101,7 @@ export default function Home() {
           const id = toast.loading("กำลังออกจากระบบ...");
           try {
             await signOut();
-            setIsLoggedIn(false);
-            setUserRole("member");
+            setRoleOverride(null);
             toast.success("ออกจากระบบเรียบร้อย", {
               id,
               description: "ขอบคุณที่ใช้บริการ TCLCOINSXORMOR",
@@ -133,7 +117,11 @@ export default function Home() {
       <AnnouncementBell />
 
       {/* HERO SECTION */}
-      <HeroSection onOpenBooking={handleDefaultBooking} onOpenAuth={handleOpenAuth} />
+      <HeroSection
+        onOpenAuth={handleOpenAuth}
+        isLoggedIn={isLoggedIn}
+        userRole={userRole}
+      />
 
       {/* HOW IT WORKS */}
       <div className="reveal">
@@ -147,7 +135,11 @@ export default function Home() {
 
       {/* PACKAGES */}
       <div className="reveal">
-        <PackagesSection onSelectPackage={handleSelectPackage} />
+        <PackagesSection
+          onSelectPackage={handleSelectPackage}
+          userRole={userRole}
+          username={sessionUser?.username ?? null}
+        />
       </div>
 
       {/* SYSTEM STATS */}
@@ -218,8 +210,10 @@ export default function Home() {
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      setUserRole("agent");
                       setShowAccountMenu(false);
+                      if (config?.agentLink?.trim()) {
+                        window.open(config.agentLink.trim(), "_blank", "noopener,noreferrer");
+                      }
                     }}
                     className="w-full text-center py-2.5 px-3 rounded-xl font-extrabold text-xs bg-gradient-to-r from-brand-gold-light via-brand-gold to-brand-gold-deep text-brand-ink shadow-md shadow-brand-gold/30 hover:shadow-lg hover:shadow-brand-gold/45 hover:-translate-y-0.5 transition cursor-pointer flex items-center justify-center gap-1.5"
                   >
@@ -268,8 +262,7 @@ export default function Home() {
         onClose={() => setAuthOpen(false)}
         initialTab={authTab}
         onLoginSuccess={(role) => {
-          setIsLoggedIn(true);
-          setUserRole(role);
+          setRoleOverride(role);
         }}
       />
 
