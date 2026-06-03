@@ -45,6 +45,8 @@ export type ReviewsSumAggregateOutputType = {
 
 export type ReviewsMinAggregateOutputType = {
   id: number | null
+  userId: string | null
+  status: string | null
   avatar: string | null
   name: string | null
   detail: string | null
@@ -58,6 +60,8 @@ export type ReviewsMinAggregateOutputType = {
 
 export type ReviewsMaxAggregateOutputType = {
   id: number | null
+  userId: string | null
+  status: string | null
   avatar: string | null
   name: string | null
   detail: string | null
@@ -71,6 +75,8 @@ export type ReviewsMaxAggregateOutputType = {
 
 export type ReviewsCountAggregateOutputType = {
   id: number
+  userId: number
+  status: number
   avatar: number
   name: number
   detail: number
@@ -98,6 +104,8 @@ export type ReviewsSumAggregateInputType = {
 
 export type ReviewsMinAggregateInputType = {
   id?: true
+  userId?: true
+  status?: true
   avatar?: true
   name?: true
   detail?: true
@@ -111,6 +119,8 @@ export type ReviewsMinAggregateInputType = {
 
 export type ReviewsMaxAggregateInputType = {
   id?: true
+  userId?: true
+  status?: true
   avatar?: true
   name?: true
   detail?: true
@@ -124,6 +134,8 @@ export type ReviewsMaxAggregateInputType = {
 
 export type ReviewsCountAggregateInputType = {
   id?: true
+  userId?: true
+  status?: true
   avatar?: true
   name?: true
   detail?: true
@@ -224,6 +236,8 @@ export type reviewsGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
 
 export type ReviewsGroupByOutputType = {
   id: number
+  userId: string | null
+  status: string
   avatar: string | null
   name: string
   detail: string | null
@@ -260,6 +274,8 @@ export type reviewsWhereInput = {
   OR?: Prisma.reviewsWhereInput[]
   NOT?: Prisma.reviewsWhereInput | Prisma.reviewsWhereInput[]
   id?: Prisma.IntFilter<"reviews"> | number
+  userId?: Prisma.StringNullableFilter<"reviews"> | string | null
+  status?: Prisma.StringFilter<"reviews"> | string
   avatar?: Prisma.StringNullableFilter<"reviews"> | string | null
   name?: Prisma.StringFilter<"reviews"> | string
   detail?: Prisma.StringNullableFilter<"reviews"> | string | null
@@ -273,6 +289,8 @@ export type reviewsWhereInput = {
 
 export type reviewsOrderByWithRelationInput = {
   id?: Prisma.SortOrder
+  userId?: Prisma.SortOrderInput | Prisma.SortOrder
+  status?: Prisma.SortOrder
   avatar?: Prisma.SortOrderInput | Prisma.SortOrder
   name?: Prisma.SortOrder
   detail?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -290,6 +308,8 @@ export type reviewsWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.reviewsWhereInput | Prisma.reviewsWhereInput[]
   OR?: Prisma.reviewsWhereInput[]
   NOT?: Prisma.reviewsWhereInput | Prisma.reviewsWhereInput[]
+  userId?: Prisma.StringNullableFilter<"reviews"> | string | null
+  status?: Prisma.StringFilter<"reviews"> | string
   avatar?: Prisma.StringNullableFilter<"reviews"> | string | null
   name?: Prisma.StringFilter<"reviews"> | string
   detail?: Prisma.StringNullableFilter<"reviews"> | string | null
@@ -303,6 +323,8 @@ export type reviewsWhereUniqueInput = Prisma.AtLeast<{
 
 export type reviewsOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
+  userId?: Prisma.SortOrderInput | Prisma.SortOrder
+  status?: Prisma.SortOrder
   avatar?: Prisma.SortOrderInput | Prisma.SortOrder
   name?: Prisma.SortOrder
   detail?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -324,6 +346,8 @@ export type reviewsScalarWhereWithAggregatesInput = {
   OR?: Prisma.reviewsScalarWhereWithAggregatesInput[]
   NOT?: Prisma.reviewsScalarWhereWithAggregatesInput | Prisma.reviewsScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"reviews"> | number
+  userId?: Prisma.StringNullableWithAggregatesFilter<"reviews"> | string | null
+  status?: Prisma.StringWithAggregatesFilter<"reviews"> | string
   avatar?: Prisma.StringNullableWithAggregatesFilter<"reviews"> | string | null
   name?: Prisma.StringWithAggregatesFilter<"reviews"> | string
   detail?: Prisma.StringNullableWithAggregatesFilter<"reviews"> | string | null
@@ -336,6 +360,8 @@ export type reviewsScalarWhereWithAggregatesInput = {
 }
 
 export type reviewsCreateInput = {
+  userId?: string | null
+  status?: string
   avatar?: string | null
   name: string
   detail?: string | null
@@ -349,6 +375,8 @@ export type reviewsCreateInput = {
 
 export type reviewsUncheckedCreateInput = {
   id?: number
+  userId?: string | null
+  status?: string
   avatar?: string | null
   name: string
   detail?: string | null
@@ -361,6 +389,8 @@ export type reviewsUncheckedCreateInput = {
 }
 
 export type reviewsUpdateInput = {
+  userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -374,6 +404,8 @@ export type reviewsUpdateInput = {
 
 export type reviewsUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -387,6 +419,8 @@ export type reviewsUncheckedUpdateInput = {
 
 export type reviewsCreateManyInput = {
   id?: number
+  userId?: string | null
+  status?: string
   avatar?: string | null
   name: string
   detail?: string | null
@@ -399,6 +433,8 @@ export type reviewsCreateManyInput = {
 }
 
 export type reviewsUpdateManyMutationInput = {
+  userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -412,6 +448,8 @@ export type reviewsUpdateManyMutationInput = {
 
 export type reviewsUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -431,6 +469,8 @@ export type reviewsOrderByRelevanceInput = {
 
 export type reviewsCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  userId?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   avatar?: Prisma.SortOrder
   name?: Prisma.SortOrder
   detail?: Prisma.SortOrder
@@ -450,6 +490,8 @@ export type reviewsAvgOrderByAggregateInput = {
 
 export type reviewsMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  userId?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   avatar?: Prisma.SortOrder
   name?: Prisma.SortOrder
   detail?: Prisma.SortOrder
@@ -463,6 +505,8 @@ export type reviewsMaxOrderByAggregateInput = {
 
 export type reviewsMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  userId?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   avatar?: Prisma.SortOrder
   name?: Prisma.SortOrder
   detail?: Prisma.SortOrder
@@ -484,6 +528,8 @@ export type reviewsSumOrderByAggregateInput = {
 
 export type reviewsSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  userId?: boolean
+  status?: boolean
   avatar?: boolean
   name?: boolean
   detail?: boolean
@@ -499,6 +545,8 @@ export type reviewsSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
 
 export type reviewsSelectScalar = {
   id?: boolean
+  userId?: boolean
+  status?: boolean
   avatar?: boolean
   name?: boolean
   detail?: boolean
@@ -510,13 +558,15 @@ export type reviewsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type reviewsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "avatar" | "name" | "detail" | "review" | "rating" | "timeValue" | "timeUnit" | "createdAt" | "updatedAt", ExtArgs["result"]["reviews"]>
+export type reviewsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "status" | "avatar" | "name" | "detail" | "review" | "rating" | "timeValue" | "timeUnit" | "createdAt" | "updatedAt", ExtArgs["result"]["reviews"]>
 
 export type $reviewsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "reviews"
   objects: {}
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
+    userId: string | null
+    status: string
     avatar: string | null
     name: string
     detail: string | null
@@ -896,6 +946,8 @@ export interface Prisma__reviewsClient<T, Null = never, ExtArgs extends runtime.
  */
 export interface reviewsFieldRefs {
   readonly id: Prisma.FieldRef<"reviews", 'Int'>
+  readonly userId: Prisma.FieldRef<"reviews", 'String'>
+  readonly status: Prisma.FieldRef<"reviews", 'String'>
   readonly avatar: Prisma.FieldRef<"reviews", 'String'>
   readonly name: Prisma.FieldRef<"reviews", 'String'>
   readonly detail: Prisma.FieldRef<"reviews", 'String'>

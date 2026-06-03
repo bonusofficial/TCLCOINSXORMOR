@@ -8,7 +8,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { publicApi, settingApi } from "@/lib/eden";
+import { publicApi } from "@/lib/eden";
 
 /* ─────────────────────────────────────────────
  * Types
@@ -26,7 +26,6 @@ export interface PublicConfig {
   qrcodeagent: string;
   qrcodesupport: string;
   warningMessage: string;
-  maxBookingsPerUser: number;
   agentPrivileges: string;
   lineGroupNormal: string;
   lineGroupAgent: string;
@@ -43,6 +42,12 @@ export interface PublicConfig {
   announceTitle: string;
   announceContent: string;
   marqueeText: string;
+  footerDescription: string;
+  footerLinks: { label: string; url: string }[];
+  footerServices: { label: string; url: string }[];
+  footerLineUrl: string;
+  footerFacebook: string;
+  footerCopyright: string;
   stats?: {
     activeQueues: number;
     totalCompleted: number;
@@ -67,6 +72,7 @@ export interface PublicProduct {
   discountAmount: string;
   stockEnabled: boolean;
   stock: number;
+  maxPerUserPerDay: number;
   saleDates: string[];
   timeSlots: TimeSlot[];
   discountEligibleUsernames: string[];
@@ -91,6 +97,7 @@ interface PublicDataValue {
   config: PublicConfig | null;
   products: PublicProduct[];
   reviews: PublicReview[];
+  initialLoaded: boolean;
   loading: {
     config: boolean;
     products: boolean;
@@ -117,7 +124,6 @@ const DEFAULT_CONFIG: PublicConfig = {
   qrcodeagent: "",
   qrcodesupport: "",
   warningMessage: "",
-  maxBookingsPerUser: 0,
   agentPrivileges: "",
   lineGroupNormal: "",
   lineGroupAgent: "",
@@ -134,6 +140,12 @@ const DEFAULT_CONFIG: PublicConfig = {
   announceTitle: "",
   announceContent: "",
   marqueeText: "",
+  footerDescription: "",
+  footerLinks: [],
+  footerServices: [],
+  footerLineUrl: "",
+  footerFacebook: "",
+  footerCopyright: "",
   stats: {
     activeQueues: 0,
     totalCompleted: 0,
@@ -157,6 +169,7 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingReviews, setLoadingReviews] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
 
   /* ── fetchers ── */
   const fetchConfig = useCallback(async () => {
@@ -208,6 +221,7 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
           discountAmount: (p.discountAmount as string) ?? "0",
           stockEnabled: (p.stockEnabled as boolean) ?? false,
           stock: (p.stock as number) ?? 0,
+          maxPerUserPerDay: (p.maxPerUserPerDay as number) ?? 0,
           saleDates: toArray(p.saleDates)
             .map((d) => {
               if (!d) return null;
@@ -245,9 +259,8 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
   const fetchReviews = useCallback(async () => {
     setLoadingReviews(true);
     try {
-      // ใช้ v1 admin endpoint เพราะ reviews GET public อยู่แล้ว
-      const { data, error } =
-        await settingApi.review.collection.api.v1.setting.review.get();
+      // ใช้ v0 public endpoint — คืนเฉพาะรีวิวที่แอดมินอนุมัติแล้ว
+      const { data, error } = await publicApi.reviews.api.v0.reviews.get();
       if (error || !data?.ok) {
         setReviews([]);
         return;
@@ -277,14 +290,23 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
     await Promise.all([fetchConfig(), fetchProducts(), fetchReviews()]);
   }, [fetchConfig, fetchProducts, fetchReviews]);
 
-  // โหลดครั้งเดียวที่ mount พร้อมตั้งเวลาโพลล์อัปเดตสถานะ + จำนวนคิวแบบ Realtime ทุกๆ 10 วินาที
+  // โหลดครั้งแรกที่ mount พร้อมตั้งเวลาโพลล์อัปเดตสถานะ + จำนวนคิวแบบ Realtime ทุกๆ 10 วินาที
   useEffect(() => {
-    fetchAll();
-    const id = setInterval(() => {
+    let mounted = true;
+    const bootId = window.setTimeout(() => {
+      fetchAll().finally(() => {
+        if (mounted) setInitialLoaded(true);
+      });
+    }, 0);
+    const id = window.setInterval(() => {
       fetchConfig();
       fetchProducts();
     }, 10_000);
-    return () => clearInterval(id);
+    return () => {
+      mounted = false;
+      window.clearTimeout(bootId);
+      window.clearInterval(id);
+    };
   }, [fetchAll, fetchConfig, fetchProducts]);
 
   const value: PublicDataValue = useMemo(
@@ -292,6 +314,7 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
       config,
       products,
       reviews,
+      initialLoaded,
       loading: {
         config: loadingConfig,
         products: loadingProducts,
@@ -308,6 +331,7 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
       config,
       products,
       reviews,
+      initialLoaded,
       loadingConfig,
       loadingProducts,
       loadingReviews,
@@ -366,6 +390,16 @@ export function useReviews() {
     reviews: ctx.reviews,
     loading: ctx.loading.reviews,
     refresh: ctx.refresh.reviews,
+  };
+}
+
+/** ใช้กับ loading screen รวมของทั้งเว็บ */
+export function usePublicDataLoading() {
+  const ctx = useCtx();
+  return {
+    initialLoaded: ctx.initialLoaded,
+    initialLoading: !ctx.initialLoaded,
+    loading: ctx.loading,
   };
 }
 

@@ -90,8 +90,7 @@ export const UserScalarFieldEnum = {
   updatedAt: 'updatedAt',
   username: 'username',
   displayUsername: 'displayUsername',
-  credit: 'credit',
-  total_credit: 'total_credit',
+  memberNo: 'memberNo',
   role: 'role',
   phone: 'phone',
   shopName: 'shopName',
@@ -159,7 +158,6 @@ export const ConfigScalarFieldEnum = {
   qrcodeagent: 'qrcodeagent',
   qrcodesupport: 'qrcodesupport',
   warningMessage: 'warningMessage',
-  maxBookingsPerUser: 'maxBookingsPerUser',
   agentPrivileges: 'agentPrivileges',
   lineGroupNormal: 'lineGroupNormal',
   lineGroupAgent: 'lineGroupAgent',
@@ -175,7 +173,13 @@ export const ConfigScalarFieldEnum = {
   announceBadge: 'announceBadge',
   announceTitle: 'announceTitle',
   announceContent: 'announceContent',
-  marqueeText: 'marqueeText'
+  marqueeText: 'marqueeText',
+  footerDescription: 'footerDescription',
+  footerLinks: 'footerLinks',
+  footerServices: 'footerServices',
+  footerLineUrl: 'footerLineUrl',
+  footerFacebook: 'footerFacebook',
+  footerCopyright: 'footerCopyright'
 } as const
 
 export type ConfigScalarFieldEnum = (typeof ConfigScalarFieldEnum)[keyof typeof ConfigScalarFieldEnum]
@@ -193,6 +197,8 @@ export type BannersScalarFieldEnum = (typeof BannersScalarFieldEnum)[keyof typeo
 
 export const ReviewsScalarFieldEnum = {
   id: 'id',
+  userId: 'userId',
+  status: 'status',
   avatar: 'avatar',
   name: 'name',
   detail: 'detail',
@@ -269,6 +275,7 @@ export const ProductsScalarFieldEnum = {
   agentPrice: 'agentPrice',
   stockEnabled: 'stockEnabled',
   stock: 'stock',
+  maxPerUserPerDay: 'maxPerUserPerDay',
   saleDates: 'saleDates',
   timeSlots: 'timeSlots',
   discountEligibleUsernames: 'discountEligibleUsernames',
@@ -405,7 +412,11 @@ export const ConfigOrderByRelevanceFieldEnum = {
   announceBadge: 'announceBadge',
   announceTitle: 'announceTitle',
   announceContent: 'announceContent',
-  marqueeText: 'marqueeText'
+  marqueeText: 'marqueeText',
+  footerDescription: 'footerDescription',
+  footerLineUrl: 'footerLineUrl',
+  footerFacebook: 'footerFacebook',
+  footerCopyright: 'footerCopyright'
 } as const
 
 export type ConfigOrderByRelevanceFieldEnum = (typeof ConfigOrderByRelevanceFieldEnum)[keyof typeof ConfigOrderByRelevanceFieldEnum]
@@ -419,6 +430,8 @@ export type bannersOrderByRelevanceFieldEnum = (typeof bannersOrderByRelevanceFi
 
 
 export const reviewsOrderByRelevanceFieldEnum = {
+  userId: 'userId',
+  status: 'status',
   avatar: 'avatar',
   name: 'name',
   detail: 'detail',

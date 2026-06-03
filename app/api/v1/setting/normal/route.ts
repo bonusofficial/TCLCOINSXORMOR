@@ -18,7 +18,6 @@ const NormalSettingBody = t.Object({
   qrcodeagent: t.String(),
   qrcodesupport: t.String(),
   warningMessage: t.String(),
-  maxBookingsPerUser: t.Optional(t.Integer({ error: "จำกัดการจองต่อวันต้องเป็นตัวเลขจำนวนเต็ม" })),
   agentPrivileges: t.Optional(t.String()),
   lineGroupNormal: t.Optional(t.String()),
   lineGroupAgent: t.Optional(t.String()),
@@ -37,6 +36,16 @@ const NormalSettingBody = t.Object({
   announceTitle: t.Optional(t.String()),
   announceContent: t.Optional(t.String()),
   marqueeText: t.Optional(t.String()),
+  footerDescription: t.Optional(t.String()),
+  footerLinks: t.Optional(
+    t.Array(t.Object({ label: t.String(), url: t.String() }))
+  ),
+  footerServices: t.Optional(
+    t.Array(t.Object({ label: t.String(), url: t.String() }))
+  ),
+  footerLineUrl: t.Optional(t.String()),
+  footerFacebook: t.Optional(t.String()),
+  footerCopyright: t.Optional(t.String()),
 });
 
 const app = new Elysia({ prefix: "/api/v1/setting/normal" })
@@ -64,7 +73,6 @@ const app = new Elysia({ prefix: "/api/v1/setting/normal" })
             qrcodeagent: "",
             qrcodesupport: "",
             warningMessage: "",
-            maxBookingsPerUser: 0,
             agentPrivileges: "",
             lineGroupNormal: "",
             lineGroupAgent: "",
@@ -81,6 +89,12 @@ const app = new Elysia({ prefix: "/api/v1/setting/normal" })
             announceTitle: "",
             announceContent: "",
             marqueeText: "",
+            footerDescription: "",
+            footerLinks: [],
+            footerServices: [],
+            footerLineUrl: "",
+            footerFacebook: "",
+            footerCopyright: "",
           },
           accessedBy: user.email,
         } as const;
@@ -96,7 +110,6 @@ const app = new Elysia({ prefix: "/api/v1/setting/normal" })
       
       const payload = {
         ...body,
-        maxBookingsPerUser: body.maxBookingsPerUser !== undefined ? body.maxBookingsPerUser : undefined,
         agentPrivileges: body.agentPrivileges !== undefined ? body.agentPrivileges : undefined,
       };
 
@@ -115,7 +128,6 @@ const app = new Elysia({ prefix: "/api/v1/setting/normal" })
                qrcodeagent: body.qrcodeagent,
                qrcodesupport: body.qrcodesupport,
                warningMessage: body.warningMessage,
-               maxBookingsPerUser: body.maxBookingsPerUser ?? 0,
                agentPrivileges: body.agentPrivileges ?? "",
                lineGroupNormal: body.lineGroupNormal ?? "",
                lineGroupAgent: body.lineGroupAgent ?? "",
@@ -132,6 +144,12 @@ const app = new Elysia({ prefix: "/api/v1/setting/normal" })
                announceTitle: body.announceTitle ?? "",
                announceContent: body.announceContent ?? "",
                marqueeText: body.marqueeText ?? "",
+               footerDescription: body.footerDescription ?? "",
+               footerLinks: body.footerLinks ?? [],
+               footerServices: body.footerServices ?? [],
+               footerLineUrl: body.footerLineUrl ?? "",
+               footerFacebook: body.footerFacebook ?? "",
+               footerCopyright: body.footerCopyright ?? "",
              },
            });
 

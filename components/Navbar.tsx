@@ -19,8 +19,10 @@ import {
   Shield,
   Settings2,
   Copy,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/utils";
 import {
   Drawer,
   DrawerContent,
@@ -95,13 +97,24 @@ function buildFallbackAvatar(identifier?: string | null) {
   return `https://placehold.co/500x500/39C848/F7FDF7?text=${encodeURIComponent(firstChar)}`;
 }
 
-export function formatDisplayID(id?: string | null) {
-  if (!id) return "";
-  if (/^\d+$/.test(id)) {
-    return `U${id.padStart(5, "0")}`;
+/**
+ * UID ผู้ใช้ — รูปแบบ OMTC-xxxxx (เลขรันนิ่งห้ามซ้ำ อย่างน้อย 5 หลัก ขยับเป็น 6/7/8 ได้เมื่อสมาชิกเพิ่ม)
+ * - ใช้ memberNo เป็นหลัก
+ * - fallbackId ไว้รองรับผู้ใช้เก่าที่ยังไม่มี memberNo (กันค่าว่าง)
+ */
+export function formatDisplayID(
+  memberNo?: number | null,
+  fallbackId?: string | null
+) {
+  if (typeof memberNo === "number" && memberNo > 0) {
+    return `OMTC-${String(memberNo).padStart(5, "0")}`;
   }
-  const clean = id.replace(/[^a-zA-Z0-9]/g, "");
-  return `U-${clean.substring(0, 6).toUpperCase()}`;
+  if (fallbackId) {
+    if (/^\d+$/.test(fallbackId)) return `OMTC-${fallbackId.padStart(5, "0")}`;
+    const clean = fallbackId.replace(/[^a-zA-Z0-9]/g, "");
+    return `OMTC-${clean.substring(0, 5).toUpperCase()}`;
+  }
+  return "";
 }
 
 export default function Navbar({
@@ -124,6 +137,7 @@ export default function Navbar({
   const user = session?.user as
     | {
         id?: string;
+        memberNo?: number | null;
         username?: string | null;
         name?: string | null;
         email?: string | null;
@@ -167,6 +181,7 @@ export default function Navbar({
     }
     items.push(
       { href: "/profile", icon: UserCog, label: "แก้ไขโปรไฟล์" },
+      { href: "/profile/reviews", icon: MessageCircle, label: "รีวิวจากลูกค้า" },
       { href: "/profile/orders", icon: Receipt, label: "ประวัติการสั่งซื้อ" }
     );
     return items;
@@ -295,14 +310,14 @@ export default function Navbar({
                         <div 
                           onClick={() => {
                             if (user?.id) {
-                              navigator.clipboard.writeText(formatDisplayID(user.id));
+                              copyToClipboard(formatDisplayID(user.memberNo, user.id));
                               toast.success("คัดลอก ID สำเร็จแล้ว!");
                             }
                           }}
                           className="flex items-center gap-1 mt-1 bg-brand-paper hover:bg-brand-green-50 border border-brand-green-100 rounded-lg py-0.5 px-2 text-[9.5px] font-extrabold text-brand-ink-soft w-fit cursor-pointer transition select-none group/uid"
                           title="คัดลอก ID"
                         >
-                          <span>ID: {formatDisplayID(user?.id)}</span>
+                          <span>ID: {formatDisplayID(user?.memberNo, user?.id)}</span>
                           <Copy className="h-2.5 w-2.5 text-brand-green group-hover/uid:scale-110 transition-transform" />
                         </div>
                       )}
@@ -473,14 +488,14 @@ export default function Navbar({
                         <div 
                           onClick={() => {
                             if (user?.id) {
-                              navigator.clipboard.writeText(formatDisplayID(user.id));
+                              copyToClipboard(formatDisplayID(user.memberNo, user.id));
                               toast.success("คัดลอก ID สำเร็จแล้ว!");
                             }
                           }}
                           className="flex items-center gap-1 bg-brand-paper border border-brand-green-100 rounded-lg py-0.5 px-1.5 text-[9.5px] font-extrabold text-brand-ink-soft cursor-pointer transition select-none group/uid"
                           title="คัดลอก ID"
                         >
-                          <span>ID: {formatDisplayID(user?.id)}</span>
+                          <span>ID: {formatDisplayID(user?.memberNo, user?.id)}</span>
                           <Copy className="h-2.5 w-2.5 text-brand-green" />
                         </div>
                       )}

@@ -9,6 +9,8 @@ import {
 
 function shape(r: {
   id: number;
+  userId?: string | null;
+  status?: string;
   avatar?: string | null;
   name: string;
   detail: string | null;
@@ -22,6 +24,8 @@ function shape(r: {
   const now = new Date().toISOString();
   return {
     id: r.id,
+    userId: r.userId ?? null,
+    status: r.status ?? "approved",
     avatar: r.avatar ?? null,
     name: r.name,
     detail: r.detail,
@@ -54,6 +58,7 @@ const app = new Elysia({ prefix: "/api/v1/setting/review" })
             rating: body.rating,
             timeValue: body.timeValue,
             timeUnit: body.timeUnit,
+            ...(body.status !== undefined && { status: body.status }),
           },
         });
         return {

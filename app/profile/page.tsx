@@ -30,6 +30,7 @@ import {
 import Navbar, { formatDisplayID } from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
+import { copyToClipboard } from "@/lib/utils";
 
 
 type UserRole = "member" | "agent" | "admin";
@@ -71,6 +72,7 @@ export default function ProfilePage() {
   const user = session?.user as
     | {
         id?: string;
+        memberNo?: number | null;
         username?: string | null;
         name?: string | null;
         email?: string | null;
@@ -514,7 +516,7 @@ export default function ProfilePage() {
               <div className="relative">
                 <input
                   type="text"
-                  value={formatDisplayID(user?.id)}
+                  value={formatDisplayID(user?.memberNo, user?.id)}
                   disabled
                   className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-3 pl-4 pr-11 text-sm font-semibold outline-none text-brand-ink-soft opacity-60 disabled:cursor-not-allowed"
                 />
@@ -522,7 +524,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => {
                     if (user?.id) {
-                      navigator.clipboard.writeText(formatDisplayID(user.id));
+                      copyToClipboard(formatDisplayID(user.memberNo, user.id));
                       toast.success("คัดลอก UID สำเร็จแล้ว!");
                     }
                   }}

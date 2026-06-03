@@ -111,8 +111,11 @@ export function getEffectivePrice(p: QueueProduct, role: UserRole, username: str
   const isAgent = role === "agent" || role === "admin";
   const base = isAgent ? Number(p.agentPrice) : Number(p.price);
   const u = (username ?? "").toLowerCase().trim();
+  // ส่วนลดพิเศษ — เฉพาะรายชื่อที่กำหนด (ระบุได้ไม่จำกัดจำนวน)
   const hasVipDiscount =
-    u !== "" && p.discountEligibleUsernames.map((x) => x.toLowerCase()).includes(u);
+    Number(p.discountAmount) > 0 &&
+    u !== "" &&
+    p.discountEligibleUsernames.map((x) => x.toLowerCase()).includes(u);
   const finalPrice = hasVipDiscount ? Math.max(0, base - Number(p.discountAmount)) : base;
   return { amount: finalPrice, isAgent, hasVipDiscount };
 }

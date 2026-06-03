@@ -54,6 +54,7 @@ const app = new Elysia({ prefix: "/api/v1/products" })
             agentPrice: body.agentPrice,
             stockEnabled: body.stockEnabled,
             stock: body.stock,
+            maxPerUserPerDay: body.maxPerUserPerDay ?? 0,
             saleDates: body.saleDates,
             timeSlots: body.timeSlots,
             discountEligibleUsernames: body.discountEligibleUsernames,

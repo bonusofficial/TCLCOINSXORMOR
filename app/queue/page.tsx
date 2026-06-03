@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
+import AnnouncementBell from "@/components/AnnouncementBell";
 import { Marquee } from "@/components/ui/Marquee";
 import { publicApi } from "@/lib/eden";
 import {
@@ -33,6 +34,7 @@ import {
 } from "@/lib/booking";
 import { getProductAvailability, getEffectivePrice, fmtThaiDate, fmt, todayISO, useNowTick } from "@/lib/product-utils";
 import { PackageCard } from "@/components/PackageCard";
+import { copyToClipboard } from "@/lib/utils";
 
 /* ─────────────────────────────────────────────
  * Types — Reuse PublicProduct + TimeSlot from context
@@ -230,6 +232,7 @@ function QueueContent() {
 
   return (
     <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col">
+      <AnnouncementBell />
       <Navbar
         onOpenAuth={(tab) => {
           setAuthTab(tab);
@@ -251,9 +254,24 @@ function QueueContent() {
               <AlertOctagon className="h-3.5 w-3.5" />
               คำเตือน
             </div>
-            <p className="text-xs font-bold text-rose-300 line-clamp-2 sm:line-clamp-1">
-              {warningMessage}
-            </p>
+            {/* ข้อความเตือนวิ่งแนวนอน (ลูปไม่มีรอยต่อ, หยุดเมื่อ hover) */}
+            <div className="marquee-pause relative min-w-0 flex-1 overflow-hidden">
+              <span className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#2B130E] to-transparent" />
+              <div
+                className="flex w-max animate-marquee whitespace-nowrap will-change-transform"
+                style={{ animationDuration: "22s" }}
+              >
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    aria-hidden={i > 0}
+                    className="px-8 text-xs font-bold text-rose-300"
+                  >
+                    {warningMessage}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -290,7 +308,7 @@ function QueueContent() {
                   </code>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(result.code);
+                      copyToClipboard(result.code);
                       toast.success("คัดลอกรหัสแล้ว", { description: result.code });
                     }}
                     className="w-8 h-8 rounded-lg bg-brand-green text-white hover:bg-brand-green-600 flex items-center justify-center cursor-pointer flex-shrink-0"
@@ -384,11 +402,6 @@ function QueueContent() {
           <p className="text-xs text-brand-ink-soft font-bold mt-1">
             เลือกวัน, เวลา และแพ็กเกจที่ต้องการ จากนั้นตรวจสอบรายละเอียดก่อนยืนยันการจอง
           </p>
-          {config.maxBookingsPerUser > 0 && (
-            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-3 py-1 text-[11.5px] font-extrabold text-amber-500">
-              📌 จำกัดการจองสูงสุด {config.maxBookingsPerUser} ครั้ง/วัน/คน
-            </p>
-          )}
         </div>
 
         {!isLoggedIn ? (

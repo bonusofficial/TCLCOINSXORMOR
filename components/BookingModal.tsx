@@ -5,6 +5,7 @@ import { X, Calendar, Clock, AlertTriangle, ArrowRight, ArrowLeft, Check, Ticket
 import { useSession } from "@/lib/auth-client";
 import { generateBookingCode, formatBookingDateTime } from "@/lib/booking";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/utils";
 
 interface PackageData {
   coins: string;
@@ -56,7 +57,7 @@ export default function BookingModal({ isOpen, onClose, selectedPackage }: Booki
   }, [isOpen, userRole, session]);
 
   const copyTicket = () => {
-    navigator.clipboard.writeText(ticketId);
+    copyToClipboard(ticketId);
     toast.success("คัดลอกรหัสจองแล้ว", { description: ticketId });
   };
 

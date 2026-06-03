@@ -23,9 +23,14 @@ import {
   ChevronDown,
   Crown,
   Bell,
+  Check,
+  Ban,
+  Clock,
+  PanelBottom,
+  Link2,
 } from "lucide-react";
 import { settingApi } from "@/lib/eden";
-import { DEFAULT_HOW_IT_WORKS, parseHowItWorks, type HowItWorksStep } from "@/lib/site-defaults";
+import { DEFAULT_HOW_IT_WORKS, parseHowItWorks, type HowItWorksStep, parseFooterLinks, DEFAULT_FOOTER_LINKS, DEFAULT_FOOTER_SERVICES, type FooterLink } from "@/lib/site-defaults";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 /* ─────────────────────────────────────────────
  * MOCK DATA — replace with API/Server-state later
@@ -41,8 +46,29 @@ const TIME_UNIT_LABEL: Record<TimeUnit, string> = {
   year: "ปี",
 };
 
+type ReviewStatus = "pending" | "approved" | "rejected";
+
+const REVIEW_STATUS_META: Record<
+  ReviewStatus,
+  { label: string; cls: string }
+> = {
+  pending: {
+    label: "รออนุมัติ",
+    cls: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+  },
+  approved: {
+    label: "แสดงอยู่",
+    cls: "bg-brand-green-50 text-brand-green border-brand-green-100",
+  },
+  rejected: {
+    label: "ไม่อนุมัติ",
+    cls: "bg-rose-500/10 text-rose-500 border-rose-500/30",
+  },
+};
+
 interface Review {
   id: number;
+  status: ReviewStatus;
   avatar: string | null;
   name: string;
   detail: string;
@@ -270,6 +296,72 @@ const textareaCls =
   "w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/60 resize-none";
 
 /* ─────────────────────────────────────────────
+ * FooterLinkEditor — แก้รายการลิงก์ใน footer (label + url) เพิ่ม/ลบได้
+ * ───────────────────────────────────────────── */
+function FooterLinkEditor({
+  title,
+  links,
+  setLinks,
+}: {
+  title: string;
+  links: FooterLink[];
+  setLinks: (l: FooterLink[]) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-[12.5px] font-extrabold text-brand-ink inline-flex items-center gap-1.5">
+          <Link2 className="h-3.5 w-3.5 text-brand-green" />
+          {title}
+        </label>
+        <button
+          type="button"
+          onClick={() => setLinks([...links, { label: "", url: "" }])}
+          className="text-[11px] font-extrabold text-brand-green hover:text-brand-green-600 inline-flex items-center gap-1 cursor-pointer"
+        >
+          <Plus className="h-3.5 w-3.5" /> เพิ่มลิงก์
+        </button>
+      </div>
+      <div className="space-y-2">
+        {links.map((l, i) => (
+          <div key={i} className="flex gap-2 items-center">
+            <input
+              className={inputCls}
+              placeholder="ชื่อลิงก์ที่แสดง"
+              value={l.label}
+              onChange={(e) =>
+                setLinks(links.map((x, idx) => (idx === i ? { ...x, label: e.target.value } : x)))
+              }
+            />
+            <input
+              className={inputCls}
+              placeholder="/path หรือ https://..."
+              value={l.url}
+              onChange={(e) =>
+                setLinks(links.map((x, idx) => (idx === i ? { ...x, url: e.target.value } : x)))
+              }
+            />
+            <button
+              type="button"
+              onClick={() => setLinks(links.filter((_, idx) => idx !== i))}
+              className="w-9 h-9 flex-shrink-0 rounded-lg bg-brand-surface border border-brand-green-100 hover:border-rose-400 hover:bg-rose-500/10 text-brand-ink-soft hover:text-rose-400 flex items-center justify-center transition cursor-pointer"
+              aria-label="ลบ"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+        {links.length === 0 && (
+          <p className="text-xs text-brand-ink-soft/60 font-bold py-1 select-none">
+            ยังไม่มีลิงก์ — กด &quot;เพิ่มลิงก์&quot;
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
  * AVATAR UPLOAD BUTTON — ใช้ /api/v1/upload/settings-image
  * ───────────────────────────────────────────── */
 
@@ -399,6 +491,7 @@ function ReviewEditor({
     }
     onSave({
       id: initial?.id ?? 0,         // 0 = new, > 0 = update
+      status: initial?.status ?? "approved",
       avatar,
       name: name.trim(),
       detail: detail.trim(),
@@ -570,7 +663,7 @@ function ReviewEditor({
  * PAGE
  * ───────────────────────────────────────────── */
 
-type SettingsTab = "general" | "aesthetics" | "reviews" | "notify";
+type SettingsTab = "general" | "aesthetics" | "reviews" | "notify" | "footer";
 
 const TABS: Array<{
   key: SettingsTab;
@@ -581,6 +674,7 @@ const TABS: Array<{
   { key: "aesthetics", label: "ความสวยงาม", icon: Sparkles },
   { key: "reviews", label: "รีวิว", icon: Star },
   { key: "notify", label: "แจ้งเตือน", icon: Bell },
+  { key: "footer", label: "Footer", icon: PanelBottom },
 ];
 
 export default function SettingsPage() {
@@ -607,7 +701,6 @@ export default function SettingsPage() {
     "ห้ามกดจองเล่น ๆ หากตรวจพบ ปรับ 50 บาท / 1 ครั้ง • กรุณาจองเฉพาะที่ต้องการเติมจริงเท่านั้น"
   );
   const [marqueeText, setMarqueeText] = useState("");
-  const [maxBookingsPerUser, setMaxBookingsPerUser] = useState<number>(0);
   const [agentPrivileges, setAgentPrivileges] = useState("");
   // เนื้อหาเว็บที่แก้ไขได้ (config ใหม่)
   const [lineGroupNormal, setLineGroupNormal] = useState("");
@@ -619,6 +712,14 @@ export default function SettingsPage() {
   const [howItWorks, setHowItWorks] = useState<HowItWorksStep[]>(DEFAULT_HOW_IT_WORKS);
   const updateStep = (i: number, key: "title" | "desc", value: string) =>
     setHowItWorks((prev) => prev.map((s, idx) => (idx === i ? { ...s, [key]: value } : s)));
+
+  // ── Footer settings ──
+  const [footerDescription, setFooterDescription] = useState("");
+  const [footerLinks, setFooterLinks] = useState<FooterLink[]>(DEFAULT_FOOTER_LINKS);
+  const [footerServices, setFooterServices] = useState<FooterLink[]>(DEFAULT_FOOTER_SERVICES);
+  const [footerLineUrl, setFooterLineUrl] = useState("");
+  const [footerFacebook, setFooterFacebook] = useState("");
+  const [footerCopyright, setFooterCopyright] = useState("");
   // หน้าเอกสาร (rich text)
   const [termsContent, setTermsContent] = useState("");
   const [privacyContent, setPrivacyContent] = useState("");
@@ -665,6 +766,7 @@ export default function SettingsPage() {
         setReviews(
           data.data.map((r) => ({
             id: r.id,
+            status: (r.status ?? "approved") as ReviewStatus,
             avatar: r.avatar ?? null,
             name: r.name,
             detail: r.detail ?? "",
@@ -698,7 +800,6 @@ export default function SettingsPage() {
         setQrSupport(c.qrcodesupport || null);
         setWarning(c.warningMessage);
         setMarqueeText(c.marqueeText ?? "");
-        setMaxBookingsPerUser(c.maxBookingsPerUser ?? 0);
         setAgentPrivileges(c.agentPrivileges ?? "");
         setLineGroupNormal(c.lineGroupNormal ?? "");
         setLineGroupAgent(c.lineGroupAgent ?? "");
@@ -708,6 +809,14 @@ export default function SettingsPage() {
         setWelcomeMemberDesc(c.welcomeMemberDesc ?? "");
         const parsedSteps = parseHowItWorks(c.howItWorks);
         setHowItWorks(parsedSteps.length ? parsedSteps : DEFAULT_HOW_IT_WORKS);
+        setFooterDescription(c.footerDescription ?? "");
+        const parsedFLinks = parseFooterLinks(c.footerLinks);
+        setFooterLinks(parsedFLinks.length ? parsedFLinks : DEFAULT_FOOTER_LINKS);
+        const parsedFServices = parseFooterLinks(c.footerServices);
+        setFooterServices(parsedFServices.length ? parsedFServices : DEFAULT_FOOTER_SERVICES);
+        setFooterLineUrl(c.footerLineUrl ?? "");
+        setFooterFacebook(c.footerFacebook ?? "");
+        setFooterCopyright(c.footerCopyright ?? "");
         setTermsContent(c.termsContent ?? "");
         setPrivacyContent(c.privacyContent ?? "");
         setAnnounceEnabled(c.announceEnabled ?? false);
@@ -736,7 +845,6 @@ export default function SettingsPage() {
         qrcodesupport: qrSupport ?? "",
         warningMessage: warning,
         marqueeText,
-        maxBookingsPerUser: Number(maxBookingsPerUser),
         agentPrivileges: agentPrivileges,
         lineGroupNormal,
         lineGroupAgent,
@@ -752,6 +860,12 @@ export default function SettingsPage() {
         announceBadge,
         announceTitle,
         announceContent,
+        footerDescription,
+        footerLinks: footerLinks.filter((l) => l.label.trim() || l.url.trim()),
+        footerServices: footerServices.filter((l) => l.label.trim() || l.url.trim()),
+        footerLineUrl,
+        footerFacebook,
+        footerCopyright,
       });
 
       if (error) {
@@ -853,6 +967,7 @@ export default function SettingsPage() {
       rating: r.rating,
       timeValue: r.timeValue,
       timeUnit: r.timeUnit,
+      status: r.status,
     };
 
     const res = r.id
@@ -875,6 +990,7 @@ export default function SettingsPage() {
     const saved = res.data.data;
     const mapped: Review = {
       id: saved.id,
+      status: ((saved as { status?: string }).status ?? "approved") as ReviewStatus,
       avatar: saved.avatar ?? null,
       name: saved.name,
       detail: saved.detail ?? "",
@@ -909,6 +1025,35 @@ export default function SettingsPage() {
     }
     setReviews((prev) => prev.filter((r) => r.id !== id));
     toast.success(data.message ?? "ลบแล้ว", { id: tId });
+  };
+
+  /* ── อนุมัติ / ไม่อนุมัติ รีวิว ── */
+  const handleSetReviewStatus = async (r: Review, status: ReviewStatus) => {
+    const tId = toast.loading("กำลังอัปเดตสถานะ...");
+    const res = await settingApi.review.item.api.v1.setting
+      .review({ id: String(r.id) })
+      .patch({
+        avatar: r.avatar,
+        name: r.name,
+        detail: r.detail || undefined,
+        review: r.review,
+        rating: r.rating,
+        timeValue: r.timeValue,
+        timeUnit: r.timeUnit,
+        status,
+      });
+    if (res.error) {
+      const value = res.error.value as { message?: string } | undefined;
+      toast.error("อัปเดตไม่สำเร็จ", { id: tId, description: value?.message });
+      return;
+    }
+    setReviews((prev) =>
+      prev.map((x) => (x.id === r.id ? { ...x, status } : x))
+    );
+    toast.success(
+      status === "approved" ? "อนุมัติรีวิวแล้ว — แสดงบนหน้าเว็บ" : "ปฏิเสธรีวิวแล้ว",
+      { id: tId }
+    );
   };
 
   return (
@@ -1016,19 +1161,6 @@ export default function SettingsPage() {
                         type="text"
                         value={keywords}
                         onChange={(e) => setKeywords(e.target.value)}
-                        className={inputCls}
-                      />
-                    </Field>
-                    <Field
-                      label="จำกัดการจองต่อ User (แพ็กเกจ/วัน)"
-                      icon={AlertTriangle}
-                      helper="ระบุโควตาการจองสูงสุดต่อคนต่อวัน สำหรับวันที่ลูกค้าจองคิวเข้ามา (ระบุ 0 หากไม่มีการจำกัดโควตา)"
-                    >
-                      <input
-                        type="number"
-                        min={0}
-                        value={maxBookingsPerUser}
-                        onChange={(e) => setMaxBookingsPerUser(Math.max(0, parseInt(e.target.value) || 0))}
                         className={inputCls}
                       />
                     </Field>
@@ -1408,7 +1540,7 @@ export default function SettingsPage() {
                       จัดการรีวิวลูกค้า
                     </h2>
                     <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
-                      เพิ่ม/แก้ไข/ลบ รีวิวที่แสดงในหน้า Reviews
+                      อนุมัติรีวิวจากลูกค้า · เพิ่ม/แก้ไข/ลบ — เฉพาะที่ &quot;แสดงอยู่&quot; เท่านั้นที่ขึ้นหน้าเว็บ
                     </p>
                   </div>
                 </header>
@@ -1448,6 +1580,14 @@ export default function SettingsPage() {
                           <span className="font-display font-extrabold text-sm text-brand-ink">
                             {r.name}
                           </span>
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border ${REVIEW_STATUS_META[r.status].cls}`}
+                          >
+                            {r.status === "pending" && <Clock className="h-2.5 w-2.5" />}
+                            {r.status === "approved" && <Check className="h-2.5 w-2.5" />}
+                            {r.status === "rejected" && <Ban className="h-2.5 w-2.5" />}
+                            {REVIEW_STATUS_META[r.status].label}
+                          </span>
                           {r.detail && (
                             <span className="text-[11px] font-bold text-brand-ink-soft bg-brand-surface px-2 py-0.5 rounded-full border border-brand-green-100/60">
                               {r.detail}
@@ -1475,6 +1615,26 @@ export default function SettingsPage() {
                         </p>
                       </div>
                       <div className="flex flex-col gap-1.5 flex-shrink-0 opacity-60 group-hover:opacity-100 transition">
+                        {r.status !== "approved" && (
+                          <button
+                            onClick={() => handleSetReviewStatus(r, "approved")}
+                            className="w-8 h-8 rounded-lg bg-brand-green-50 border border-brand-green-100 hover:bg-brand-green hover:text-white text-brand-green flex items-center justify-center transition cursor-pointer"
+                            aria-label="อนุมัติ"
+                            title="อนุมัติ (แสดงบนเว็บ)"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {r.status !== "rejected" && (
+                          <button
+                            onClick={() => handleSetReviewStatus(r, "rejected")}
+                            className="w-8 h-8 rounded-lg bg-brand-surface border border-brand-green-100 hover:border-amber-400 hover:bg-amber-500/10 text-brand-ink-soft hover:text-amber-500 flex items-center justify-center transition cursor-pointer"
+                            aria-label="ไม่อนุมัติ"
+                            title="ไม่อนุมัติ (ซ่อนจากเว็บ)"
+                          >
+                            <Ban className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setEditingReview(r);
@@ -1585,6 +1745,95 @@ export default function SettingsPage() {
                   บันทึกประกาศ
                 </button>
               </div>
+            </div>
+          )}
+
+          {activeTab === "footer" && (
+            <div className="space-y-6">
+              <section className="bg-brand-surface border border-brand-green-100 rounded-3xl p-6 md:p-7">
+                <header className="mb-5">
+                  <h2 className="font-display font-black text-lg text-brand-ink">
+                    ตั้งค่า Footer
+                  </h2>
+                  <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
+                    จัดการเนื้อหาและลิงก์ส่วนท้ายเว็บ — มีผลกับทุกหน้า (ยกเว้น /dashboard)
+                  </p>
+                </header>
+
+                <div className="space-y-5">
+                  <Field
+                    label="คำอธิบายใต้แบรนด์"
+                    icon={FileText}
+                    helper="ข้อความสั้น ๆ ใต้โลโก้ใน footer (เว้นว่าง = ใช้คำอธิบายเว็บไซต์)"
+                  >
+                    <textarea
+                      rows={3}
+                      className={textareaCls}
+                      value={footerDescription}
+                      onChange={(e) => setFooterDescription(e.target.value)}
+                      placeholder="ระบบรับจองคิวและเติมเงินเหรียญแท้ 100%..."
+                    />
+                  </Field>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <FooterLinkEditor
+                      title="ลิงก์แนะนำ"
+                      links={footerLinks}
+                      setLinks={setFooterLinks}
+                    />
+                    <FooterLinkEditor
+                      title="การบริการ"
+                      links={footerServices}
+                      setLinks={setFooterServices}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Field label="ลิงก์ LINE" icon={MessageCircle} helper="ไอคอน LINE ใน footer (เว้นว่าง = ใช้ลิงก์ติดต่อ)">
+                      <input
+                        type="url"
+                        className={inputCls}
+                        value={footerLineUrl}
+                        onChange={(e) => setFooterLineUrl(e.target.value)}
+                        placeholder="https://line.me/R/ti/p/@..."
+                      />
+                    </Field>
+                    <Field label="ลิงก์ Facebook" icon={LinkIcon} helper="เว้นว่าง = ซ่อนไอคอน Facebook">
+                      <input
+                        type="url"
+                        className={inputCls}
+                        value={footerFacebook}
+                        onChange={(e) => setFooterFacebook(e.target.value)}
+                        placeholder="https://facebook.com/..."
+                      />
+                    </Field>
+                  </div>
+
+                  <Field
+                    label="ข้อความลิขสิทธิ์ (Copyright)"
+                    icon={FileText}
+                    helper="ข้อความบรรทัดล่างสุด (เว้นว่าง = ใช้ค่าเริ่มต้น © ปี + ชื่อเว็บ)"
+                  >
+                    <input
+                      type="text"
+                      className={inputCls}
+                      value={footerCopyright}
+                      onChange={(e) => setFooterCopyright(e.target.value)}
+                      placeholder="© 2026 TCLCOINSXORMOR TOPUP COINS..."
+                    />
+                  </Field>
+
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleSaveGeneral}
+                      className="px-7 py-3 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-lg shadow-brand-green/30 hover:shadow-xl hover:-translate-y-0.5 transition cursor-pointer inline-flex items-center gap-2"
+                    >
+                      <Save className="h-4 w-4" />
+                      บันทึก Footer
+                    </button>
+                  </div>
+                </div>
+              </section>
             </div>
           )}
 

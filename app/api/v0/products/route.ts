@@ -38,6 +38,7 @@ const app = new Elysia({ prefix: "/api/v0/products" })
         discountAmount: p.discountAmount.toString(),
         stockEnabled: p.stockEnabled,
         stock: p.stock,
+        maxPerUserPerDay: p.maxPerUserPerDay,
         saleDates: p.saleDates,
         timeSlots: p.timeSlots,
         discountEligibleUsernames: p.discountEligibleUsernames,

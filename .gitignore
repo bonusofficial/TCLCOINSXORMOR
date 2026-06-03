@@ -48,3 +48,6 @@ next-env.d.ts
 
 # claude settings
 /.claude
+
+# Database backups (อาจมีข้อมูลส่วนตัว — ไม่ commit)
+/backups/

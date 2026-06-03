@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { toast } from "sonner";
+import { signOut } from "@/lib/auth-client";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
 import {
   Home,
@@ -16,6 +18,7 @@ import {
   CalendarCheck,
   Wallet,
   ScrollText,
+  Loader2,
 } from "lucide-react";
 
 export interface NavItem {
@@ -58,6 +61,7 @@ export function DashboardSidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { config } = useConfig();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [loggingOut, setLoggingOut] = useState(false);
   const siteLogo = config.logo?.trim() || "/logo.webp";
   const siteTitle = config.title?.trim() || "TCLCOINSXORMOR";
 
@@ -96,6 +100,24 @@ export function DashboardSidebar({ mobileOpen, onClose }: SidebarProps) {
       else next.add(key);
       return next;
     });
+  };
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+
+    const id = toast.loading("กำลังออกจากระบบ...");
+    setLoggingOut(true);
+
+    try {
+      await signOut();
+      onClose();
+      toast.success("ออกจากระบบเรียบร้อย", { id });
+      window.location.href = "/";
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในระบบ";
+      toast.error("ออกจากระบบไม่สำเร็จ", { id, description: message });
+      setLoggingOut(false);
+    }
   };
 
   return (
@@ -222,10 +244,19 @@ export function DashboardSidebar({ mobileOpen, onClose }: SidebarProps) {
       {/* Footer */}
       <div className="flex flex-col gap-2 pt-3 border-t border-brand-green-100 w-full items-center">
         <button
+          type="button"
+          onClick={() => {
+            void handleLogout();
+          }}
+          disabled={loggingOut}
           className="w-10 h-10 rounded-xl text-brand-ink-soft hover:bg-rose-500/10 hover:text-rose-400 flex items-center justify-center transition cursor-pointer"
           aria-label="ออกจากระบบ"
         >
-          <LogOut className="h-5 w-5" />
+          {loggingOut ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <LogOut className="h-5 w-5" />
+          )}
         </button>
       </div>
     </aside>

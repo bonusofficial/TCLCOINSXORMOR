@@ -22,12 +22,13 @@ import {
   Lock,
   ChevronDown,
 } from "lucide-react";
-import Navbar from "@/components/Navbar";
+import Navbar, { formatDisplayID } from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
 import { publicApi } from "@/lib/eden";
-import { useConfig } from "@/lib/contexts/PublicDataContext";
+import { useConfig, useProducts } from "@/lib/contexts/PublicDataContext";
 import { Marquee } from "@/components/ui/Marquee";
 import { getProductAvailability, fmt } from "@/lib/product-utils";
+import { copyToClipboard } from "@/lib/utils";
 
 type UserRole = "member" | "agent" | "admin";
 
@@ -66,10 +67,19 @@ interface BookingItem {
 export default function OrdersHistoryPage() {
   const { data: session, isPending } = useSession();
   const { config } = useConfig();
+  const { products } = useProducts();
+
+  // map productId → รูปสินค้า (booking ไม่ได้เก็บรูป จึงดึงจากสินค้าปัจจุบัน)
+  const productImageById = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const p of products) if (p.image) m.set(p.id, p.image);
+    return m;
+  }, [products]);
   
   const user = session?.user as
     | {
         id?: string;
+        memberNo?: number | null;
         username?: string | null;
         name?: string | null;
         email?: string | null;
@@ -131,7 +141,7 @@ export default function OrdersHistoryPage() {
 
     const textToCopy = `รหัสการจอง: ${b.bookingCode}
 สินค้า: ${b.productName}
-ชื่อผู้ใช้: ${b.username || "-"} (UID: ${b.userId || "-"})
+ชื่อผู้ใช้: ${b.username || "-"} (UID: ${formatDisplayID(user?.memberNo, b.userId) || "-"})
 ยศ: ${roleLabel}
 เบอร์โทร: ${b.phone || "-"}
 วันที่: ${datePart}
@@ -141,7 +151,7 @@ export default function OrdersHistoryPage() {
 จองเมื่อ: ${formatPressedAt(b.createdAt)}
 รายละเอียด: ${b.content || "-"}`;
 
-    navigator.clipboard.writeText(textToCopy);
+    copyToClipboard(textToCopy);
     toast.success("คัดลอกรายละเอียดข้อมูลการจองแล้ว!", {
       description: b.bookingCode,
     });
@@ -464,7 +474,9 @@ export default function OrdersHistoryPage() {
             {filteredBookings.map((b) => {
               const badge = getStatusBadge(b.status);
               const isUnpaid = b.status === "รอตรวจสอบ" || b.status === "รอชำระเงิน";
-              
+              const productImage =
+                b.productId != null ? productImageById.get(b.productId) : undefined;
+
               return (
                 <div
                   key={b.id}
@@ -508,10 +520,19 @@ export default function OrdersHistoryPage() {
                     
                     {/* Product block */}
                     <div className="flex items-start gap-4">
-                      {/* Coins green glassmorphism container */}
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-green/20 to-brand-green/5 border-2 border-brand-green/25 flex items-center justify-center flex-shrink-0 relative shadow-sm">
-                        <Coins className="h-7 w-7 text-brand-green" />
-                        <span className="absolute inset-0 rounded-2xl bg-white/20 pointer-events-none" />
+                      {/* รูปสินค้า — fallback เป็นไอคอน Coins ถ้าไม่มีรูป/สินค้าถูกลบ */}
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-green/20 to-brand-green/5 border-2 border-brand-green/25 flex items-center justify-center flex-shrink-0 relative shadow-sm overflow-hidden">
+                        {productImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={productImage}
+                            alt={b.productName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Coins className="h-7 w-7 text-brand-green" />
+                        )}
+                        <span className="absolute inset-0 rounded-2xl bg-white/10 pointer-events-none" />
                       </div>
 
                       <div className="space-y-1">
@@ -567,7 +588,7 @@ export default function OrdersHistoryPage() {
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full font-black text-[12.5px] text-white bg-[#06C755] hover:bg-[#05b34c] shadow-md shadow-[#06C755]/20 hover:shadow-lg hover:-translate-y-0.5 transition duration-200 cursor-pointer"
                       >
-                        <MessageCircle className="h-4 w-4 fill-white" strokeWidth={0} />
+                        <svg className="w-[15px] h-auto" fill="#fff" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>LINE</title><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
                         ติดต่อแอดมิน
                       </a>
 

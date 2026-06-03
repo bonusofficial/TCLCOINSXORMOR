@@ -75,11 +75,13 @@ interface TopAgent {
 }
 
 interface ChartPoint {
-  month: string;
+  label: string;
   value: number;
 }
 
 type StatColor = "green" | "gold" | "coral" | "sky";
+type ChartRange = "year" | "month" | "week";
+type RevenueCharts = Record<ChartRange, ChartPoint[]>;
 
 /* ─────────────────────────────────────────────
  * HELPERS
@@ -106,6 +108,33 @@ function smoothPath(pts: { x: number; y: number }[]) {
 
 function fmtMoney(n: number) {
   return n.toLocaleString("en-US");
+}
+
+function revenueRangeCopy(range: ChartRange, year: number) {
+  switch (range) {
+    case "week":
+      return {
+        summary: "รายได้รวม 7 วันล่าสุด",
+        legend: "รายได้ 7 วันล่าสุด",
+        tooltipPrefix: "วัน",
+        peakPrefix: "วันสูงสุด",
+      };
+    case "month":
+      return {
+        summary: "รายได้รวมเดือนนี้",
+        legend: "รายได้เดือนนี้",
+        tooltipPrefix: "วันที่",
+        peakPrefix: "วันที่สูงสุด",
+      };
+    case "year":
+    default:
+      return {
+        summary: `รายได้รวมปี ${year}`,
+        legend: `รายได้ปี ${year}`,
+        tooltipPrefix: "เดือน",
+        peakPrefix: "เดือนสูงสุด",
+      };
+  }
 }
 
 /** Time ago in Thai */
@@ -225,16 +254,15 @@ function DashboardSkeleton() {
  * ───────────────────────────────────────────── */
 
 export default function DashboardPage() {
-  const [chartRange, setChartRange] = useState<"year" | "month" | "week">("year");
+  const [chartRange, setChartRange] = useState<ChartRange>("year");
   const [loading, setLoading] = useState(true);
 
   // Dashboard data states
   const [statCards, setStatCards] = useState<StatCard[]>([]);
-  const [chartData, setChartData] = useState<ChartPoint[]>([]);
+  const [revenueCharts, setRevenueCharts] = useState<RevenueCharts>({ week: [], month: [], year: [] });
   const [recentBookings, setRecentBookings] = useState<BookingItem[]>([]);
   const [topPackages, setTopPackages] = useState<TopPackage[]>([]);
   const [topAgents, setTopAgents] = useState<TopAgent[]>([]);
-  const [peakMonth, setPeakMonth] = useState<string>("");
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -289,10 +317,8 @@ export default function DashboardPage() {
       ];
       setStatCards(cards);
 
-      // Chart
-      setChartData(d.chart);
-      const peak = d.chart.reduce((max: ChartPoint, c: ChartPoint) => (c.value > max.value ? c : max), d.chart[0]);
-      setPeakMonth(peak?.month ?? "");
+      // Revenue charts
+      setRevenueCharts(d.chart);
 
       // Recent bookings
       setRecentBookings(d.recentBookings);
@@ -310,13 +336,22 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchDashboard();
+    const timer = window.setTimeout(() => {
+      void fetchDashboard();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchDashboard]);
 
   if (loading) return <DashboardSkeleton />;
 
-  // Chart total revenue for the year
-  const yearTotal = chartData.reduce((s, c) => s + c.value, 0);
+  const currentYear = new Date().getFullYear();
+  const chartData = revenueCharts[chartRange] ?? [];
+  const rangeTotal = chartData.reduce((s, c) => s + c.value, 0);
+  const peakPoint = chartData.reduce<ChartPoint | null>(
+    (max, c) => (!max || c.value > max.value ? c : max),
+    null
+  );
+  const rangeCopy = revenueRangeCopy(chartRange, currentYear);
 
   return (
     <main className="flex-1 px-6 lg:px-8 py-7 space-y-7 max-w-[1480px] w-full mx-auto">
@@ -378,7 +413,7 @@ export default function DashboardPage() {
                 <div>
                   <h3 className="font-display font-black text-lg text-brand-ink">ภาพรวมรายได้</h3>
                   <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
-                    รายได้รวมในปี {new Date().getFullYear()} — ฿{fmtMoney(yearTotal)}
+                    {rangeCopy.summary} — ฿{fmtMoney(rangeTotal)}
                   </p>
                 </div>
                 <div className="flex bg-brand-green-50/60 border border-brand-green-100 p-1 rounded-full">
@@ -400,11 +435,13 @@ export default function DashboardPage() {
               <div className="flex items-center gap-5 mb-3">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-brand-green-700" />
-                  <span className="text-[11px] font-bold text-brand-ink-soft">รายได้ปี {new Date().getFullYear()}</span>
+                  <span className="text-[11px] font-bold text-brand-ink-soft">{rangeCopy.legend}</span>
                 </div>
-                {peakMonth && (
+                {peakPoint && rangeTotal > 0 && (
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-extrabold text-white bg-brand-green-700 py-0.5 px-2 rounded">เดือนสูงสุด {peakMonth}</span>
+                    <span className="text-[10px] font-extrabold text-white bg-brand-green-700 py-0.5 px-2 rounded">
+                      {rangeCopy.peakPrefix} {peakPoint.label}
+                    </span>
                   </div>
                 )}
               </div>
@@ -431,7 +468,7 @@ export default function DashboardPage() {
                     stroke="var(--color-brand-green-100)"
                   />
                   <XAxis
-                    dataKey="month"
+                    dataKey="label"
                     tickLine={false}
                     axisLine={false}
                     tickMargin={10}
@@ -450,7 +487,7 @@ export default function DashboardPage() {
                     content={
                       <ChartTooltipContent
                         indicator="dot"
-                        labelFormatter={(label) => `เดือน ${label}`}
+                        labelFormatter={(label) => `${rangeCopy.tooltipPrefix} ${label}`}
                         formatter={(value) => [`฿${Number(value).toLocaleString("en-US")}`, " รายได้"]}
                       />
                     }
@@ -606,7 +643,7 @@ export default function DashboardPage() {
                   <h3 className="font-display font-black text-lg text-brand-ink">ตัวแทนยอดเยี่ยม</h3>
                   <p className="text-xs text-brand-ink-soft font-bold mt-0.5">Top performers ตามยอดขาย</p>
                 </div>
-                <Link href="/dashboard/users" className="text-[11.5px] font-extrabold text-brand-green hover:text-brand-green inline-flex items-center gap-1 group/all">
+                <Link href="/dashboard/users?tab=summary" className="text-[11.5px] font-extrabold text-brand-green hover:text-brand-green inline-flex items-center gap-1 group/all">
                   ดูทั้งหมด
                   <ArrowRight className="h-3 w-3 transition-transform group-hover/all:translate-x-0.5" />
                 </Link>
@@ -671,7 +708,7 @@ export default function DashboardPage() {
 }
 
 /* ─────────────────────────────────────────────
- * RECENT AUDIT WIDGET — load 10 ล่าสุดจาก /api/v1/audit/recent
+ * RECENT AUDIT WIDGET — load 10 ล่าสุดจาก /api/v1/audit?limit=10
  * ───────────────────────────────────────────── */
 
 function RecentAuditWidget() {
@@ -689,8 +726,8 @@ function RecentAuditWidget() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    auditApi.api.v1.audit.recent
-      .get()
+    auditApi.api.v1.audit
+      .get({ query: { limit: 10 } })
       .then(({ data, error }) => {
         if (error || !data?.ok) return;
         setLogs(

@@ -17,8 +17,7 @@ model User {
   updatedAt       DateTime  @updatedAt
   username        String?   @unique
   displayUsername String?   @db.Text
-  credit          Int?      @default(0)
-  total_credit    Int?      @default(0)
+  memberNo        Int?      @unique  // เลขสมาชิกแบบรันนิ่ง (UID = OMTC-xxxxx)
   role            String?   @db.Text
   phone           String?   @db.Text
   shopName        String?   @db.Text  // ชื่อร้านปัจจุบัน (สำหรับตัวแทน)
@@ -89,7 +88,6 @@ model Config {
   qrcodeagent        String @db.MediumText
   qrcodesupport      String @db.MediumText
   warningMessage     String @db.Text
-  maxBookingsPerUser Int    @default(0)
   agentPrivileges    String? @db.Text
   lineGroupNormal    String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (ลูกค้าทั่วไป)
   lineGroupAgent     String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (ตัวแทน)
@@ -106,6 +104,12 @@ model Config {
   announceTitle      String? @db.Text   // หัวข้อประกาศ
   announceContent    String? @db.MediumText   // รายละเอียดประกาศ (HTML)
   marqueeText        String? @db.Text   // ข้อความวิ่ง marquee (หน้าประวัติการสั่งซื้อ)
+  footerDescription  String? @db.Text   // คำอธิบายใต้แบรนด์ใน footer
+  footerLinks        Json?              // ลิงก์แนะนำ [{label, url}]
+  footerServices     Json?              // ลิงก์การบริการ [{label, url}]
+  footerLineUrl      String? @db.Text   // ลิงก์ LINE ใน footer
+  footerFacebook     String? @db.Text   // ลิงก์ Facebook ใน footer
+  footerCopyright    String? @db.Text   // ข้อความลิขสิทธิ์ท้าย footer
 }
 model banners {
   id        Int      @id @default(autoincrement())
@@ -122,6 +126,8 @@ model banners {
 ///  - timeValue : ตัวเลข (เช่น 5 ชั่วโมง, 2 วัน)
 model reviews {
   id        Int      @id @default(autoincrement())
+  userId    String?  @db.VarChar(64)        // ผู้รีวิว (null = แอดมินสร้างเอง)
+  status    String   @default("approved")   // pending | approved | rejected
   avatar    String?  @db.MediumText        // URL รูป avatar (optional — fallback ใช้ initial)
   name      String   @db.VarChar(120)
   detail    String?  @db.VarChar(200)
@@ -221,12 +227,15 @@ model products {
   stockEnabled Boolean @default(false)    // toggle "ระบบสต็อก"
   stock        Int     @default(0)        // จำนวนสต็อก
 
+  // ─── จำกัดจองต่อคน/วัน (เฉพาะสินค้านี้) ───
+  maxPerUserPerDay Int @default(0)        // 0 = ไม่จำกัด
+
   // ─── ตารางขาย (JSON arrays — see helper types) ───
   saleDates   Json    // string[]                     เช่น ["2026-05-19", "2026-05-14"]
   timeSlots   Json    // Array<{start:string,end:string}>  เช่น [{start:"17:10",end:"18:08"}]
 
   // ─── ส่วนลดผู้มีสิทธิ์พิเศษ ───
-  discountEligibleUsernames Json                       // string[]      เช่น ["peak", "riu", "john"]
+  discountEligibleUsernames Json                       // string[]      เช่น ["peak", "riu", "john"] — ไม่จำกัดจำนวน
   discountAmount            Decimal @default(0) @db.Decimal(10, 2)
 
   // ─── อื่น ๆ ───

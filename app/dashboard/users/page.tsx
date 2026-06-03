@@ -16,8 +16,11 @@ import {
   Mail,
   AtSign,
   Phone,
-  Coins,
   Download,
+  Coins,
+  CheckCircle,
+  BarChart3,
+  Users as UsersIcon,
 } from "lucide-react";
 import { usersApi } from "@/lib/eden";
 import { timeAgo } from "@/lib/audit-labels";
@@ -36,14 +39,13 @@ type UserRole = "member" | "agent" | "admin";
 
 interface AppUser {
   id: string;
+  memberNo: number | null;
   name: string;
   email: string;
   username: string | null;
   image: string | null;
   role: string | null;
   phone: string | null;
-  credit: number | null;
-  total_credit: number | null;
   emailVerified: boolean;
   shopName: string | null;
   lineId: string | null;
@@ -81,9 +83,21 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<AppUser | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Tabs — "list" รายชื่อผู้ใช้ · "summary" สรุปยอดตามบุคคล (เปิดจาก ?tab=summary)
+  const [activeTab, setActiveTab] = useState<"list" | "summary">("list");
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (t === "summary") setActiveTab("summary");
+  }, []);
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  const resetListView = () => {
+    setCurrentPage(1);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,13 +113,9 @@ export default function UsersPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, roleFilter]);
 
   const handleDelete = async (u: AppUser) => {
     if (!confirm(`ลบบัญชี "${u.email}" จริงหรือไม่? (จะลบ session/account ด้วย)`)) return;
@@ -134,7 +144,7 @@ export default function UsersPage() {
         (u.phone ?? "").includes(q) ||
         (u.shopName ?? "").toLowerCase().includes(q) ||
         (u.lineId ?? "").toLowerCase().includes(q) ||
-        formatDisplayID(u.id).toLowerCase().includes(q)
+        formatDisplayID(u.memberNo, u.id).toLowerCase().includes(q)
       );
     });
   }, [items, search, roleFilter]);
@@ -147,9 +157,9 @@ export default function UsersPage() {
 
   // Handle Export to Excel (CSV with UTF-8 BOM)
   const handleExport = () => {
-    const headers = ["ID", "ชื่อผู้ใช้", "อีเมล", "Username", "ชื่อร้าน", "ไอดีไลน์เติม Coins", "บทบาท (Role)", "เบอร์โทรศัพท์", "สมัครเมื่อ"];
+    const headers = ["UID", "ชื่อผู้ใช้", "อีเมล", "Username", "ชื่อร้าน", "ไอดีไลน์เติม Coins", "บทบาท (Role)", "เบอร์โทรศัพท์", "สมัครเมื่อ"];
     const rows = filtered.map(u => [
-      u.id,
+      formatDisplayID(u.memberNo, u.id),
       u.name,
       u.email,
       u.username || "—",
@@ -197,13 +207,44 @@ export default function UsersPage() {
         </button>
       </div>
 
+      {/* Tab switcher */}
+      <div className="bg-brand-surface border border-brand-green-100 rounded-2xl p-1.5 mb-4 inline-flex gap-1">
+        {([
+          { key: "list", label: "รายชื่อผู้ใช้", icon: UsersIcon },
+          { key: "summary", label: "สรุปยอดตามบุคคล", icon: BarChart3 },
+        ] as const).map((t) => {
+          const Icon = t.icon;
+          const active = activeTab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setActiveTab(t.key)}
+              className={`px-4 py-2 rounded-xl font-extrabold text-[13px] inline-flex items-center gap-1.5 transition cursor-pointer ${
+                active
+                  ? "bg-brand-green text-white shadow-md shadow-brand-green/30"
+                  : "text-brand-ink-soft hover:text-brand-green hover:bg-brand-green-50"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {activeTab === "list" && (
+        <>
       {/* Toolbar */}
       <div className="bg-brand-surface border border-brand-green-100 rounded-2xl p-3 mb-4 flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute top-1/2 left-3 -translate-y-1/2 h-4 w-4 text-brand-ink-soft" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              resetListView();
+            }}
             placeholder="ค้นหา ชื่อ/อีเมล/username/เบอร์..."
             className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 pl-9 pr-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/60"
           />
@@ -212,7 +253,10 @@ export default function UsersPage() {
           {(["all", "member", "agent", "admin"] as const).map((r) => (
             <button
               key={r}
-              onClick={() => setRoleFilter(r)}
+              onClick={() => {
+                setRoleFilter(r);
+                resetListView();
+              }}
               className={`px-3 py-1.5 rounded-lg text-[11.5px] font-extrabold transition cursor-pointer ${
                 roleFilter === r
                   ? "bg-brand-green text-white shadow-sm"
@@ -277,7 +321,7 @@ export default function UsersPage() {
                                 <span className="text-[11px] text-brand-ink-soft font-bold">@{u.username}</span>
                               )}
                               <span className="text-[9.5px] bg-brand-green-50 text-brand-green border border-brand-green-100 rounded px-1 font-mono font-bold">
-                                ID: {formatDisplayID(u.id)}
+                                ID: {formatDisplayID(u.memberNo, u.id)}
                               </span>
                             </div>
                           </div>
@@ -362,7 +406,7 @@ export default function UsersPage() {
                     <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                       <div className="text-[11px] text-brand-ink-soft font-medium line-clamp-1">{u.email}</div>
                       <span className="text-[9px] bg-brand-green-50 text-brand-green border border-brand-green-100 rounded px-1 font-mono font-bold whitespace-nowrap">
-                        ID: {formatDisplayID(u.id)}
+                        ID: {formatDisplayID(u.memberNo, u.id)}
                       </span>
                     </div>
                     {(u.shopName || u.lineId) && (
@@ -399,6 +443,10 @@ export default function UsersPage() {
           />
         </>
       )}
+        </>
+      )}
+
+      {activeTab === "summary" && <UserSummaryTab />}
 
       {/* Edit modal */}
       {editing && (
@@ -412,6 +460,270 @@ export default function UsersPage() {
         />
       )}
     </main>
+  );
+}
+
+/* ── สรุปยอดตามบุคคล ── */
+
+interface SummaryRow {
+  userId: string;
+  memberNo: number | null;
+  name: string;
+  username: string | null;
+  role: string | null;
+  image: string | null;
+  totalBookings: number;
+  successOrders: number;
+  totalSpent: number;
+}
+
+const fmtMoney = (n: number) =>
+  new Intl.NumberFormat("en-US").format(Math.max(0, Math.round(n)));
+
+function rankBadge(rank: number) {
+  if (rank === 1) return "bg-gradient-to-br from-brand-gold-light to-brand-gold-deep text-brand-ink";
+  if (rank === 2) return "bg-gradient-to-br from-zinc-300 to-zinc-400 text-zinc-800";
+  if (rank === 3) return "bg-gradient-to-br from-amber-600 to-amber-800 text-white";
+  return "bg-brand-green-50 text-brand-ink-soft";
+}
+
+function UserSummaryTab() {
+  const [rows, setRows] = useState<SummaryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await usersApi.summary.api.v1.users.summary.get();
+    if (error) {
+      const v = error.value as { message?: string } | undefined;
+      toast.error(v?.message ?? "โหลดสรุปยอดไม่สำเร็จ");
+      setLoading(false);
+      return;
+    }
+    if (data.ok) setRows(data.data as SummaryRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (roleFilter !== "all" && normalizeRole(r.role) !== roleFilter) return false;
+      if (!q) return true;
+      return (
+        r.name.toLowerCase().includes(q) ||
+        (r.username ?? "").toLowerCase().includes(q) ||
+        formatDisplayID(r.memberNo, r.userId).toLowerCase().includes(q)
+      );
+    });
+  }, [rows, search, roleFilter]);
+
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginated = filtered.slice(startIndex, startIndex + pageSize);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-brand-ink-soft">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+        <span className="font-bold">กำลังโหลด...</span>
+      </div>
+    );
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="bg-brand-surface border border-brand-green-100 rounded-2xl py-16 text-center text-brand-ink-soft text-sm font-bold">
+        ยังไม่มีข้อมูลการจอง
+      </div>
+    );
+  }
+
+  const totalSpentAll = filtered.reduce((s, r) => s + r.totalSpent, 0);
+  const totalSuccessAll = filtered.reduce((s, r) => s + r.successOrders, 0);
+
+  return (
+    <div className="space-y-4">
+      {/* Toolbar — filter เหมือนแท็บรายชื่อผู้ใช้ */}
+      <div className="bg-brand-surface border border-brand-green-100 rounded-2xl p-3 flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute top-1/2 left-3 -translate-y-1/2 h-4 w-4 text-brand-ink-soft" />
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            placeholder="ค้นหา ชื่อ/username/UID..."
+            className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 pl-9 pr-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/60"
+          />
+        </div>
+        <div className="flex gap-1.5 bg-brand-paper border border-brand-green-100 rounded-xl p-1">
+          {(["all", "member", "agent", "admin"] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => {
+                setRoleFilter(r);
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-[11.5px] font-extrabold transition cursor-pointer ${
+                roleFilter === r
+                  ? "bg-brand-green text-white shadow-sm"
+                  : "text-brand-ink-soft hover:text-brand-green"
+              }`}
+            >
+              {r === "all" ? "ทั้งหมด" : ROLE_META[r].label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50 text-sm font-bold"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <span>รีเฟรช</span>
+        </button>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-brand-surface border border-brand-green-100 rounded-2xl p-4 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-green-50 text-brand-green flex-shrink-0">
+            <UsersIcon className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-[11px] font-extrabold text-brand-ink-soft">ผู้ใช้ที่มีการจอง</p>
+            <p className="font-display font-black text-xl text-brand-ink">{rows.length}</p>
+          </div>
+        </div>
+        <div className="bg-brand-surface border border-brand-green-100 rounded-2xl p-4 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-green-50 text-brand-green flex-shrink-0">
+            <CheckCircle className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-[11px] font-extrabold text-brand-ink-soft">รายการสำเร็จรวม</p>
+            <p className="font-display font-black text-xl text-brand-green">{totalSuccessAll}</p>
+          </div>
+        </div>
+        <div className="bg-brand-surface border border-brand-green-100 rounded-2xl p-4 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 flex-shrink-0">
+            <Coins className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-[11px] font-extrabold text-brand-ink-soft">ยอดเงินรวม (สำเร็จ)</p>
+            <p className="font-display font-black text-xl text-brand-ink">฿{fmtMoney(totalSpentAll)}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-brand-surface border border-brand-green-100 rounded-2xl overflow-hidden shadow-xs">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="py-3 px-4 w-16 text-center">อันดับ</TableHead>
+              <TableHead className="py-3 px-3">ผู้ใช้</TableHead>
+              <TableHead className="py-3 px-3 text-center">Role</TableHead>
+              <TableHead className="py-3 px-3 text-center">จำนวนการจอง</TableHead>
+              <TableHead className="py-3 px-3 text-center">รายการสำเร็จ</TableHead>
+              <TableHead className="py-3 px-4 text-right">ยอดเงิน (สำเร็จ)</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginated.map((r, i) => {
+              const rank = startIndex + i + 1;
+              const meta = ROLE_META[normalizeRole(r.role)];
+              const RoleIcon = meta.icon;
+              return (
+                <TableRow key={r.userId}>
+                  <TableCell className="py-3 px-4 text-center">
+                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full font-black text-[12px] ${rankBadge(rank)}`}>
+                      {rank}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-3 px-3">
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src={r.image || fallbackAvatar(r.name)}
+                        alt={r.name}
+                        className="w-9 h-9 rounded-full object-cover ring-2 ring-brand-green-100 flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-[13px] text-brand-ink truncate">{r.name}</div>
+                        <div className="text-[10.5px] font-bold text-brand-ink-soft truncate">
+                          {r.username ? `@${r.username} · ` : ""}
+                          {formatDisplayID(r.memberNo, r.userId)}
+                        </div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3 px-3 text-center">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-extrabold ${meta.bg} ${meta.text}`}>
+                      <RoleIcon className="h-3 w-3" />
+                      {meta.label}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-3 px-3 text-center font-black text-brand-ink">{r.totalBookings}</TableCell>
+                  <TableCell className="py-3 px-3 text-center font-extrabold text-brand-green">{r.successOrders}</TableCell>
+                  <TableCell className="py-3 px-4 text-right font-black text-brand-ink">฿{fmtMoney(r.totalSpent)}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-2.5">
+        {paginated.map((r, i) => {
+          const rank = startIndex + i + 1;
+          const meta = ROLE_META[normalizeRole(r.role)];
+          return (
+            <div key={r.userId} className="bg-brand-surface border border-brand-green-100 rounded-2xl p-3 flex items-center gap-3">
+              <span className={`inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full font-black text-[13px] ${rankBadge(rank)}`}>{rank}</span>
+              <img src={r.image || fallbackAvatar(r.name)} alt={r.name} className="w-10 h-10 rounded-full object-cover ring-2 ring-brand-green-100 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="font-extrabold text-[13px] text-brand-ink truncate">{r.name}</div>
+                <div className="text-[10.5px] font-bold text-brand-ink-soft truncate">
+                  {formatDisplayID(r.memberNo, r.userId)} · {meta.label}
+                </div>
+                <div className="flex gap-3 mt-1 text-[11px] font-bold">
+                  <span className="text-brand-ink-soft">จอง <b className="text-brand-ink">{r.totalBookings}</b></span>
+                  <span className="text-brand-ink-soft">สำเร็จ <b className="text-brand-green">{r.successOrders}</b></span>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <div className="text-[10px] font-bold text-brand-ink-soft">ยอด</div>
+                <div className="font-black text-[13px] text-brand-ink">฿{fmtMoney(r.totalSpent)}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="bg-brand-surface border border-brand-green-100 rounded-2xl py-12 text-center text-brand-ink-soft text-sm font-bold">
+          ไม่พบผู้ใช้ที่ตรงกับการค้นหา
+        </div>
+      )}
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalItems={filtered.length}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+      />
+    </div>
   );
 }
 
@@ -431,7 +743,6 @@ function UserEditModal({
   const [shopName, setShopName] = useState(user.shopName ?? "");
   const [lineId, setLineId] = useState(user.lineId ?? "");
   const [role, setRole] = useState<UserRole>(normalizeRole(user.role));
-  const [credit, setCredit] = useState(String(user.credit ?? 0));
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -443,7 +754,6 @@ function UserEditModal({
         name,
         phone,
         role,
-        credit: Number(credit) || 0,
         shopName: shopName.trim() || null,
         lineId: lineId.trim() || null,
       });
@@ -504,13 +814,6 @@ function UserEditModal({
               ไอดีไลน์ปัจจุบันที่ใช้เติม Coins
             </label>
             <input value={lineId} onChange={(e) => setLineId(e.target.value)} placeholder="ไม่มีไลน์เติมเงิน" className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink" />
-          </div>
-          <div>
-            <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
-              <Coins className="h-3.5 w-3.5 text-brand-gold" />
-              Credit
-            </label>
-            <input type="number" min={0} value={credit} onChange={(e) => setCredit(e.target.value)} className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink" />
           </div>
           <div>
             <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">Role</label>

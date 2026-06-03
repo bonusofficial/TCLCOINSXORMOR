@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "dbpush": "prisma db push",
-    "dbgenerate": "prisma generate"
+    "dbgenerate": "prisma generate",
+    "db:backup": "tsx scripts/db-backup.ts",
+    "db:restore": "tsx scripts/db-restore.ts",
+    "db:sync": "tsx scripts/db-sync.ts"
   },
   "dependencies": {
     "@elysia/cors": "^1.4.2",

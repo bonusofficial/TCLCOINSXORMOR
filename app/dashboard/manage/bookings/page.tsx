@@ -21,9 +21,11 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { bookingsApi } from "@/lib/eden";
 import {
   BOOKING_STATUSES,
+  type BookingStatus,
   statusStyle,
   formatBookingDateTime,
 } from "@/lib/booking";
+import { copyToClipboard } from "@/lib/utils";
 import {
   Table,
   TableHeader,
@@ -48,6 +50,9 @@ interface Booking {
   createdAt: string;
 }
 
+type DateFilter = "all" | "today" | "this_week" | "this_month" | "custom";
+type SortOrder = "newest" | "oldest";
+
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -55,7 +60,7 @@ function CopyButton({ value }: { value: string }) {
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        navigator.clipboard.writeText(value);
+        copyToClipboard(value);
         setCopied(true);
         toast.success("คัดลอกรหัสแล้ว", { description: value });
         setTimeout(() => setCopied(false), 1500);
@@ -65,6 +70,39 @@ function CopyButton({ value }: { value: string }) {
       {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
       <span>{copied ? "คัดลอกแล้ว" : "คัดลอกรหัส"}</span>
     </button>
+  );
+}
+
+function SelectionCheckbox({
+  checked,
+  indeterminate = false,
+  disabled,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  disabled?: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      disabled={disabled}
+      aria-label={label}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => onChange(e.target.checked)}
+      className="h-4 w-4 rounded border-brand-green-100 accent-brand-green cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+    />
   );
 }
 
@@ -158,13 +196,21 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [dateFilter, setDateFilter] = useState<"all" | "today" | "this_week" | "this_month" | "custom">("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [bulkStatus, setBulkStatus] = useState<BookingStatus>("กำลังดำเนินการ");
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [selectedSpecificDate, setSelectedSpecificDate] = useState<string>("");
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  const resetListView = () => {
+    setCurrentPage(1);
+    setSelectedIds(new Set());
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -180,13 +226,9 @@ export default function BookingsPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
-
-  // Reset page when search, statusFilter, dateFilter, custom date or sortOrder changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, statusFilter, dateFilter, selectedSpecificDate, sortOrder]);
 
   const handleStatusChange = async (b: Booking, status: string) => {
     setUpdatingId(b.id);
@@ -286,6 +328,103 @@ export default function BookingsPage() {
     return sorted.slice(start, start + pageSize);
   }, [sorted, currentPage, pageSize]);
 
+  const selectedBookings = useMemo(
+    () => filtered.filter((b) => selectedIds.has(b.id)),
+    [filtered, selectedIds]
+  );
+  const selectedCount = selectedBookings.length;
+  const visibleIds = useMemo(() => paginatedItems.map((b) => b.id), [paginatedItems]);
+  const visibleSelectedCount = useMemo(
+    () => visibleIds.filter((id) => selectedIds.has(id)).length,
+    [selectedIds, visibleIds]
+  );
+  const allVisibleSelected = visibleIds.length > 0 && visibleSelectedCount === visibleIds.length;
+  const someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
+
+  const handleToggleBookingSelection = (id: number, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleToggleVisibleSelection = (checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      visibleIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
+
+  const handleSelectFiltered = () => {
+    setSelectedIds(new Set(filtered.map((b) => b.id)));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkStatusChange = async () => {
+    if (selectedCount === 0) return;
+
+    const targets = selectedBookings.filter((b) => b.status !== bulkStatus);
+    if (targets.length === 0) {
+      toast.info(`รายการที่เลือกเป็นสถานะ "${bulkStatus}" อยู่แล้ว`);
+      return;
+    }
+
+    setBulkUpdating(true);
+    const tId = toast.loading(`กำลังอัปเดต ${targets.length} รายการ...`);
+    const updated: Booking[] = [];
+    const failedIds: number[] = [];
+
+    for (const target of targets) {
+      try {
+        const { data, error } = await bookingsApi.item.api.v1
+          .bookings({ id: String(target.id) })
+          .patch({
+            status: bulkStatus,
+          });
+
+        if (error || !data?.ok) {
+          failedIds.push(target.id);
+          continue;
+        }
+
+        updated.push(data.data);
+      } catch {
+        failedIds.push(target.id);
+      }
+    }
+
+    setBulkUpdating(false);
+
+    if (updated.length > 0) {
+      const updatedById = new Map(updated.map((b) => [b.id, b]));
+      setItems((prev) => prev.map((b) => updatedById.get(b.id) ?? b));
+    }
+
+    if (failedIds.length === 0) {
+      setSelectedIds(new Set());
+      toast.success(`อัปเดตสถานะเป็น "${bulkStatus}" แล้ว`, {
+        id: tId,
+        description: `สำเร็จ ${updated.length} รายการ`,
+      });
+      return;
+    }
+
+    setSelectedIds(new Set(failedIds));
+    toast.error("อัปเดตบางรายการไม่สำเร็จ", {
+      id: tId,
+      description: `สำเร็จ ${updated.length} รายการ, ไม่สำเร็จ ${failedIds.length} รายการ`,
+    });
+  };
+
   // Handle Export to Excel (CSV with UTF-8 BOM for Thai character compatibility)
   const handleExport = () => {
     const headers = ["รหัสการจอง", "ชื่อลูกค้า", "เบอร์โทรศัพท์", "ชื่อสินค้า/บริการ", "ราคา", "สถานะ", "วันที่จอง", "เวลาจอง", "วันที่สั่งซื้อ"];
@@ -330,7 +469,8 @@ export default function BookingsPage() {
         </div>
         <button
           onClick={handleExport}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition cursor-pointer self-start"
+          disabled={bulkUpdating}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition cursor-pointer self-start disabled:opacity-60 disabled:hover:translate-y-0"
         >
           <Download className="h-4 w-4" />
           <span>ส่งออก Excel</span>
@@ -340,7 +480,10 @@ export default function BookingsPage() {
       {/* Status summary chips */}
       <div className="flex flex-wrap gap-2 mb-4">
         <button
-          onClick={() => setStatusFilter("")}
+          onClick={() => {
+            setStatusFilter("");
+            resetListView();
+          }}
           className={`px-3 py-1.5 rounded-full text-[11.5px] font-extrabold border transition cursor-pointer ${
             statusFilter === ""
               ? "bg-brand-green text-white border-brand-green"
@@ -355,7 +498,10 @@ export default function BookingsPage() {
           return (
             <button
               key={s}
-              onClick={() => setStatusFilter(active ? "" : s)}
+              onClick={() => {
+                setStatusFilter(active ? "" : s);
+                resetListView();
+              }}
               className={`px-3 py-1.5 rounded-full text-[11.5px] font-extrabold border transition cursor-pointer inline-flex items-center gap-1.5 ${
                 active
                   ? `${sty.bg} ${sty.text} border-current shadow-sm`
@@ -376,13 +522,19 @@ export default function BookingsPage() {
           <Search className="absolute top-1/2 left-3 -translate-y-1/2 h-4 w-4 text-brand-ink-soft" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              resetListView();
+            }}
             placeholder="ค้นหา รหัส / username / สินค้า / เบอร์..."
             className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 pl-9 pr-9 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/60"
           />
           {search && (
             <button
-              onClick={() => setSearch("")}
+              onClick={() => {
+                setSearch("");
+                resetListView();
+              }}
               className="absolute top-1/2 right-2.5 -translate-y-1/2 w-6 h-6 rounded-full text-brand-ink-soft hover:text-brand-green cursor-pointer flex items-center justify-center"
             >
               <X className="h-3.5 w-3.5" />
@@ -397,8 +549,10 @@ export default function BookingsPage() {
             <select
               value={dateFilter}
               onChange={(e) => {
-                setDateFilter(e.target.value as any);
-                if (e.target.value !== "custom") setSelectedSpecificDate("");
+                const nextDateFilter = e.target.value as DateFilter;
+                setDateFilter(nextDateFilter);
+                if (nextDateFilter !== "custom") setSelectedSpecificDate("");
+                resetListView();
               }}
               className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-sm font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
             >
@@ -414,7 +568,10 @@ export default function BookingsPage() {
           {dateFilter === "custom" && (
             <DatePicker
               value={selectedSpecificDate}
-              onChange={setSelectedSpecificDate}
+              onChange={(value) => {
+                setSelectedSpecificDate(value);
+                resetListView();
+              }}
               placeholder="เลือกวันที่ต้องการกรอง"
               className="w-full sm:w-44 flex-shrink-0"
             />
@@ -425,7 +582,10 @@ export default function BookingsPage() {
             <ArrowUpDown className="absolute left-3 h-4 w-4 text-brand-ink-soft" />
             <select
               value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as any)}
+              onChange={(e) => {
+                setSortOrder(e.target.value as SortOrder);
+                resetListView();
+              }}
               className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-sm font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
             >
               <option value="newest">ใหม่ล่าสุด</option>
@@ -438,13 +598,66 @@ export default function BookingsPage() {
         {/* Refresh */}
         <button
           onClick={load}
-          disabled={loading}
+          disabled={loading || bulkUpdating}
           className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50 text-sm font-bold"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           <span>รีเฟรช</span>
         </button>
       </div>
+
+      {selectedCount > 0 && (
+        <div className="mb-4 rounded-2xl border border-brand-green/25 bg-brand-green-50/80 px-3 py-3 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center rounded-lg bg-brand-surface px-3 py-2 text-sm font-black text-brand-ink ring-1 ring-brand-green-100">
+                เลือกแล้ว <b className="mx-1 text-brand-green">{selectedCount}</b> รายการ
+              </span>
+              {selectedCount < filtered.length && (
+                <button
+                  type="button"
+                  onClick={handleSelectFiltered}
+                  disabled={bulkUpdating}
+                  className="inline-flex items-center justify-center rounded-lg border border-brand-green-100 bg-brand-surface px-3 py-2 text-xs font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50"
+                >
+                  เลือกที่กรองทั้งหมด ({filtered.length})
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                disabled={bulkUpdating}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-green-100 bg-brand-surface px-3 py-2 text-xs font-extrabold text-brand-ink-soft hover:border-rose-300 hover:text-rose-500 transition cursor-pointer disabled:opacity-50"
+              >
+                <X className="h-3.5 w-3.5" />
+                ล้าง
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <StatusSelector
+                value={bulkStatus}
+                onChange={(s) => setBulkStatus(s as BookingStatus)}
+                disabled={bulkUpdating}
+                className="w-full sm:w-44"
+              />
+              <button
+                type="button"
+                onClick={handleBulkStatusChange}
+                disabled={bulkUpdating}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-green px-4 py-2.5 text-sm font-black text-white shadow-md shadow-brand-green/25 hover:bg-brand-green-600 transition cursor-pointer disabled:opacity-60"
+              >
+                {bulkUpdating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" strokeWidth={3.2} />
+                )}
+                อัปเดตสถานะ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-brand-ink-soft">
@@ -464,6 +677,15 @@ export default function BookingsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10 py-3 pl-4 pr-0">
+                    <SelectionCheckbox
+                      checked={allVisibleSelected}
+                      indeterminate={someVisibleSelected}
+                      disabled={bulkUpdating || paginatedItems.length === 0}
+                      label="เลือกรายการในหน้านี้"
+                      onChange={handleToggleVisibleSelection}
+                    />
+                  </TableHead>
                   <TableHead className="py-3 px-4">รหัสจอง</TableHead>
                   <TableHead className="py-3 px-3">ลูกค้า</TableHead>
                   <TableHead className="py-3 px-3">สินค้า</TableHead>
@@ -475,9 +697,19 @@ export default function BookingsPage() {
               </TableHeader>
               <TableBody>
                 {paginatedItems.map((b) => {
-                  const sty = statusStyle(b.status);
                   return (
-                    <TableRow key={b.id}>
+                    <TableRow
+                      key={b.id}
+                      data-state={selectedIds.has(b.id) ? "selected" : undefined}
+                    >
+                      <TableCell className="w-10 py-3 pl-4 pr-0">
+                        <SelectionCheckbox
+                          checked={selectedIds.has(b.id)}
+                          disabled={bulkUpdating || updatingId === b.id || deletingId === b.id}
+                          label={`เลือก ${b.bookingCode}`}
+                          onChange={(checked) => handleToggleBookingSelection(b.id, checked)}
+                        />
+                      </TableCell>
                       <TableCell className="py-3 px-4">
                         <div className="inline-flex items-center gap-1.5">
                           <code className="font-mono font-extrabold text-[12px] text-brand-ink bg-brand-paper border border-brand-green-100 px-2 py-0.5 rounded">
@@ -513,7 +745,7 @@ export default function BookingsPage() {
                         <StatusSelector
                           value={b.status}
                           onChange={(s) => handleStatusChange(b, s)}
-                          disabled={updatingId === b.id}
+                          disabled={bulkUpdating || updatingId === b.id}
                         />
                       </TableCell>
                       <TableCell className="py-3 px-3 text-[11px] font-bold text-brand-ink-soft whitespace-nowrap">
@@ -522,7 +754,7 @@ export default function BookingsPage() {
                       <TableCell className="py-3 px-4 text-right">
                         <button
                           onClick={() => handleDelete(b)}
-                          disabled={deletingId === b.id}
+                          disabled={bulkUpdating || deletingId === b.id}
                           className="w-8 h-8 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:border-rose-400 hover:bg-rose-500/10 hover:text-rose-400 flex items-center justify-center transition cursor-pointer disabled:opacity-50 ml-auto"
                         >
                           {deletingId === b.id ? (
@@ -546,14 +778,26 @@ export default function BookingsPage() {
               return (
                 <article
                   key={b.id}
-                  className="bg-brand-surface border border-brand-green-100 rounded-2xl p-3 shadow-xs"
+                  className={`bg-brand-surface border rounded-2xl p-3 shadow-xs transition ${
+                    selectedIds.has(b.id)
+                      ? "border-brand-green bg-brand-green-50/50 ring-2 ring-brand-green/15"
+                      : "border-brand-green-100"
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="inline-flex items-center gap-1.5 min-w-0">
-                      <code className="font-mono font-extrabold text-[11.5px] text-brand-ink bg-brand-paper border border-brand-green-100 px-2 py-0.5 rounded truncate">
-                        {b.bookingCode}
-                      </code>
-                      <CopyButton value={b.bookingCode} />
+                    <div className="inline-flex items-center gap-2 min-w-0">
+                      <SelectionCheckbox
+                        checked={selectedIds.has(b.id)}
+                        disabled={bulkUpdating || updatingId === b.id || deletingId === b.id}
+                        label={`เลือก ${b.bookingCode}`}
+                        onChange={(checked) => handleToggleBookingSelection(b.id, checked)}
+                      />
+                      <div className="inline-flex items-center gap-1.5 min-w-0">
+                        <code className="font-mono font-extrabold text-[11.5px] text-brand-ink bg-brand-paper border border-brand-green-100 px-2 py-0.5 rounded truncate">
+                          {b.bookingCode}
+                        </code>
+                        <CopyButton value={b.bookingCode} />
+                      </div>
                     </div>
                     <span
                       className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md ${sty.bg} ${sty.text} ring-1 ${sty.ring} flex-shrink-0`}
@@ -581,12 +825,12 @@ export default function BookingsPage() {
                     <StatusSelector
                       value={b.status}
                       onChange={(s) => handleStatusChange(b, s)}
-                      disabled={updatingId === b.id}
+                      disabled={bulkUpdating || updatingId === b.id}
                       className="flex-1"
                     />
                     <button
                       onClick={() => handleDelete(b)}
-                      disabled={deletingId === b.id}
+                      disabled={bulkUpdating || deletingId === b.id}
                       className="w-10 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:text-rose-400 inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
                     >
                       {deletingId === b.id ? (

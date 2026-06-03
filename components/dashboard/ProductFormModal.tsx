@@ -24,9 +24,7 @@ import { productsApi, usersApi } from "@/lib/eden";
 import { TimePicker } from "@/components/ui/TimePicker";
 import { DatePicker } from "@/components/ui/DatePicker";
 import {
-  PRODUCT_MAX_SALE_DATES,
   PRODUCT_MAX_TIME_SLOTS,
-  PRODUCT_MAX_DISCOUNT_USERS,
   type ProductParsed,
   type TimeSlot,
 } from "@/lib/types/product";
@@ -50,6 +48,27 @@ function todayPlus(days: number) {
   return `${ICTDate.getUTCFullYear()}-${String(ICTDate.getUTCMonth() + 1).padStart(2, "0")}-${String(ICTDate.getUTCDate()).padStart(2, "0")}`;
 }
 
+const padTimePart = (n: number) => String(n).padStart(2, "0");
+
+function currentThaiHHMM() {
+  const d = new Date();
+  const ICTDate = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+  return `${padTimePart(ICTDate.getUTCHours())}:${padTimePart(ICTDate.getUTCMinutes())}`;
+}
+
+function addMinutesWithinThaiDay(hhmm: string, minutesToAdd: number) {
+  const [hRaw, mRaw] = hhmm.split(":");
+  const startMinutes = (parseInt(hRaw, 10) || 0) * 60 + (parseInt(mRaw, 10) || 0);
+  const endMinutes = Math.min(23 * 60 + 59, startMinutes + minutesToAdd);
+  return `${padTimePart(Math.floor(endMinutes / 60))}:${padTimePart(endMinutes % 60)}`;
+}
+
+function defaultTimeSlot(): TimeSlot {
+  const start = currentThaiHHMM();
+  const end = addMinutesWithinThaiDay(start, 120);
+  return start < end ? { start, end } : { start: "23:58", end: "23:59" };
+}
+
 export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -63,10 +82,9 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   const [agentPrice, setAgentPrice] = useState("0");
   const [stockEnabled, setStockEnabled] = useState(false);
   const [stock, setStock] = useState("0");
+  const [maxPerUserPerDay, setMaxPerUserPerDay] = useState("0"); // 0 = ไม่จำกัด
   const [saleDates, setSaleDates] = useState<string[]>([todayPlus(0)]);
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([
-    { start: "09:00", end: "18:00" },
-  ]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>(() => [defaultTimeSlot()]);
   const [selectedUsernames, setSelectedUsernames] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -93,6 +111,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   }, []);
 
   // Reset / prefill เมื่อเปิด modal
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return;
     if (initial) {
@@ -104,6 +123,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       setAgentPrice(String(initial.agentPrice));
       setStockEnabled(initial.stockEnabled);
       setStock(String(initial.stock));
+      setMaxPerUserPerDay(String(initial.maxPerUserPerDay ?? 0));
 
       const toArray = (v: unknown): unknown[] => {
         if (Array.isArray(v)) return v;
@@ -140,7 +160,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
           typeof (s as TimeSlot).end === "string"
       );
       setTimeSlots(
-        safeSlots.length ? safeSlots : [{ start: "09:00", end: "18:00" }]
+        safeSlots.length ? safeSlots : [defaultTimeSlot()]
       );
 
       const safeUsers = toArray(initial.discountEligibleUsernames).filter(
@@ -158,13 +178,15 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       setAgentPrice("0");
       setStockEnabled(false);
       setStock("0");
+      setMaxPerUserPerDay("0");
       setSaleDates([todayPlus(0)]);
-      setTimeSlots([{ start: "09:00", end: "18:00" }]);
+      setTimeSlots([defaultTimeSlot()]);
       setSelectedUsernames([]);
       setDiscountAmount("0");
       setNote("");
     }
   }, [open, initial]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!open) return null;
 
@@ -196,7 +218,6 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   };
 
   const addDate = () => {
-    if (saleDates.length >= PRODUCT_MAX_SALE_DATES) return;
     setSaleDates([...saleDates, todayPlus(saleDates.length)]);
   };
   const setDate = (i: number, v: string) =>
@@ -205,8 +226,9 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
     setSaleDates(saleDates.filter((_, idx) => idx !== i));
 
   const addSlot = () => {
-    if (timeSlots.length >= PRODUCT_MAX_TIME_SLOTS) return;
-    setTimeSlots([...timeSlots, { start: "10:00", end: "12:00" }]);
+    setTimeSlots((prev) =>
+      prev.length >= PRODUCT_MAX_TIME_SLOTS ? prev : [...prev, defaultTimeSlot()]
+    );
   };
   const setSlot = (i: number, field: keyof TimeSlot, v: string) =>
     setTimeSlots(
@@ -225,11 +247,6 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       return;
     }
 
-    if (selectedUsernames.length > PRODUCT_MAX_DISCOUNT_USERS) {
-      toast.warning(`ระบุผู้มีสิทธิ์ได้สูงสุด ${PRODUCT_MAX_DISCOUNT_USERS} คน`);
-      return;
-    }
-
     const payload = {
       image,
       name: name.trim(),
@@ -239,6 +256,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       agentPrice: Number(agentPrice) || 0,
       stockEnabled,
       stock: Number(stock) || 0,
+      maxPerUserPerDay: Math.max(0, Number(maxPerUserPerDay) || 0),
       saleDates,
       timeSlots,
       discountEligibleUsernames: selectedUsernames,
@@ -478,9 +496,12 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[13px] font-extrabold text-brand-ink">
-                      การควบคุมจำนวนสต็อก
+                      จำนวนสต็อก (มีของกี่ชิ้น)
                     </span>
                   </div>
+                  <p className="text-[11px] font-bold text-brand-ink-soft -mt-1">
+                    เลือก &ldquo;กำหนดจำนวน&rdquo; แล้วใส่จำนวนที่มี เช่น 10 — ขายหมดระบบจะปิดรับอัตโนมัติ
+                  </p>
                   
                   {/* Segmented Control */}
                   <div className="grid grid-cols-2 p-1 bg-brand-surface border border-brand-green-100/60 rounded-xl select-none">
@@ -493,7 +514,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                           : "text-brand-ink-soft hover:text-brand-green"
                       }`}
                     >
-                      จองได้ไม่จำกัด
+                      ไม่จำกัด (ขายได้เรื่อยๆ)
                     </button>
                     <button
                       type="button"
@@ -509,7 +530,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                           : "text-brand-ink-soft hover:text-brand-green"
                       }`}
                     >
-                      จำกัดจำนวนสต็อก
+                      กำหนดจำนวน (เช่น 10)
                     </button>
                   </div>
                 </div>
@@ -517,7 +538,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                 {stockEnabled && (
                   <div className="flex items-center gap-3 mt-4.5 select-none bg-brand-surface-soft border border-brand-green-100/40 rounded-xl p-3.5 animate-in fade-in duration-200">
                     <span className="text-xs font-bold text-brand-ink-soft">
-                      ระบุจำนวนสต็อก:
+                      มีของทั้งหมด (ชิ้น):
                     </span>
                     <button
                       type="button"
@@ -549,6 +570,80 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             </div>
           </div>
 
+          {/* 4b. จำกัดการจองต่อคน/วัน (เฉพาะสินค้านี้) */}
+          <div className="p-4 rounded-2xl bg-brand-paper border border-brand-green-100">
+            <div className="flex items-start gap-3">
+              <Users className="h-5 w-5 text-brand-green mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <span className="text-[13px] font-extrabold text-brand-ink">
+                  จำกัดการจองต่อคน/วัน (เฉพาะสินค้านี้)
+                </span>
+                <p className="text-[11px] font-bold text-brand-ink-soft mt-0.5 mb-3">
+                  จำกัดว่า 1 คน จองสินค้านี้ได้กี่แพ็กต่อวัน — สินค้าแต่ละตัวตั้งแยกกันได้
+                </p>
+
+                <div className="grid grid-cols-2 p-1 bg-brand-surface border border-brand-green-100/60 rounded-xl select-none">
+                  <button
+                    type="button"
+                    onClick={() => setMaxPerUserPerDay("0")}
+                    className={`py-2 px-3 rounded-lg text-xs font-black text-center transition-all cursor-pointer ${
+                      Number(maxPerUserPerDay) <= 0
+                        ? "bg-gradient-to-r from-brand-green to-brand-green-600 text-white shadow-sm"
+                        : "text-brand-ink-soft hover:text-brand-green"
+                    }`}
+                  >
+                    ไม่จำกัด
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (Number(maxPerUserPerDay) <= 0) setMaxPerUserPerDay("3");
+                    }}
+                    className={`py-2 px-3 rounded-lg text-xs font-black text-center transition-all cursor-pointer ${
+                      Number(maxPerUserPerDay) > 0
+                        ? "bg-gradient-to-r from-brand-green to-brand-green-600 text-white shadow-sm"
+                        : "text-brand-ink-soft hover:text-brand-green"
+                    }`}
+                  >
+                    จำกัดจำนวน
+                  </button>
+                </div>
+
+                {Number(maxPerUserPerDay) > 0 && (
+                  <div className="flex items-center gap-3 mt-4.5 select-none bg-brand-surface-soft border border-brand-green-100/40 rounded-xl p-3.5 animate-in fade-in duration-200">
+                    <span className="text-xs font-bold text-brand-ink-soft">
+                      จองได้ไม่เกิน (แพ็ก/คน/วัน):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMaxPerUserPerDay(Math.max(1, Number(maxPerUserPerDay) - 1).toString())}
+                      className="w-9 h-9 rounded-lg bg-brand-green-50 text-brand-green border border-brand-green-100 hover:bg-brand-green-100 flex items-center justify-center font-black text-base transition cursor-pointer active:scale-95 flex-shrink-0"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      value={maxPerUserPerDay}
+                      onChange={(e) => setMaxPerUserPerDay(Math.max(1, parseInt(e.target.value) || 1).toString())}
+                      className="w-20 rounded-lg border border-brand-green-100 bg-brand-paper py-1.5 px-2.5 text-center font-bold text-sm outline-none text-brand-ink"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMaxPerUserPerDay((Number(maxPerUserPerDay) + 1).toString())}
+                      className="w-9 h-9 rounded-lg bg-brand-green-50 text-brand-green border border-brand-green-100 hover:bg-brand-green-100 flex items-center justify-center font-black text-base transition cursor-pointer active:scale-95 flex-shrink-0"
+                    >
+                      +
+                    </button>
+                    <span className="text-[10px] text-brand-ink-soft/80 font-bold ml-auto">
+                      เช่น 3 = คนละไม่เกิน 3 แพ็ก/วัน
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* 5. วันและเวลาที่ตั้งขาย */}
           <div className="space-y-4">
             {/* วันที่ตั้งการขาย */}
@@ -558,13 +653,12 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                   <CalendarDays className="h-3.5 w-3.5 text-brand-green" />
                   วันที่ตั้งการขาย
                   <span className="text-brand-ink-soft font-bold">
-                    (สูงสุด {PRODUCT_MAX_SALE_DATES} วัน)
+                    (ไม่จำกัด)
                   </span>
                 </label>
                 <button
                   type="button"
                   onClick={addDate}
-                  disabled={saleDates.length >= PRODUCT_MAX_SALE_DATES}
                   className="text-[11px] font-extrabold text-brand-green hover:text-brand-green-600 inline-flex items-center gap-1 disabled:opacity-40 cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" /> เพิ่มวันที่
@@ -692,7 +786,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                 <Users className="h-3.5 w-3.5 text-brand-green" />
                 สมาชิกที่มีสิทธิ์ได้รับส่วนลดพิเศษ
                 <span className="text-brand-ink-soft font-bold">
-                  (สูงสุด {PRODUCT_MAX_DISCOUNT_USERS} คน)
+                  (ไม่จำกัดจำนวน)
                 </span>
               </label>
 
@@ -769,10 +863,6 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                             type="button"
                             onClick={() => {
                               if (u.username) {
-                                if (selectedUsernames.length >= PRODUCT_MAX_DISCOUNT_USERS) {
-                                  toast.warning(`ระบุได้สูงสุด ${PRODUCT_MAX_DISCOUNT_USERS} คน`);
-                                  return;
-                                }
                                 setSelectedUsernames([...selectedUsernames, u.username]);
                                 setUserSearch("");
                                 setDropdownOpen(false);

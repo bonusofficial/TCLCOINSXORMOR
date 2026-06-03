@@ -27,6 +27,47 @@ export const DEFAULT_HOW_IT_WORKS: HowItWorksStep[] = [
   },
 ];
 
+/* ─────────────────────────────────────────────
+ * Footer — ลิงก์ + เนื้อหาส่วนท้ายเว็บ (แก้ได้ในแอดมิน)
+ * ───────────────────────────────────────────── */
+export interface FooterLink {
+  label: string;
+  url: string;
+}
+
+export const DEFAULT_FOOTER_LINKS: FooterLink[] = [
+  { label: "หน้าแรกของระบบ", url: "/" },
+  { label: "ขั้นตอนการสั่งจองคิว", url: "/#how" },
+  { label: "เช็คสถานะสต็อกแพ็กเกจ", url: "/queue" },
+];
+
+export const DEFAULT_FOOTER_SERVICES: FooterLink[] = [
+  { label: "สิทธิพิเศษสำหรับตัวแทน", url: "/profile/benefits" },
+];
+
+/** parse ค่า footer links จาก config (กัน MariaDB JSON คืนเป็น string) */
+export function parseFooterLinks(v: unknown): FooterLink[] {
+  let arr: unknown = v;
+  if (typeof v === "string") {
+    try {
+      arr = JSON.parse(v);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .filter(
+      (x): x is { label?: unknown; url?: unknown } =>
+        !!x && typeof x === "object"
+    )
+    .map((x) => ({
+      label: String(x.label ?? ""),
+      url: String(x.url ?? ""),
+    }))
+    .filter((l) => l.label || l.url);
+}
+
 /** parse ค่า howItWorks จาก config (กัน MariaDB JSON คืนเป็น string) */
 export function parseHowItWorks(v: unknown): HowItWorksStep[] {
   let arr: unknown = v;

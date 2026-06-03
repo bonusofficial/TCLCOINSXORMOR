@@ -22,11 +22,72 @@ function startOfPrevMonth(d: Date) {
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
+/** บวก/ลบจำนวนวัน โดยคงเวลาในวันเดิม */
+function addDays(d: Date, days: number) {
+  const next = new Date(d);
+  next.setDate(next.getDate() + days);
+  return next;
+}
 
 const THAI_MONTHS = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
   "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
 ];
+const THAI_WEEKDAYS = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+
+type RevenueChartBooking = {
+  price: unknown;
+  createdAt: Date;
+};
+
+function buildRevenueCharts(bookings: RevenueChartBooking[], now: Date) {
+  const today = startOfDay(now);
+  const weekStart = addDays(today, -6);
+  const tomorrow = addDays(today, 1);
+  const thisMonth = startOfMonth(now);
+  const thisYear = new Date(now.getFullYear(), 0, 1);
+  const nextYear = new Date(now.getFullYear() + 1, 0, 1);
+
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const day = addDays(weekStart, i);
+    return {
+      label: THAI_WEEKDAYS[day.getDay()],
+      value: 0,
+    };
+  });
+
+  const month = Array.from({ length: today.getDate() }, (_, i) => ({
+    label: `${i + 1}`,
+    value: 0,
+  }));
+
+  const year = THAI_MONTHS.map((label) => ({
+    label,
+    value: 0,
+  }));
+
+  for (const b of bookings) {
+    const createdAt = b.createdAt;
+    const day = startOfDay(createdAt);
+    const value = Number(b.price ?? 0);
+
+    if (day >= weekStart && day < tomorrow) {
+      const idx = Math.floor((day.getTime() - weekStart.getTime()) / 86400000);
+      if (week[idx]) week[idx].value += value;
+    }
+
+    if (createdAt >= thisMonth && createdAt < tomorrow) {
+      const idx = createdAt.getDate() - 1;
+      if (month[idx]) month[idx].value += value;
+    }
+
+    if (createdAt >= thisYear && createdAt < nextYear) {
+      year[createdAt.getMonth()].value += value;
+    }
+  }
+
+  return { week, month, year };
+}
 
 /** คำนวณ % เปลี่ยนแปลง */
 function pctDelta(current: number, previous: number): number {
@@ -54,6 +115,9 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
       const thisMonth = startOfMonth(now);
       const prevMonth = startOfPrevMonth(now);
       const thisYear = new Date(now.getFullYear(), 0, 1);
+      const nextYear = new Date(now.getFullYear() + 1, 0, 1);
+      const last7Start = addDays(today, -6);
+      const chartStart = new Date(Math.min(thisYear.getTime(), last7Start.getTime()));
 
       // ─── Parallel queries ───
       const [
@@ -74,8 +138,8 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
         recentBookings,
         // All bookings for top packages + top agents aggregate
         allSuccessBookings,
-        // Monthly revenue for chart (current year)
-        yearlyBookings,
+        // Revenue chart data for week / month / year ranges
+        chartBookings,
       ] = await Promise.all([
         // 1. Total revenue (all time, สำเร็จ)
         prisma.bookings.aggregate({
@@ -167,11 +231,11 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
             username: true,
           },
         }),
-        // 12. Yearly bookings for chart (สำเร็จ only)
+        // 12. Revenue bookings for chart (สำเร็จ only)
         prisma.bookings.findMany({
           where: {
             status: "สำเร็จ",
-            createdAt: { gte: thisYear },
+            createdAt: { gte: chartStart, lt: nextYear },
           },
           select: {
             price: true,
@@ -258,15 +322,8 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
         },
       };
 
-      // ─── Revenue Chart (monthly) ───
-      const monthlyRevenue = Array.from({ length: 12 }, (_, i) => ({
-        month: THAI_MONTHS[i],
-        value: 0,
-      }));
-      for (const b of yearlyBookings) {
-        const m = b.createdAt.getMonth();
-        monthlyRevenue[m].value += Number(b.price);
-      }
+      // ─── Revenue Chart (week / month / year) ───
+      const revenueCharts = buildRevenueCharts(chartBookings, now);
 
       // ─── Recent Bookings ───
       const recentBookingsData = recentBookings.map((b) => ({
@@ -354,7 +411,7 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
         ok: true as const,
         data: {
           stats,
-          chart: monthlyRevenue,
+          chart: revenueCharts,
           recentBookings: recentBookingsData,
           topPackages: topPackagesWithShare,
           topAgents,

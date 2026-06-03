@@ -133,7 +133,7 @@ export default function Home() {
       <AnnouncementBell />
 
       {/* HERO SECTION */}
-      <HeroSection onOpenBooking={handleDefaultBooking} />
+      <HeroSection onOpenBooking={handleDefaultBooking} onOpenAuth={handleOpenAuth} />
 
       {/* HOW IT WORKS */}
       <div className="reveal">

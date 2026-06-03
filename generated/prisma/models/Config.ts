@@ -28,12 +28,10 @@ export type AggregateConfig = {
 
 export type ConfigAvgAggregateOutputType = {
   id: number | null
-  maxBookingsPerUser: number | null
 }
 
 export type ConfigSumAggregateOutputType = {
   id: number | null
-  maxBookingsPerUser: number | null
 }
 
 export type ConfigMinAggregateOutputType = {
@@ -49,7 +47,6 @@ export type ConfigMinAggregateOutputType = {
   qrcodeagent: string | null
   qrcodesupport: string | null
   warningMessage: string | null
-  maxBookingsPerUser: number | null
   agentPrivileges: string | null
   lineGroupNormal: string | null
   lineGroupAgent: string | null
@@ -65,6 +62,10 @@ export type ConfigMinAggregateOutputType = {
   announceTitle: string | null
   announceContent: string | null
   marqueeText: string | null
+  footerDescription: string | null
+  footerLineUrl: string | null
+  footerFacebook: string | null
+  footerCopyright: string | null
 }
 
 export type ConfigMaxAggregateOutputType = {
@@ -80,7 +81,6 @@ export type ConfigMaxAggregateOutputType = {
   qrcodeagent: string | null
   qrcodesupport: string | null
   warningMessage: string | null
-  maxBookingsPerUser: number | null
   agentPrivileges: string | null
   lineGroupNormal: string | null
   lineGroupAgent: string | null
@@ -96,6 +96,10 @@ export type ConfigMaxAggregateOutputType = {
   announceTitle: string | null
   announceContent: string | null
   marqueeText: string | null
+  footerDescription: string | null
+  footerLineUrl: string | null
+  footerFacebook: string | null
+  footerCopyright: string | null
 }
 
 export type ConfigCountAggregateOutputType = {
@@ -111,7 +115,6 @@ export type ConfigCountAggregateOutputType = {
   qrcodeagent: number
   qrcodesupport: number
   warningMessage: number
-  maxBookingsPerUser: number
   agentPrivileges: number
   lineGroupNormal: number
   lineGroupAgent: number
@@ -128,18 +131,22 @@ export type ConfigCountAggregateOutputType = {
   announceTitle: number
   announceContent: number
   marqueeText: number
+  footerDescription: number
+  footerLinks: number
+  footerServices: number
+  footerLineUrl: number
+  footerFacebook: number
+  footerCopyright: number
   _all: number
 }
 
 
 export type ConfigAvgAggregateInputType = {
   id?: true
-  maxBookingsPerUser?: true
 }
 
 export type ConfigSumAggregateInputType = {
   id?: true
-  maxBookingsPerUser?: true
 }
 
 export type ConfigMinAggregateInputType = {
@@ -155,7 +162,6 @@ export type ConfigMinAggregateInputType = {
   qrcodeagent?: true
   qrcodesupport?: true
   warningMessage?: true
-  maxBookingsPerUser?: true
   agentPrivileges?: true
   lineGroupNormal?: true
   lineGroupAgent?: true
@@ -171,6 +177,10 @@ export type ConfigMinAggregateInputType = {
   announceTitle?: true
   announceContent?: true
   marqueeText?: true
+  footerDescription?: true
+  footerLineUrl?: true
+  footerFacebook?: true
+  footerCopyright?: true
 }
 
 export type ConfigMaxAggregateInputType = {
@@ -186,7 +196,6 @@ export type ConfigMaxAggregateInputType = {
   qrcodeagent?: true
   qrcodesupport?: true
   warningMessage?: true
-  maxBookingsPerUser?: true
   agentPrivileges?: true
   lineGroupNormal?: true
   lineGroupAgent?: true
@@ -202,6 +211,10 @@ export type ConfigMaxAggregateInputType = {
   announceTitle?: true
   announceContent?: true
   marqueeText?: true
+  footerDescription?: true
+  footerLineUrl?: true
+  footerFacebook?: true
+  footerCopyright?: true
 }
 
 export type ConfigCountAggregateInputType = {
@@ -217,7 +230,6 @@ export type ConfigCountAggregateInputType = {
   qrcodeagent?: true
   qrcodesupport?: true
   warningMessage?: true
-  maxBookingsPerUser?: true
   agentPrivileges?: true
   lineGroupNormal?: true
   lineGroupAgent?: true
@@ -234,6 +246,12 @@ export type ConfigCountAggregateInputType = {
   announceTitle?: true
   announceContent?: true
   marqueeText?: true
+  footerDescription?: true
+  footerLinks?: true
+  footerServices?: true
+  footerLineUrl?: true
+  footerFacebook?: true
+  footerCopyright?: true
   _all?: true
 }
 
@@ -336,7 +354,6 @@ export type ConfigGroupByOutputType = {
   qrcodeagent: string
   qrcodesupport: string
   warningMessage: string
-  maxBookingsPerUser: number
   agentPrivileges: string | null
   lineGroupNormal: string | null
   lineGroupAgent: string | null
@@ -353,6 +370,12 @@ export type ConfigGroupByOutputType = {
   announceTitle: string | null
   announceContent: string | null
   marqueeText: string | null
+  footerDescription: string | null
+  footerLinks: runtime.JsonValue | null
+  footerServices: runtime.JsonValue | null
+  footerLineUrl: string | null
+  footerFacebook: string | null
+  footerCopyright: string | null
   _count: ConfigCountAggregateOutputType | null
   _avg: ConfigAvgAggregateOutputType | null
   _sum: ConfigSumAggregateOutputType | null
@@ -391,7 +414,6 @@ export type ConfigWhereInput = {
   qrcodeagent?: Prisma.StringFilter<"Config"> | string
   qrcodesupport?: Prisma.StringFilter<"Config"> | string
   warningMessage?: Prisma.StringFilter<"Config"> | string
-  maxBookingsPerUser?: Prisma.IntFilter<"Config"> | number
   agentPrivileges?: Prisma.StringNullableFilter<"Config"> | string | null
   lineGroupNormal?: Prisma.StringNullableFilter<"Config"> | string | null
   lineGroupAgent?: Prisma.StringNullableFilter<"Config"> | string | null
@@ -408,6 +430,12 @@ export type ConfigWhereInput = {
   announceTitle?: Prisma.StringNullableFilter<"Config"> | string | null
   announceContent?: Prisma.StringNullableFilter<"Config"> | string | null
   marqueeText?: Prisma.StringNullableFilter<"Config"> | string | null
+  footerDescription?: Prisma.StringNullableFilter<"Config"> | string | null
+  footerLinks?: Prisma.JsonNullableFilter<"Config">
+  footerServices?: Prisma.JsonNullableFilter<"Config">
+  footerLineUrl?: Prisma.StringNullableFilter<"Config"> | string | null
+  footerFacebook?: Prisma.StringNullableFilter<"Config"> | string | null
+  footerCopyright?: Prisma.StringNullableFilter<"Config"> | string | null
 }
 
 export type ConfigOrderByWithRelationInput = {
@@ -423,7 +451,6 @@ export type ConfigOrderByWithRelationInput = {
   qrcodeagent?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
-  maxBookingsPerUser?: Prisma.SortOrder
   agentPrivileges?: Prisma.SortOrderInput | Prisma.SortOrder
   lineGroupNormal?: Prisma.SortOrderInput | Prisma.SortOrder
   lineGroupAgent?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -440,6 +467,12 @@ export type ConfigOrderByWithRelationInput = {
   announceTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   announceContent?: Prisma.SortOrderInput | Prisma.SortOrder
   marqueeText?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerDescription?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerLinks?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerServices?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerLineUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerFacebook?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerCopyright?: Prisma.SortOrderInput | Prisma.SortOrder
   _relevance?: Prisma.ConfigOrderByRelevanceInput
 }
 
@@ -459,7 +492,6 @@ export type ConfigWhereUniqueInput = Prisma.AtLeast<{
   qrcodeagent?: Prisma.StringFilter<"Config"> | string
   qrcodesupport?: Prisma.StringFilter<"Config"> | string
   warningMessage?: Prisma.StringFilter<"Config"> | string
-  maxBookingsPerUser?: Prisma.IntFilter<"Config"> | number
   agentPrivileges?: Prisma.StringNullableFilter<"Config"> | string | null
   lineGroupNormal?: Prisma.StringNullableFilter<"Config"> | string | null
   lineGroupAgent?: Prisma.StringNullableFilter<"Config"> | string | null
@@ -476,6 +508,12 @@ export type ConfigWhereUniqueInput = Prisma.AtLeast<{
   announceTitle?: Prisma.StringNullableFilter<"Config"> | string | null
   announceContent?: Prisma.StringNullableFilter<"Config"> | string | null
   marqueeText?: Prisma.StringNullableFilter<"Config"> | string | null
+  footerDescription?: Prisma.StringNullableFilter<"Config"> | string | null
+  footerLinks?: Prisma.JsonNullableFilter<"Config">
+  footerServices?: Prisma.JsonNullableFilter<"Config">
+  footerLineUrl?: Prisma.StringNullableFilter<"Config"> | string | null
+  footerFacebook?: Prisma.StringNullableFilter<"Config"> | string | null
+  footerCopyright?: Prisma.StringNullableFilter<"Config"> | string | null
 }, "id">
 
 export type ConfigOrderByWithAggregationInput = {
@@ -491,7 +529,6 @@ export type ConfigOrderByWithAggregationInput = {
   qrcodeagent?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
-  maxBookingsPerUser?: Prisma.SortOrder
   agentPrivileges?: Prisma.SortOrderInput | Prisma.SortOrder
   lineGroupNormal?: Prisma.SortOrderInput | Prisma.SortOrder
   lineGroupAgent?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -508,6 +545,12 @@ export type ConfigOrderByWithAggregationInput = {
   announceTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   announceContent?: Prisma.SortOrderInput | Prisma.SortOrder
   marqueeText?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerDescription?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerLinks?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerServices?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerLineUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerFacebook?: Prisma.SortOrderInput | Prisma.SortOrder
+  footerCopyright?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ConfigCountOrderByAggregateInput
   _avg?: Prisma.ConfigAvgOrderByAggregateInput
   _max?: Prisma.ConfigMaxOrderByAggregateInput
@@ -531,7 +574,6 @@ export type ConfigScalarWhereWithAggregatesInput = {
   qrcodeagent?: Prisma.StringWithAggregatesFilter<"Config"> | string
   qrcodesupport?: Prisma.StringWithAggregatesFilter<"Config"> | string
   warningMessage?: Prisma.StringWithAggregatesFilter<"Config"> | string
-  maxBookingsPerUser?: Prisma.IntWithAggregatesFilter<"Config"> | number
   agentPrivileges?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   lineGroupNormal?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   lineGroupAgent?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
@@ -548,6 +590,12 @@ export type ConfigScalarWhereWithAggregatesInput = {
   announceTitle?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   announceContent?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   marqueeText?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  footerDescription?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  footerLinks?: Prisma.JsonNullableWithAggregatesFilter<"Config">
+  footerServices?: Prisma.JsonNullableWithAggregatesFilter<"Config">
+  footerLineUrl?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  footerFacebook?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  footerCopyright?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
 }
 
 export type ConfigCreateInput = {
@@ -562,7 +610,6 @@ export type ConfigCreateInput = {
   qrcodeagent: string
   qrcodesupport: string
   warningMessage: string
-  maxBookingsPerUser?: number
   agentPrivileges?: string | null
   lineGroupNormal?: string | null
   lineGroupAgent?: string | null
@@ -579,6 +626,12 @@ export type ConfigCreateInput = {
   announceTitle?: string | null
   announceContent?: string | null
   marqueeText?: string | null
+  footerDescription?: string | null
+  footerLinks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerServices?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerLineUrl?: string | null
+  footerFacebook?: string | null
+  footerCopyright?: string | null
 }
 
 export type ConfigUncheckedCreateInput = {
@@ -594,7 +647,6 @@ export type ConfigUncheckedCreateInput = {
   qrcodeagent: string
   qrcodesupport: string
   warningMessage: string
-  maxBookingsPerUser?: number
   agentPrivileges?: string | null
   lineGroupNormal?: string | null
   lineGroupAgent?: string | null
@@ -611,6 +663,12 @@ export type ConfigUncheckedCreateInput = {
   announceTitle?: string | null
   announceContent?: string | null
   marqueeText?: string | null
+  footerDescription?: string | null
+  footerLinks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerServices?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerLineUrl?: string | null
+  footerFacebook?: string | null
+  footerCopyright?: string | null
 }
 
 export type ConfigUpdateInput = {
@@ -625,7 +683,6 @@ export type ConfigUpdateInput = {
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
-  maxBookingsPerUser?: Prisma.IntFieldUpdateOperationsInput | number
   agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -642,6 +699,12 @@ export type ConfigUpdateInput = {
   announceTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   announceContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   marqueeText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerLinks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerServices?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerLineUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerFacebook?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerCopyright?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ConfigUncheckedUpdateInput = {
@@ -657,7 +720,6 @@ export type ConfigUncheckedUpdateInput = {
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
-  maxBookingsPerUser?: Prisma.IntFieldUpdateOperationsInput | number
   agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -674,6 +736,12 @@ export type ConfigUncheckedUpdateInput = {
   announceTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   announceContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   marqueeText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerLinks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerServices?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerLineUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerFacebook?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerCopyright?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ConfigCreateManyInput = {
@@ -689,7 +757,6 @@ export type ConfigCreateManyInput = {
   qrcodeagent: string
   qrcodesupport: string
   warningMessage: string
-  maxBookingsPerUser?: number
   agentPrivileges?: string | null
   lineGroupNormal?: string | null
   lineGroupAgent?: string | null
@@ -706,6 +773,12 @@ export type ConfigCreateManyInput = {
   announceTitle?: string | null
   announceContent?: string | null
   marqueeText?: string | null
+  footerDescription?: string | null
+  footerLinks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerServices?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerLineUrl?: string | null
+  footerFacebook?: string | null
+  footerCopyright?: string | null
 }
 
 export type ConfigUpdateManyMutationInput = {
@@ -720,7 +793,6 @@ export type ConfigUpdateManyMutationInput = {
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
-  maxBookingsPerUser?: Prisma.IntFieldUpdateOperationsInput | number
   agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -737,6 +809,12 @@ export type ConfigUpdateManyMutationInput = {
   announceTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   announceContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   marqueeText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerLinks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerServices?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerLineUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerFacebook?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerCopyright?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ConfigUncheckedUpdateManyInput = {
@@ -752,7 +830,6 @@ export type ConfigUncheckedUpdateManyInput = {
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
-  maxBookingsPerUser?: Prisma.IntFieldUpdateOperationsInput | number
   agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -769,6 +846,12 @@ export type ConfigUncheckedUpdateManyInput = {
   announceTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   announceContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   marqueeText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerLinks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerServices?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  footerLineUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerFacebook?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footerCopyright?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ConfigOrderByRelevanceInput = {
@@ -790,7 +873,6 @@ export type ConfigCountOrderByAggregateInput = {
   qrcodeagent?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
-  maxBookingsPerUser?: Prisma.SortOrder
   agentPrivileges?: Prisma.SortOrder
   lineGroupNormal?: Prisma.SortOrder
   lineGroupAgent?: Prisma.SortOrder
@@ -807,11 +889,16 @@ export type ConfigCountOrderByAggregateInput = {
   announceTitle?: Prisma.SortOrder
   announceContent?: Prisma.SortOrder
   marqueeText?: Prisma.SortOrder
+  footerDescription?: Prisma.SortOrder
+  footerLinks?: Prisma.SortOrder
+  footerServices?: Prisma.SortOrder
+  footerLineUrl?: Prisma.SortOrder
+  footerFacebook?: Prisma.SortOrder
+  footerCopyright?: Prisma.SortOrder
 }
 
 export type ConfigAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  maxBookingsPerUser?: Prisma.SortOrder
 }
 
 export type ConfigMaxOrderByAggregateInput = {
@@ -827,7 +914,6 @@ export type ConfigMaxOrderByAggregateInput = {
   qrcodeagent?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
-  maxBookingsPerUser?: Prisma.SortOrder
   agentPrivileges?: Prisma.SortOrder
   lineGroupNormal?: Prisma.SortOrder
   lineGroupAgent?: Prisma.SortOrder
@@ -843,6 +929,10 @@ export type ConfigMaxOrderByAggregateInput = {
   announceTitle?: Prisma.SortOrder
   announceContent?: Prisma.SortOrder
   marqueeText?: Prisma.SortOrder
+  footerDescription?: Prisma.SortOrder
+  footerLineUrl?: Prisma.SortOrder
+  footerFacebook?: Prisma.SortOrder
+  footerCopyright?: Prisma.SortOrder
 }
 
 export type ConfigMinOrderByAggregateInput = {
@@ -858,7 +948,6 @@ export type ConfigMinOrderByAggregateInput = {
   qrcodeagent?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
-  maxBookingsPerUser?: Prisma.SortOrder
   agentPrivileges?: Prisma.SortOrder
   lineGroupNormal?: Prisma.SortOrder
   lineGroupAgent?: Prisma.SortOrder
@@ -874,11 +963,14 @@ export type ConfigMinOrderByAggregateInput = {
   announceTitle?: Prisma.SortOrder
   announceContent?: Prisma.SortOrder
   marqueeText?: Prisma.SortOrder
+  footerDescription?: Prisma.SortOrder
+  footerLineUrl?: Prisma.SortOrder
+  footerFacebook?: Prisma.SortOrder
+  footerCopyright?: Prisma.SortOrder
 }
 
 export type ConfigSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  maxBookingsPerUser?: Prisma.SortOrder
 }
 
 export type IntFieldUpdateOperationsInput = {
@@ -904,7 +996,6 @@ export type ConfigSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   qrcodeagent?: boolean
   qrcodesupport?: boolean
   warningMessage?: boolean
-  maxBookingsPerUser?: boolean
   agentPrivileges?: boolean
   lineGroupNormal?: boolean
   lineGroupAgent?: boolean
@@ -921,6 +1012,12 @@ export type ConfigSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   announceTitle?: boolean
   announceContent?: boolean
   marqueeText?: boolean
+  footerDescription?: boolean
+  footerLinks?: boolean
+  footerServices?: boolean
+  footerLineUrl?: boolean
+  footerFacebook?: boolean
+  footerCopyright?: boolean
 }, ExtArgs["result"]["config"]>
 
 
@@ -938,7 +1035,6 @@ export type ConfigSelectScalar = {
   qrcodeagent?: boolean
   qrcodesupport?: boolean
   warningMessage?: boolean
-  maxBookingsPerUser?: boolean
   agentPrivileges?: boolean
   lineGroupNormal?: boolean
   lineGroupAgent?: boolean
@@ -955,9 +1051,15 @@ export type ConfigSelectScalar = {
   announceTitle?: boolean
   announceContent?: boolean
   marqueeText?: boolean
+  footerDescription?: boolean
+  footerLinks?: boolean
+  footerServices?: boolean
+  footerLineUrl?: boolean
+  footerFacebook?: boolean
+  footerCopyright?: boolean
 }
 
-export type ConfigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logo" | "title" | "description" | "keywords" | "agentLink" | "contactLine" | "phone" | "qrcodenormal" | "qrcodeagent" | "qrcodesupport" | "warningMessage" | "maxBookingsPerUser" | "agentPrivileges" | "lineGroupNormal" | "lineGroupAgent" | "welcomeTitle" | "welcomeAgentDesc" | "welcomeMemberDesc" | "howItWorks" | "termsContent" | "privacyContent" | "reviewLink" | "announceEnabled" | "announceBanner" | "announceBadge" | "announceTitle" | "announceContent" | "marqueeText", ExtArgs["result"]["config"]>
+export type ConfigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logo" | "title" | "description" | "keywords" | "agentLink" | "contactLine" | "phone" | "qrcodenormal" | "qrcodeagent" | "qrcodesupport" | "warningMessage" | "agentPrivileges" | "lineGroupNormal" | "lineGroupAgent" | "welcomeTitle" | "welcomeAgentDesc" | "welcomeMemberDesc" | "howItWorks" | "termsContent" | "privacyContent" | "reviewLink" | "announceEnabled" | "announceBanner" | "announceBadge" | "announceTitle" | "announceContent" | "marqueeText" | "footerDescription" | "footerLinks" | "footerServices" | "footerLineUrl" | "footerFacebook" | "footerCopyright", ExtArgs["result"]["config"]>
 
 export type $ConfigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Config"
@@ -975,7 +1077,6 @@ export type $ConfigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     qrcodeagent: string
     qrcodesupport: string
     warningMessage: string
-    maxBookingsPerUser: number
     agentPrivileges: string | null
     lineGroupNormal: string | null
     lineGroupAgent: string | null
@@ -992,6 +1093,12 @@ export type $ConfigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     announceTitle: string | null
     announceContent: string | null
     marqueeText: string | null
+    footerDescription: string | null
+    footerLinks: runtime.JsonValue | null
+    footerServices: runtime.JsonValue | null
+    footerLineUrl: string | null
+    footerFacebook: string | null
+    footerCopyright: string | null
   }, ExtArgs["result"]["config"]>
   composites: {}
 }
@@ -1373,7 +1480,6 @@ export interface ConfigFieldRefs {
   readonly qrcodeagent: Prisma.FieldRef<"Config", 'String'>
   readonly qrcodesupport: Prisma.FieldRef<"Config", 'String'>
   readonly warningMessage: Prisma.FieldRef<"Config", 'String'>
-  readonly maxBookingsPerUser: Prisma.FieldRef<"Config", 'Int'>
   readonly agentPrivileges: Prisma.FieldRef<"Config", 'String'>
   readonly lineGroupNormal: Prisma.FieldRef<"Config", 'String'>
   readonly lineGroupAgent: Prisma.FieldRef<"Config", 'String'>
@@ -1390,6 +1496,12 @@ export interface ConfigFieldRefs {
   readonly announceTitle: Prisma.FieldRef<"Config", 'String'>
   readonly announceContent: Prisma.FieldRef<"Config", 'String'>
   readonly marqueeText: Prisma.FieldRef<"Config", 'String'>
+  readonly footerDescription: Prisma.FieldRef<"Config", 'String'>
+  readonly footerLinks: Prisma.FieldRef<"Config", 'Json'>
+  readonly footerServices: Prisma.FieldRef<"Config", 'Json'>
+  readonly footerLineUrl: Prisma.FieldRef<"Config", 'String'>
+  readonly footerFacebook: Prisma.FieldRef<"Config", 'String'>
+  readonly footerCopyright: Prisma.FieldRef<"Config", 'String'>
 }
     
 

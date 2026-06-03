@@ -26,6 +26,8 @@ import {
   Crown,
   Loader2,
   Check,
+  Store,
+  MessageCircle,
 } from "lucide-react";
 
 interface AuthModalProps {
@@ -77,6 +79,8 @@ export default function AuthModal({
     username: "",
     email: "",
     phone: "",
+    shopName: "",
+    lineId: "",
     password: "",
     confirmPassword: "",
   });
@@ -274,13 +278,22 @@ export default function AuthModal({
     const id = toast.loading("กำลังสมัครสมาชิก...");
     try {
       const phone = formData.phone.trim();
+      const shopName = formData.shopName.trim();
+      const lineId = formData.lineId.trim();
       const res = await signUp.email({
         email,
         password: formData.password,
         name: username,
         username,
         phone,
-      } as Parameters<typeof signUp.email>[0] & { username: string; phone: string });
+        shopName,
+        lineId,
+      } as Parameters<typeof signUp.email>[0] & {
+        username: string;
+        phone: string;
+        shopName: string;
+        lineId: string;
+      });
 
       if (res.error) {
         toast.error("สมัครสมาชิกไม่สำเร็จ", {
@@ -457,26 +470,12 @@ export default function AuthModal({
                         required
                         placeholder={
                           activeTab === "login"
-                            ? "ชื่อผู้ใช้ / อีเมล / ชื่อร้าน / ไอดีไลน์"
+                            ? "ชื่อผู้ใช้"
                             : "ชื่อผู้ใช้งาน"
                         }
                         className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-4 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
                       />
                     </div>
-
-                    {activeTab === "login" && (
-                      <p className="text-[10px] text-brand-ink-soft font-bold pl-1.5 -mt-3.5">
-                        💡 เข้าสู่ระบบด้วย{" "}
-                        <span className="text-brand-green font-black">
-                          อีเมล · ชื่อผู้ใช้
-                        </span>{" "}
-                        หรือ{" "}
-                        <span className="text-brand-green font-black">
-                          ชื่อร้าน · ไอดีไลน์
-                        </span>{" "}
-                        ที่ลงทะเบียนไว้
-                      </p>
-                    )}
                   </>
                 )}
 
@@ -510,6 +509,36 @@ export default function AuthModal({
                         onChange={handleInputChange}
                         required
                         placeholder="เบอร์โทรศัพท์"
+                        className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-4 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
+                      />
+                    </div>
+
+                    {/* ชื่อร้านปัจจุบัน */}
+                    <div className="relative group">
+                      <div className="absolute top-1/2 left-4.5 -translate-y-1/2 flex items-center justify-center text-brand-ink-soft group-focus-within:text-brand-green transition duration-200">
+                        <Store className="h-4.5 w-4.5" />
+                      </div>
+                      <input
+                        type="text"
+                        name="shopName"
+                        value={formData.shopName}
+                        onChange={handleInputChange}
+                        placeholder="ชื่อร้านปัจจุบัน"
+                        className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-4 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
+                      />
+                    </div>
+
+                    {/* ไอดีไลน์ปัจจุบันที่ใช้เติม Coins */}
+                    <div className="relative group">
+                      <div className="absolute top-1/2 left-4.5 -translate-y-1/2 flex items-center justify-center text-brand-ink-soft group-focus-within:text-brand-green transition duration-200">
+                        <MessageCircle className="h-4.5 w-4.5" />
+                      </div>
+                      <input
+                        type="text"
+                        name="lineId"
+                        value={formData.lineId}
+                        onChange={handleInputChange}
+                        placeholder="ไอดีไลน์ปัจจุบันที่ใช้เติม Coins"
                         className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-4 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
                       />
                     </div>
@@ -815,31 +844,6 @@ export default function AuthModal({
                     "สมัครได้ตามปกติ และอัปเกรดเป็นตัวแทนเพื่อรับเรทพิเศษที่ดีกว่าได้ทันที"}
                 </span>
               </div>
-            </div>
-
-            {/* Social proof — avatar stack + tagline */}
-            <div className="flex items-center justify-center gap-3 pt-1">
-              <div className="flex -space-x-2.5 select-none">
-                <span className="h-7 w-7 rounded-full border-2 border-white shadow-sm bg-gradient-to-tr from-[#FF8A65] to-[#FF7043] text-white text-[10px] font-black flex items-center justify-center">
-                  อ
-                </span>
-                <span className="h-7 w-7 rounded-full border-2 border-white shadow-sm bg-gradient-to-tr from-brand-green to-brand-green-600 text-white text-[10px] font-black flex items-center justify-center">
-                  ร
-                </span>
-                <span className="h-7 w-7 rounded-full border-2 border-white shadow-sm bg-gradient-to-tr from-[#42A5F5] to-[#1E88E5] text-white text-[10px] font-black flex items-center justify-center">
-                  ม
-                </span>
-                <span className="h-7 w-7 rounded-full border-2 border-white shadow-sm bg-brand-green-700 text-white text-[9px] font-black flex items-center justify-center">
-                  +99
-                </span>
-              </div>
-              <p className="text-[11.5px] font-extrabold text-brand-ink leading-tight">
-                สมาชิกกว่า <span className="text-brand-green">143 คน</span>
-                <br />
-                <span className="text-brand-ink-soft font-bold">
-                  ไว้วางใจแล้ว <span className="text-brand-gold-deep">⭐</span>
-                </span>
-              </p>
             </div>
           </div>
         </div>

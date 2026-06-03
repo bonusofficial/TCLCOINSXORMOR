@@ -9,6 +9,7 @@ import type { ReviewApp } from "@/app/api/v1/setting/review/route";
 import type { ReviewItemApp } from "@/app/api/v1/setting/review/[id]/route";
 import type { UsersApp } from "@/app/api/v1/users/route";
 import type { UsersItemApp } from "@/app/api/v1/users/[id]/route";
+import type { UsersSummaryApp } from "@/app/api/v1/users/summary/route";
 import type { AuditApp } from "@/app/api/v1/audit/route";
 import type { BookingsApp } from "@/app/api/v1/bookings/route";
 import type { BookingsItemApp } from "@/app/api/v1/bookings/[id]/route";
@@ -21,6 +22,7 @@ import type { ConfigPublicApp } from "@/app/api/v0/config/route";
 import type { ProductsPublicApp } from "@/app/api/v0/products/route";
 import type { BookingsPublicApp } from "@/app/api/v0/bookings/route";
 import type { ReviewsPublicApp } from "@/app/api/v0/reviews/route";
+import type { ReviewsMineApp } from "@/app/api/v0/reviews/mine/route";
 import type { AuthResolveApp } from "@/app/api/v0/auth/resolve/route";
 import type { ProfileUniqueApp } from "@/app/api/v1/profile/unique/route";
 import type { BannersPublicApp } from "@/app/api/v0/banners/route";
@@ -49,6 +51,7 @@ export const settingApi = {
 export const usersApi = {
   collection: treaty<UsersApp>(baseURL, commonConfig),
   item: treaty<UsersItemApp>(baseURL, commonConfig),
+  summary: treaty<UsersSummaryApp>(baseURL, commonConfig),
 };
 
 export const auditApi = treaty<AuditApp>(baseURL, commonConfig);
@@ -72,6 +75,7 @@ export const publicApi = {
   products: treaty<ProductsPublicApp>(baseURL, commonConfig),
   bookings: treaty<BookingsPublicApp>(baseURL, commonConfig),
   reviews: treaty<ReviewsPublicApp>(baseURL, commonConfig),
+  reviewsMine: treaty<ReviewsMineApp>(baseURL, commonConfig),
   banners: treaty<BannersPublicApp>(baseURL, commonConfig),
   authResolve: treaty<AuthResolveApp>(baseURL, commonConfig),
 };

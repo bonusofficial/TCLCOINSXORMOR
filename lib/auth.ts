@@ -57,16 +57,9 @@ export const auth = betterAuth({
   },
   user: {
     additionalFields: {
-      credit: {
+      memberNo: {
         type: "number",
         required: false,
-        defaultValue: 0,
-        input: false,
-      },
-      total_credit: {
-        type: "number",
-        required: false,
-        defaultValue: 0,
         input: false,
       },
       role: {
@@ -92,6 +85,22 @@ export const auth = betterAuth({
         required: false,
         defaultValue: "",
         input: true,
+      },
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // กำหนดเลขสมาชิกแบบรันนิ่ง (ห้ามซ้ำ — บังคับด้วย @unique) ตอนสมัครใหม่
+        before: async (newUser) => {
+          const last = await prisma.user.findFirst({
+            where: { memberNo: { not: null } },
+            orderBy: { memberNo: "desc" },
+            select: { memberNo: true },
+          });
+          const nextNo = (last?.memberNo ?? 0) + 1;
+          return { data: { ...newUser, memberNo: nextNo } };
+        },
       },
     },
   },

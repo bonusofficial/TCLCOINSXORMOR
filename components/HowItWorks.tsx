@@ -71,6 +71,33 @@ export default function HowItWorks({ onOpenBooking }: HowItWorksProps) {
           </div>
 
         </div>
+        <div className="mt-12 flex flex-wrap items-center gap-6 md:gap-8 justify-between bg-brand-surface border border-brand-green-100 p-6 md:py-6 md:px-8.5 rounded-[32px] shadow-sm animate-in fade-in slide-in-from-bottom-6 duration-1000">
+
+          <div className="flex flex-col">
+            <span className="font-display font-black text-2xl lg:text-3xl text-brand-green leading-none">
+              {config?.stats?.successRate ?? 100}%
+            </span>
+            <span className="text-[11.5px] font-bold text-brand-ink-soft mt-1">
+              เสถียรภาพระบบการทำงาน
+            </span>
+          </div>
+
+          <div className="hidden md:block w-px h-9.5 bg-brand-green-100" />
+
+          <a
+            href={config.reviewLink?.trim() || "https://line.me/R/ti/p/@ormorcoins"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-col group/stat transition duration-200"
+          >
+            <span className="font-display font-black text-2xl lg:text-3xl text-brand-green leading-none flex items-center gap-1 group-hover/stat:text-brand-green">
+              ดูรีวิวลูกค้า ➔
+            </span>
+            <span className="text-[11.5px] font-bold text-brand-ink-soft mt-1 underline decoration-brand-green-300 group-hover/stat:text-brand-green">
+              คลิกเพื่อรับชมรีวิว
+            </span>
+          </a>
+        </div>
       </div>
     </section>
   );

@@ -32,6 +32,29 @@ export async function adjustProductStock(
 }
 
 /**
+ * จอง (ตัด) สต็อก −1 แบบ atomic — กัน oversell เมื่อมีคนกดพร้อมกัน
+ * ใช้ UPDATE ... WHERE stock > 0 (เงื่อนไขถูกเช็คในคำสั่งเดียวระดับ DB row)
+ * - "skip"  = สินค้าไม่เปิด stockEnabled / ไม่พบ → ไม่ต้องตัด ปล่อยจองได้
+ * - "ok"    = ตัดสต็อกสำเร็จ (จองได้)
+ * - "out"   = สต็อกหมด (จองไม่ได้)
+ */
+export async function tryReserveStock(
+  productId: number | null | undefined
+): Promise<"ok" | "out" | "skip"> {
+  if (!productId) return "skip";
+  const product = await prisma.products.findUnique({
+    where: { id: productId },
+    select: { stockEnabled: true },
+  });
+  if (!product || !product.stockEnabled) return "skip";
+  const res = await prisma.products.updateMany({
+    where: { id: productId, stockEnabled: true, stock: { gt: 0 } },
+    data: { stock: { decrement: 1 } },
+  });
+  return res.count > 0 ? "ok" : "out";
+}
+
+/**
  * ตรวจว่าสินค้ามีสต็อกพอจองหรือไม่
  * - return true ถ้าจองได้ (มีสต็อก หรือไม่ได้เปิด stockEnabled)
  * - return false ถ้าหมด

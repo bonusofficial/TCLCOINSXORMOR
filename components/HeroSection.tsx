@@ -14,12 +14,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { publicApi } from "@/lib/eden";
+import { useSession } from "@/lib/auth-client";
 
 interface HeroSectionProps {
   onOpenBooking: () => void;
+  onOpenAuth?: (tab: "login" | "register") => void;
 }
 
 interface Banner {
@@ -43,8 +46,13 @@ const LINE_GROUPS = {
   }
 } as const;
 
-export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
+export default function HeroSection({ onOpenBooking, onOpenAuth }: HeroSectionProps) {
   const { config } = useConfig();
+  const { data: session } = useSession();
+  const isLoggedIn = !!session?.user;
+  // ตัวแทน/แอดมิน = เห็น QR กลุ่มตัวแทน · ลูกค้าทั่วไป = เห็นข้อความชวนสมัครแทน
+  const viewerRole = ((session?.user as { role?: string | null } | undefined)?.role ?? "").toLowerCase();
+  const isAgentViewer = viewerRole === "agent" || viewerRole === "admin";
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
   const [bannerIndex, setBannerIndex] = useState(0);
@@ -77,6 +85,18 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
     setBannerIndex((i) => (i - 1 + banners.length) % banners.length);
   const goNext = () => setBannerIndex((i) => (i + 1) % banners.length);
 
+  // ── ตรรกะ QR กลุ่มตัวแทน ──
+  const isAgentTab = qrTab === "agent";
+  // ลูกค้าทั่วไปเปิดแท็บตัวแทน → ซ่อน QR + ชวนสมัครตัวแทน
+  const lockAgentQr = isAgentTab && !isAgentViewer;
+  const qrDescription = isAgentTab
+    ? isAgentViewer
+      ? "ได้รับสิทธิพิเศษ Update ก่อนใคร และส่วนลดมากมาย"
+      : "สมัครสมาชิก 199฿"
+    : LINE_GROUPS.member.desc;
+  const agentRegisterUrl =
+    config.agentLink?.trim() || LINE_GROUPS.agent.href;
+
   return (
     <section className="relative pt-10 md:pt-14 pb-20 overflow-hidden bg-brand-surface">
 
@@ -97,17 +117,28 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
 
       <div className="max-w-[1240px] mx-auto px-7 w-full relative z-10">
 
-        {/* Warning ticker */}
+        {/* Warning ticker — มาร์คีวิ่งแบบลูปไม่มีรอยต่อ (หยุดเมื่อ hover) */}
         <div className="bg-gradient-to-r from-[#FFF1EF] to-[#FFE7E3] border border-[#FFD5CE] rounded-2xl flex items-center gap-3.5 py-2.5 px-4.5 shadow-sm overflow-hidden relative w-full">
           <div className="flex items-center gap-1.5 flex-shrink-0 bg-brand-coral text-white font-extrabold text-xs py-1 px-3 rounded-full relative z-10 shadow-sm shadow-brand-coral/20">
             <AlertOctagon className="h-3.5 w-3.5" />
             คำเตือน
           </div>
-          <div className="overflow-hidden flex-1 relative z-0">
-            <p className="whitespace-nowrap font-bold text-xs text-[#C4382A] animate-scroll-ticker">
-              ห้ามกดจองเล่น ๆ หากตรวจพบ ปรับ 50 บาท / 1 ครั้ง •
-              กรุณาจองเฉพาะที่ต้องการเติมจริงเท่านั้น • ขอบคุณที่ให้ความร่วมมือ
-            </p>
+          <div className="marquee-pause relative min-w-0 flex-1 overflow-hidden z-0">
+            <span className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#FFE7E3] to-transparent" />
+            <div
+              className="flex w-max animate-marquee whitespace-nowrap will-change-transform"
+              style={{ animationDuration: "22s" }}
+            >
+              {[0, 1, 2, 3].map((i) => (
+                <span
+                  key={i}
+                  aria-hidden={i > 0}
+                  className="px-8 font-bold text-xs text-[#C4382A]"
+                >
+                  ห้ามกดจองเล่น ๆ หากตรวจพบ ปรับ 50 บาท / 1 ครั้ง • กรุณาจองเฉพาะที่ต้องการเติมจริงเท่านั้น • ขอบคุณที่ให้ความร่วมมือ
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -144,14 +175,26 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
 
           {/* Dual CTAs */}
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3 animate-in fade-in slide-in-from-bottom-5 duration-900">
-            <Link
-              href="#booking"
-              className="relative inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-extrabold text-sm md:text-base text-white bg-gradient-to-r from-brand-green-700 via-brand-green-600 to-brand-green shadow-lg shadow-brand-green-600/35 hover:shadow-xl hover:shadow-brand-lime/50 hover:-translate-y-1 transition duration-200 cursor-pointer overflow-hidden group/cta"
-            >
-              <span className="absolute inset-0 rounded-full ring-2 ring-brand-lime/0 group-hover/cta:ring-brand-lime/60 transition duration-300 pointer-events-none" />
-              จองคิวเลย
-              <ArrowRight className="h-4.5 w-4.5 transition-transform group-hover/cta:translate-x-1" />
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/queue"
+                className="relative inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-extrabold text-sm md:text-base text-white bg-gradient-to-r from-brand-green-700 via-brand-green-600 to-brand-green shadow-lg shadow-brand-green-600/35 hover:shadow-xl hover:shadow-brand-lime/50 hover:-translate-y-1 transition duration-200 cursor-pointer overflow-hidden group/cta"
+              >
+                <span className="absolute inset-0 rounded-full ring-2 ring-brand-lime/0 group-hover/cta:ring-brand-lime/60 transition duration-300 pointer-events-none" />
+                จองคิวเลย
+                <ArrowRight className="h-4.5 w-4.5 transition-transform group-hover/cta:translate-x-1" />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpenAuth?.("login")}
+                className="relative inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-extrabold text-sm md:text-base text-white bg-gradient-to-r from-brand-green-700 via-brand-green-600 to-brand-green shadow-lg shadow-brand-green-600/35 hover:shadow-xl hover:shadow-brand-lime/50 hover:-translate-y-1 transition duration-200 cursor-pointer overflow-hidden group/cta"
+              >
+                <span className="absolute inset-0 rounded-full ring-2 ring-brand-lime/0 group-hover/cta:ring-brand-lime/60 transition duration-300 pointer-events-none" />
+                เข้าสู่ระบบตอนนี้
+                <ArrowRight className="h-4.5 w-4.5 transition-transform group-hover/cta:translate-x-1" />
+              </button>
+            )}
             <a
               href="/queue"
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-extrabold text-sm md:text-base bg-brand-surface text-brand-ink border border-brand-green-100 shadow-sm hover:border-brand-green hover:text-brand-green hover:-translate-y-1 transition duration-200 cursor-pointer"
@@ -278,11 +321,22 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
           <div className="flex flex-col md:flex-row md:items-center gap-5 md:gap-6">
             {/* QR with scanner corner ticks */}
             <div className="relative flex-shrink-0 p-2.5 bg-brand-surface border-2 border-brand-green-100 rounded-2xl self-center md:self-start">
-              <img
-                src={qrTab === "member" ? (config.qrcodenormal || "/qrcode.jpeg") : (config.qrcodeagent || "/qrcode.jpeg")}
-                alt={`QR เข้ากลุ่ม LINE ${LINE_GROUPS[qrTab].label}`}
-                className="w-32 h-32 md:w-36 md:h-36 object-contain rounded-lg"
-              />
+              {lockAgentQr ? (
+                <div className="w-32 h-32 md:w-36 md:h-36 rounded-lg bg-brand-green-50/60 border border-dashed border-brand-green-100 flex flex-col items-center justify-center gap-2 text-center px-3">
+                  <Lock className="h-7 w-7 text-brand-green" />
+                  <span className="text-[11px] font-extrabold text-brand-ink-soft leading-tight">
+                    เฉพาะตัวแทน
+                    <br />
+                    เท่านั้น
+                  </span>
+                </div>
+              ) : (
+                <img
+                  src={qrTab === "member" ? (config.qrcodenormal || "/qrcode.jpeg") : (config.qrcodeagent || "/qrcode.jpeg")}
+                  alt={`QR เข้ากลุ่ม LINE ${LINE_GROUPS[qrTab].label}`}
+                  className="w-32 h-32 md:w-36 md:h-36 object-contain rounded-lg"
+                />
+              )}
               <span className="absolute top-1 left-1 w-3.5 h-3.5 border-l-[2.5px] border-t-[2.5px] border-brand-green-600 rounded-tl-md" />
               <span className="absolute top-1 right-1 w-3.5 h-3.5 border-r-[2.5px] border-t-[2.5px] border-brand-green-600 rounded-tr-md" />
               <span className="absolute bottom-1 left-1 w-3.5 h-3.5 border-l-[2.5px] border-b-[2.5px] border-brand-green-600 rounded-bl-md" />
@@ -315,104 +369,45 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
               </div>
 
               <div className="inline-flex items-center gap-1.5 bg-[#06C755] text-white font-black text-[10px] uppercase tracking-wider py-1 px-2 rounded-md mb-2 shadow-sm">
-                <MessageCircle className="h-3 w-3 fill-white" strokeWidth={0} />
+                <svg className="w-[15px] h-auto" fill="#ffff" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>LINE</title><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
                 LINE Official
               </div>
               <p className="font-display font-extrabold text-[16px] md:text-[17px] text-brand-ink leading-tight mb-1.5">
                 สแกนเพื่อเข้ากลุ่ม LINE
               </p>
               <p className="text-[12.5px] text-brand-ink-soft leading-snug mb-3 font-medium">
-                {LINE_GROUPS[qrTab].desc}
+                {qrDescription}
               </p>
 
-              {/* ปุ่มกดเข้ากลุ่ม LINE — ลิงก์แก้ได้ในแอดมิน (lineGroupNormal/lineGroupAgent) */}
-              <a
-                href={
-                  qrTab === "member"
-                    ? config.lineGroupNormal?.trim() || LINE_GROUPS.member.href
-                    : config.lineGroupAgent?.trim() || LINE_GROUPS.agent.href
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#06C755] py-2.5 text-[13px] font-black text-white shadow-md shadow-[#06C755]/30 transition hover:-translate-y-0.5 hover:bg-[#05b34c]"
-              >
-                <MessageCircle className="h-4 w-4 fill-white" strokeWidth={0} />
-                กดเพื่อเข้ากลุ่ม LINE
-              </a>
+              {lockAgentQr ? (
+                /* ลูกค้าทั่วไปบนแท็บตัวแทน → ปุ่มชวนสมัครเป็นตัวแทน */
+                <a
+                  href={agentRegisterUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-gold-light to-brand-gold-deep py-2.5 text-[13px] font-black text-brand-ink shadow-md shadow-brand-gold/30 transition hover:-translate-y-0.5"
+                >
+                  <Crown className="h-4 w-4" strokeWidth={2.5} />
+                  สมัครเป็นตัวแทน 199฿
+                </a>
+              ) : (
+                /* ปุ่มกดเข้ากลุ่ม LINE — ลิงก์แก้ได้ในแอดมิน (lineGroupNormal/lineGroupAgent) */
+                <a
+                  href={
+                    qrTab === "member"
+                      ? config.lineGroupNormal?.trim() || LINE_GROUPS.member.href
+                      : config.lineGroupAgent?.trim() || LINE_GROUPS.agent.href
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#06C755] py-2.5 text-[13px] font-black text-white shadow-md shadow-[#06C755]/30 transition hover:-translate-y-0.5 hover:bg-[#05b34c]"
+                >
+                  <svg className="w-[24px] h-auto" fill="#ffff" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>LINE</title><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+                  กดเพื่อเข้ากลุ่ม LINE
+                </a>
+              )}
 
             </div>
-          </div>
-        </div>
-
-        {/* ════════ Trust Banner ════════ */}
-        <div className="mt-12 flex flex-wrap items-center gap-6 md:gap-8 justify-between bg-brand-surface border border-brand-green-100 p-6 md:py-6 md:px-8.5 rounded-[32px] shadow-sm animate-in fade-in slide-in-from-bottom-6 duration-1000">
-          <div className="flex items-center gap-3">
-            <div className="flex -space-x-3.5 select-none">
-              <span className="w-9.5 h-9.5 rounded-full border-[2.5px] border-white text-xs font-bold text-white bg-gradient-to-tr from-[#FF8A65] to-[#FF7043] flex items-center justify-center shadow-sm">
-                อ
-              </span>
-              <span className="w-9.5 h-9.5 rounded-full border-[2.5px] border-white text-xs font-bold text-white bg-gradient-to-tr from-brand-green to-brand-green-600 flex items-center justify-center shadow-sm">
-                ร
-              </span>
-              <span className="w-9.5 h-9.5 rounded-full border-[2.5px] border-white text-xs font-bold text-white bg-gradient-to-tr from-[#42A5F5] to-[#1E88E5] flex items-center justify-center shadow-sm">
-                ม
-              </span>
-              <span className="w-9.5 h-9.5 rounded-full border-[2.5px] border-white text-xs font-bold text-white bg-brand-green-700 flex items-center justify-center shadow-sm">
-                {/* จำนวนผู้ใช้จริง (realtime) — ไม่ใช่ค่าปลอม +99 */}
-                {(config?.stats?.totalUsers ?? 0) > 99
-                  ? "99+"
-                  : `+${config?.stats?.totalUsers ?? 0}`}
-              </span>
-            </div>
-            <div className="text-xs font-bold leading-relaxed text-brand-ink-soft">
-              รีวิวจากผู้ใช้จริง
-              <br />
-              <b className="text-brand-ink text-sm font-black">
-                +{Number(config?.stats?.totalCompleted ?? 0).toLocaleString()} ออเดอร์
-              </b>
-            </div>
-          </div>
-
-          <div className="hidden md:block w-px h-9.5 bg-brand-green-100" />
-
-          <div className="flex flex-col">
-            <span className="font-display font-black text-2xl lg:text-3xl text-brand-green leading-none">
-              {config?.stats?.successRate ?? 100}%
-            </span>
-            <span className="text-[11.5px] font-bold text-brand-ink-soft mt-1">
-              เสถียรภาพระบบการทำงาน
-            </span>
-          </div>
-
-          <div className="hidden md:block w-px h-9.5 bg-brand-green-100" />
-
-          <a
-            href={config.reviewLink?.trim() || "https://line.me/R/ti/p/@ormorcoins"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col group/stat transition duration-200"
-          >
-            <span className="font-display font-black text-2xl lg:text-3xl text-brand-green leading-none flex items-center gap-1 group-hover/stat:text-brand-green">
-              ดูรีวิวลูกค้า ➔
-            </span>
-            <span className="text-[11.5px] font-bold text-brand-ink-soft mt-1 underline decoration-brand-green-300 group-hover/stat:text-brand-green">
-              คลิกเพื่อรับชมรีวิว
-            </span>
-          </a>
-
-          <div className="hidden md:block w-px h-9.5 bg-brand-green-100" />
-
-          <div className="flex flex-col">
-            <span className="font-display font-black text-2xl lg:text-3xl text-brand-green leading-none flex items-center gap-1.5">
-              {config?.stats?.activeQueues ?? 0} คิว
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-green opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-green"></span>
-              </span>
-            </span>
-            <span className="text-[11.5px] font-bold text-brand-ink-soft mt-1">
-              คิวรอประมวลผล Realtime
-            </span>
           </div>
         </div>
       </div>

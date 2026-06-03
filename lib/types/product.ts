@@ -5,9 +5,7 @@
  * Constraint: max 8 items per array (บังคับฝั่ง app)
  */
 
-export const PRODUCT_MAX_SALE_DATES = 8;
 export const PRODUCT_MAX_TIME_SLOTS = 8;
-export const PRODUCT_MAX_DISCOUNT_USERS = 8;
 
 /** วันที่เปิดขาย — ISO date string "YYYY-MM-DD" */
 export type SaleDate = string;
@@ -35,6 +33,7 @@ export interface ProductParsed {
   agentPrice: string;
   stockEnabled: boolean;
   stock: number;
+  maxPerUserPerDay: number;
   saleDates: SaleDate[];
   timeSlots: TimeSlot[];
   discountEligibleUsernames: DiscountUsername[];
@@ -56,6 +55,7 @@ export interface ProductInput {
   agentPrice: number;
   stockEnabled: boolean;
   stock: number;
+  maxPerUserPerDay?: number;
   saleDates: SaleDate[];
   timeSlots: TimeSlot[];
   discountEligibleUsernames: DiscountUsername[];
@@ -74,14 +74,8 @@ export function validateProductInput(input: ProductInput): string | null {
   if (input.stock < 0) return "จำนวนสต็อกต้องไม่ติดลบ";
   if (input.discountAmount < 0) return "ส่วนลดต้องไม่ติดลบ";
 
-  if (input.saleDates.length > PRODUCT_MAX_SALE_DATES) {
-    return `เลือกวันที่ขายได้สูงสุด ${PRODUCT_MAX_SALE_DATES} วัน`;
-  }
   if (input.timeSlots.length > PRODUCT_MAX_TIME_SLOTS) {
     return `เพิ่มช่วงเวลาได้สูงสุด ${PRODUCT_MAX_TIME_SLOTS} ช่วง`;
-  }
-  if (input.discountEligibleUsernames.length > PRODUCT_MAX_DISCOUNT_USERS) {
-    return `กำหนดผู้มีสิทธิ์ได้รับส่วนลดได้สูงสุด ${PRODUCT_MAX_DISCOUNT_USERS} คน`;
   }
 
   // Validate time format + start < end

@@ -179,7 +179,7 @@ export default function ReviewsSection() {
   //  - รีวิวเยอะ ก็กระจายเป็น 2 แถวสมดุล
   //  - แต่ละ review ได้รูปกระจายตำแหน่งต่างกันใน 2 แถว
   const { rowA, rowB } = useMemo(() => {
-    const MIN_PER_ROW = 8; // ขั้นต่ำเพื่อให้ marquee เต็มจอ
+    const MIN_PER_ROW = 8; // ขั้นต่ำเพื่อให้ marquee เต็มจอ (วนการ์ดซ้ำ ไม่กระทบจำนวนจริง)
     if (source.length === 0) return { rowA: [], rowB: [] };
 
     /** rotate array + repeat จนได้จำนวนขั้นต่ำ */

@@ -67,6 +67,7 @@ function parseProduct(p: Record<string, unknown>): ProductParsed {
     agentPrice: (p.agentPrice as string) ?? "0",
     stockEnabled: (p.stockEnabled as boolean) ?? false,
     stock: (p.stock as number) ?? 0,
+    maxPerUserPerDay: (p.maxPerUserPerDay as number) ?? 0,
     saleDates: parseJSONArray<SaleDate>(p.saleDates),
     timeSlots: parseJSONArray<TimeSlot>(p.timeSlots),
     discountEligibleUsernames: parseJSONArray<DiscountUsername>(

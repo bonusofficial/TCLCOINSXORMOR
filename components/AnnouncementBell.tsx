@@ -1,29 +1,9 @@
 "use client";
-
-/**
- * AnnouncementBell — ระบบประกาศแจ้งเตือน (ดึงจาก config แอดมิน)
- *
- * - แสดง popup กลางจอตอนเข้าเว็บ (ถ้าเปิดใช้งานและยังไม่ถูกปิด)
- * - กด "รับทราบ" → ซ่อน 1 วัน (เก็บใน localStorage พร้อม signature ของเนื้อหา
- *   เพื่อถ้าแอดมินเปลี่ยนประกาศใหม่จะเด้งขึ้นอีกครั้ง)
- * - กระดิ่งมุมขวาบน กดดูประกาศซ้ำได้ตลอดเวลา
- */
-
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Bell, X, Megaphone, MessageCircle } from "lucide-react";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
 
-const DISMISS_KEY = "ormor_announce_dismiss";
-const ONE_DAY = 24 * 60 * 60 * 1000;
-
-/** hash ง่ายๆ ของเนื้อหาประกาศ — ใช้เป็น version key ของ dismiss */
-function sig(s: string) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-  return String(h >>> 0);
-}
-
-/** เนื้อหาประกาศที่ใช้ร่วมกันทั้ง popup และ panel ของกระดิ่ง */
 function AnnouncementBody({
   banner,
   badge,
@@ -75,21 +55,21 @@ function AnnouncementBody({
   );
 }
 
-/** ปุ่มท้ายประกาศ — "รับทราบ" (เขียว) + "ติดต่อเรา" (outline + LINE) */
+/** ปุ่มท้ายประกาศ — "ปิดประกาศ" (เขียว) + "ติดต่อเรา" (outline + LINE) */
 function AnnouncementFooter({
   contactLink,
-  onAck,
+  onClose,
 }: {
   contactLink: string;
-  onAck: () => void;
+  onClose: () => void;
 }) {
   return (
     <div className="flex items-stretch gap-2 border-t border-brand-green-100 bg-brand-surface-soft p-2.5">
       <button
-        onClick={onAck}
+        onClick={onClose}
         className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-green to-brand-green-600 py-3 text-[13px] font-black text-white shadow-md shadow-brand-green/25 transition hover:brightness-110 cursor-pointer"
       >
-        รับทราบและเริ่มใช้งาน
+        ปิดประกาศ
       </button>
       {contactLink && (
         <a
@@ -98,7 +78,12 @@ function AnnouncementFooter({
           rel="noreferrer"
           className="flex items-center justify-center gap-1.5 rounded-xl border border-brand-green-100 bg-brand-surface px-4 py-3 text-[13px] font-black text-brand-green transition hover:border-brand-green hover:bg-brand-green-50 cursor-pointer"
         >
-          <MessageCircle className="h-4 w-4 fill-[#06C755] text-[#06C755]" strokeWidth={0} />
+          <Image
+      src="https://thesvg.org/icons/line/default.svg"
+      alt="LINE"
+      width={24}
+      height={24}
+    />
           ติดต่อเรา
         </a>
       )}
@@ -117,7 +102,6 @@ export default function AnnouncementBell() {
   const hasContent =
     !!title || !!banner || content.replace(/<[^>]*>/g, "").trim().length > 0;
   const enabled = !!config.announceEnabled && hasContent;
-  const csig = sig(`${title}|${banner}|${badge}|${content}`);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false);
@@ -125,28 +109,12 @@ export default function AnnouncementBell() {
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  /* ตัดสินใจเด้ง popup + จุดแดง ตามสถานะ dismiss */
+  /* แสดงประกาศทุกครั้งที่เข้าหน้า (ไม่มีระบบรับทราบ/ซ่อน 1 วัน) */
   useEffect(() => {
-    if (!enabled) {
-      setPopupOpen(false);
-      setUnread(false);
-      return;
-    }
-    let dismissed = false;
-    try {
-      const raw = localStorage.getItem(DISMISS_KEY);
-      if (raw) {
-        const d = JSON.parse(raw);
-        dismissed = d?.sig === csig && Date.now() < Number(d?.until);
-      }
-    } catch {
-      dismissed = false;
-    }
-    setPopupOpen(!dismissed);
-    setUnread(!dismissed);
-  }, [enabled, csig]);
+    setPopupOpen(enabled);
+    setUnread(enabled);
+  }, [enabled]);
 
-  /* ปิด panel เมื่อคลิกนอก */
   useEffect(() => {
     if (!panelOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -158,7 +126,6 @@ export default function AnnouncementBell() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [panelOpen]);
 
-  /* Esc ปิดทั้ง popup/panel */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -172,16 +139,8 @@ export default function AnnouncementBell() {
 
   if (!enabled) return null;
 
-  /* กด "รับทราบ" → ซ่อน 1 วัน */
-  const dismiss = () => {
-    try {
-      localStorage.setItem(
-        DISMISS_KEY,
-        JSON.stringify({ sig: csig, until: Date.now() + ONE_DAY })
-      );
-    } catch {
-      /* ignore */
-    }
+  /* ปิดเฉพาะตอนนี้ — ไม่จำสถานะ จะกลับมาแสดงอีกเมื่อเข้าหน้าใหม่ */
+  const close = () => {
     setPopupOpen(false);
     setPanelOpen(false);
     setUnread(false);
@@ -234,7 +193,7 @@ export default function AnnouncementBell() {
               </button>
             </div>
             <AnnouncementBody banner={banner} badge={badge} title={title} content={content} />
-            <AnnouncementFooter contactLink={contactLink} onAck={dismiss} />
+            <AnnouncementFooter contactLink={contactLink} onClose={close} />
           </div>
         )}
       </div>
@@ -244,7 +203,7 @@ export default function AnnouncementBell() {
         <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/65 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={dismiss}
+            onClick={close}
           />
           <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-brand-green-100 bg-brand-surface shadow-2xl shadow-black/60 ring-1 ring-brand-green/20 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between gap-2 border-b border-brand-green-100/60 px-5 py-3.5">
@@ -252,7 +211,7 @@ export default function AnnouncementBell() {
                 <Megaphone className="h-4.5 w-4.5" /> ประกาศจากระบบ
               </span>
               <button
-                onClick={dismiss}
+                onClick={close}
                 aria-label="ปิด"
                 className="flex h-8 w-8 items-center justify-center rounded-full text-brand-ink-soft transition hover:bg-brand-surface-soft hover:text-brand-ink cursor-pointer"
               >
@@ -260,7 +219,7 @@ export default function AnnouncementBell() {
               </button>
             </div>
             <AnnouncementBody banner={banner} badge={badge} title={title} content={content} />
-            <AnnouncementFooter contactLink={contactLink} onAck={dismiss} />
+            <AnnouncementFooter contactLink={contactLink} onClose={close} />
           </div>
         </div>
       )}

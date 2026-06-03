@@ -10,6 +10,8 @@ import {
 /** helper — แปลง row จาก Prisma → response shape (กัน createdAt/updatedAt undefined) */
 function shape(r: {
   id: number;
+  userId?: string | null;
+  status?: string;
   avatar?: string | null;
   name: string;
   detail: string | null;
@@ -23,6 +25,8 @@ function shape(r: {
   const now = new Date().toISOString();
   return {
     id: r.id,
+    userId: r.userId ?? null,
+    status: r.status ?? "approved",
     avatar: r.avatar ?? null,
     name: r.name,
     detail: r.detail,
@@ -40,18 +44,23 @@ const app = new Elysia({ prefix: "/api/v1/setting/review" })
   .use(errorPlugin)
   .use(authMacros)
 
-  /** GET — list ทั้งหมด (public, ใช้บนหน้า reviews ของเว็บได้) */
-  .get("/", async () => {
-    const items = await prisma.reviews.findMany({ orderBy: { id: "desc" } });
-    return { ok: true as const, data: items.map(shape) };
-  })
+  /** GET — list ทั้งหมด รวมที่รออนุมัติ (admin moderation) */
+  .get(
+    "/",
+    async () => {
+      const items = await prisma.reviews.findMany({ orderBy: { id: "desc" } });
+      return { ok: true as const, data: items.map(shape) };
+    },
+    { requireRole: "admin" }
+  )
 
-  /** POST — เพิ่มรีวิว (admin) */
+  /** POST — เพิ่มรีวิว (admin) — ดีฟอลต์อนุมัติทันที */
   .post(
     "/",
     async ({ body }) => {
       const saved = await prisma.reviews.create({
         data: {
+          status: body.status ?? "approved",
           avatar: body.avatar ?? null,
           name: body.name,
           detail: body.detail ?? null,
