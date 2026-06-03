@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/utils";
+import { getAdminDashboardHref } from "@/lib/admin-url";
 import {
   Drawer,
   DrawerContent,
@@ -169,12 +170,13 @@ export default function Navbar({
 
   const role = ROLE_CONFIG[userRole];
   const isAdmin = userRole === "admin";
+  const adminDashboardHref = getAdminDashboardHref();
 
   /* ── Account menu items (vary by role) ── */
   const accountMenuItems = useMemo(() => {
     const items: Array<{ href: string; icon: typeof UserCog; label: string }> = [];
     if (isAdmin) {
-      items.push({ href: "/dashboard", icon: Settings2, label: "จัดการระบบ" });
+      items.push({ href: adminDashboardHref, icon: Settings2, label: "จัดการระบบ" });
     }
     if (userRole === "agent" || userRole === "admin") {
       items.push({ href: "/profile/benefits", icon: Crown, label: "สิทธิพิเศษตัวแทน" });
@@ -185,7 +187,7 @@ export default function Navbar({
       { href: "/profile/orders", icon: Receipt, label: "ประวัติการสั่งซื้อ" }
     );
     return items;
-  }, [isAdmin, userRole]);
+  }, [adminDashboardHref, isAdmin, userRole]);
 
   return (
     <div className="sticky top-[18px] z-80 px-7 max-w-[1240px] mx-auto w-full">

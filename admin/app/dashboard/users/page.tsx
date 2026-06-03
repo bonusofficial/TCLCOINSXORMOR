@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { usersApi } from "@/lib/eden";
 import { timeAgo } from "@/lib/audit-labels";
-import { formatDisplayID } from "@/components/Navbar";
+import { formatDisplayID } from "@/lib/user-format";
 import {
   Table,
   TableHeader,

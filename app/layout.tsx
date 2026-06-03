@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { PublicDataProvider } from "@/lib/contexts/PublicDataContext";
 import ConditionalFooter from "@/components/ConditionalFooter";
-import GlobalLoadingScreen from "@/components/GlobalLoadingScreen";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -61,7 +60,6 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <PublicDataProvider>
-          <GlobalLoadingScreen />
           {children}
           <ConditionalFooter />
           <Toaster />

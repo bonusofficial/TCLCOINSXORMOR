@@ -3,6 +3,7 @@
 import React, { useMemo } from "react";
 import { Star, Quote, BadgeCheck, ThumbsUp } from "lucide-react";
 import { useConfig, useReviews } from "@/lib/contexts/PublicDataContext";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface Review {
   id: string;
@@ -126,7 +127,7 @@ function ReviewCard({ r }: { r: Review }) {
 
 export default function ReviewsSection() {
   // Reviews มาจาก context — โหลดครั้งเดียวที่ root, share ทุกหน้า
-  const { reviews: apiReviews } = useReviews();
+  const { reviews: apiReviews, loading } = useReviews();
   const { config } = useConfig();
 
   // Map context shape → component shape
@@ -249,7 +250,29 @@ export default function ReviewsSection() {
           </div>
         </div>
 
-        {source.length > 0 ? (
+        {loading && source.length === 0 ? (
+          /* Skeleton ระหว่างโหลดรีวิว */
+          <div className="flex gap-5 overflow-hidden">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex-shrink-0 w-[340px] md:w-[380px] bg-brand-surface border border-brand-green-100 rounded-3xl p-6"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <Skeleton className="h-11 w-11 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="h-3.5 w-28 mb-2" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+                <Skeleton className="h-3.5 w-24 mb-3" />
+                <Skeleton className="h-3 w-full mb-2" />
+                <Skeleton className="h-3 w-5/6 mb-2" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+            ))}
+          </div>
+        ) : source.length > 0 ? (
           /* Marquee rows */
           <div className="marquee-pause space-y-5 relative">
             {/* Edge fade masks */}

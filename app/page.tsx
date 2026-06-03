@@ -15,6 +15,7 @@ import AnnouncementBell from "@/components/AnnouncementBell";
 import { useSession, signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
+import { getAdminDashboardHref } from "@/lib/admin-url";
 
 type UserRole = "member" | "agent" | "admin";
 
@@ -48,6 +49,7 @@ export default function Home() {
     | undefined;
   const isLoggedIn = !!sessionUser || roleOverride !== null;
   const userRole = roleOverride ?? resolveUserRole(sessionUser);
+  const adminDashboardHref = getAdminDashboardHref();
 
   // Modal states
   const [authOpen, setAuthOpen] = useState(false);
@@ -195,7 +197,7 @@ export default function Home() {
 
                 {isAdmin && (
                   <a
-                    href="/dashboard"
+                    href={adminDashboardHref}
                     className="w-full text-center py-2.5 px-3 rounded-xl font-extrabold text-xs bg-gradient-to-r from-sky-400 to-sky-600 text-white shadow-md shadow-sky-500/30 hover:shadow-lg hover:shadow-sky-500/45 hover:-translate-y-0.5 transition cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     🛡 เข้าสู่แดชบอร์ดผู้ดูแล

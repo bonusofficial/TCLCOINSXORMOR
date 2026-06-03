@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id              String    @id
+  name            String    @db.Text
+  email           String    @unique
+  emailVerified   Boolean   @default(false)
+  image           String?   @db.MediumText
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  username        String?   @unique
+  displayUsername String?   @db.Text
+  memberNo        Int?      @unique  // เลขสมาชิกแบบรันนิ่ง (UID = OMTC-xxxxx)
+  role            String?   @db.Text
+  phone           String?   @db.Text
+  shopName        String?   @db.Text  // ชื่อร้านปัจจุบัน (สำหรับตัวแทน)
+  lineId          String?   @db.Text  // ไอดีไลน์ปัจจุบันที่ใช้เติม Coins
+  accounts        Account[]
+  sessions        Session[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?  @db.Text
+  userAgent String?  @db.Text
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    @db.Text
+  providerId            String    @db.Text
+  userId                String
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String   @db.Text
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier(length: 191)])
+  @@map("verification")
+}
+
+model Config {
+  id                 Int    @id @default(autoincrement())
+  logo               String @db.MediumText
+  title              String @db.Text
+  description        String @db.Text
+  keywords           String @db.Text
+  agentLink          String @db.Text
+  contactLine        String @db.Text
+  phone              String @db.Text
+  qrcodenormal       String @db.MediumText
+  qrcodeagent        String @db.MediumText
+  qrcodesupport      String @db.MediumText
+  warningMessage     String @db.Text
+  agentPrivileges    String? @db.Text
+  lineGroupNormal    String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (ลูกค้าทั่วไป)
+  lineGroupAgent     String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (ตัวแทน)
+  welcomeTitle       String? @db.Text   // หัวข้อ panel สมัคร เช่น "ยินดีต้อนรับสู่ครอบครัว..."
+  welcomeAgentDesc   String? @db.Text   // คำอธิบายบทบาทตัวแทน
+  welcomeMemberDesc  String? @db.Text   // คำอธิบายบทบาทลูกค้าทั่วไป
+  howItWorks         Json?              // ขั้นตอนการใช้งาน [{title, desc} x4]
+  termsContent       String? @db.MediumText  // ข้อกำหนดเงื่อนไขการใช้บริการ (HTML)
+  privacyContent     String? @db.MediumText  // นโยบายความเป็นส่วนตัว (HTML)
+  reviewLink         String? @db.Text   // ลิงก์ "ดูรีวิวลูกค้า" (แถบ trust ในหน้าแรก)
+  announceEnabled    Boolean @default(false)  // เปิด/ปิด ประกาศแจ้งเตือน
+  announceBanner     String? @db.MediumText   // รูป Banner ของประกาศ (URL)
+  announceBadge      String? @db.Text   // ป้าย badge เช่น "ประกาศสำคัญ"
+  announceTitle      String? @db.Text   // หัวข้อประกาศ
+  announceContent    String? @db.MediumText   // รายละเอียดประกาศ (HTML)
+  marqueeText        String? @db.Text   // ข้อความวิ่ง marquee (หน้าประวัติการสั่งซื้อ)
+  footerDescription  String? @db.Text   // คำอธิบายใต้แบรนด์ใน footer
+  footerLinks        Json?              // ลิงก์แนะนำ [{label, url}]
+  footerServices     Json?              // ลิงก์การบริการ [{label, url}]
+  footerLineUrl      String? @db.Text   // ลิงก์ LINE ใน footer
+  footerFacebook     String? @db.Text   // ลิงก์ Facebook ใน footer
+  footerCopyright    String? @db.Text   // ข้อความลิขสิทธิ์ท้าย footer
+}
+model banners {
+  id        Int      @id @default(autoincrement())
+  image     String   @db.MediumText
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// Review — admin จัดการรีวิวที่แสดงในหน้า public
+/// ─────────────────────────────────────────────────────────────
+///  - rating    : 1..5
+///  - timeUnit  : "hour" | "day" | "week" | "month" | "year"
+///  - timeValue : ตัวเลข (เช่น 5 ชั่วโมง, 2 วัน)
+model reviews {
+  id        Int      @id @default(autoincrement())
+  userId    String?  @db.VarChar(64)        // ผู้รีวิว (null = แอดมินสร้างเอง)
+  status    String   @default("approved")   // pending | approved | rejected
+  avatar    String?  @db.MediumText        // URL รูป avatar (optional — fallback ใช้ initial)
+  name      String   @db.VarChar(120)
+  detail    String?  @db.VarChar(200)
+  review    String   @db.Text
+  rating    Int      @default(5)
+  timeValue Int      @default(1)
+  timeUnit  String   @db.VarChar(20)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("reviews")
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// Bookings — ระบบการจอง
+/// ─────────────────────────────────────────────────────────────
+///  - bookingCode  : MB-DDMMYYYY-XXXX | AG-... | ADM-... (random 4 digits)
+///  - status       : "รอชำระเงิน" | "ชำระแล้ว" | "ยกเลิก" | "สำเร็จ"
+model bookings {
+  id          Int      @id @default(autoincrement())
+  bookingCode String   @unique @db.VarChar(50)
+  productId   Int?
+  productCode String?  @db.VarChar(100)
+  productName String   @db.VarChar(255)
+  userId      String?  @db.VarChar(36)
+  username    String   @db.VarChar(255)
+  phone       String   @db.VarChar(30)
+  content     String?  @db.VarChar(500)
+  price       Decimal  @db.Decimal(15, 2)
+  status      String   @default("รอตรวจสอบ") @db.VarChar(30)
+  bookingDate DateTime
+  bookingTime String?  @db.VarChar(50)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("bookings")
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// Accounts — รายรับ/รายจ่าย (จาก legacy schema)
+/// ─────────────────────────────────────────────────────────────
+model accounts {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @db.Date
+  description String?  @db.VarChar(255)
+  category    String   @db.VarChar(20) // "รายรับ" | "รายจ่าย"
+  income      Decimal  @default(0) @db.Decimal(15, 2)
+  expense     Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+  @@index([category])
+  @@map("accounts")
+}
+
+/// ─────────────────────────────────────────────────────────────
+/// Audit Log — บันทึกการกระทำของผู้ใช้/ระบบ
+/// ─────────────────────────────────────────────────────────────
+///  - action      : USER_CREATE, USER_UPDATE, USER_DELETE, USER_ROLE_CHANGE,
+///                  PRODUCT_*, BANNER_*, REVIEW_*, CONFIG_UPDATE, LOGIN, LOGOUT
+///  - entityType  : user | product | banner | review | config | session
+///  - userEmail   : snapshot — เก็บไว้แสดงแม้ user ถูกลบไปแล้ว
+model audit_logs {
+  id         Int      @id @default(autoincrement())
+  userId     String?  @db.VarChar(36)
+  userEmail  String?  @db.VarChar(255)
+  userName   String?  @db.VarChar(120)
+  action     String   @db.VarChar(50)
+  entityType String   @db.VarChar(50)
+  entityId   String?  @db.VarChar(100)
+  details    Json?
+  ipAddress  String?  @db.VarChar(45)
+  userAgent  String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+model products {
+  id          Int     @id @default(autoincrement())
+  image       String  @db.MediumText
+  name        String  @db.VarChar(255)
+  description String  @db.Text
+
+  // ─── ราคา ───
+  price       Decimal @db.Decimal(10, 2)  // ราคาทั่วไป
+  cost        Decimal @default(0) @db.Decimal(10, 2)  // ต้นทุนสินค้า
+  agentPrice  Decimal @db.Decimal(10, 2)  // ราคา Agent
+
+  // ─── สต็อก ───
+  stockEnabled Boolean @default(false)    // toggle "ระบบสต็อก"
+  stock        Int     @default(0)        // จำนวนสต็อก
+
+  // ─── จำกัดจองต่อคน/วัน (เฉพาะสินค้านี้) ───
+  maxPerUserPerDay Int @default(0)        // 0 = ไม่จำกัด
+
+  // ─── ตารางขาย (JSON arrays — see helper types) ───
+  saleDates   Json    // string[]                     เช่น ["2026-05-19", "2026-05-14"]
+  timeSlots   Json    // Array<{start:string,end:string}>  เช่น [{start:"17:10",end:"18:08"}]
+
+  // ─── ส่วนลดผู้มีสิทธิ์พิเศษ ───
+  discountEligibleUsernames Json                       // string[]      เช่น ["peak", "riu", "john"] — ไม่จำกัดจำนวน
+  discountAmount            Decimal @default(0) @db.Decimal(10, 2)
+
+  // ─── อื่น ๆ ───
+  note      String?  @db.Text                          // หมายเหตุ (optional)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("products")
+}

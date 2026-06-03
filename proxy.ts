@@ -4,21 +4,18 @@ import { getSessionCookie } from "better-auth/cookies";
 /**
  * Next.js 16 Proxy (เดิมคือ middleware.ts — เปลี่ยนชื่อตาม Next 16)
  *
- * 1) แยก subdomain
- *    - dashboard.<domain>  → หน้าแอดมิน (rewrite root → /dashboard)
- *    - www.<domain> / apex → หน้าผู้ใช้ (กันเข้า /dashboard → เด้งไป dashboard subdomain)
- *    - localhost / IP / dev → ไม่แยก (admin ใช้ /dashboard บน localhost ได้ปกติ)
- * 2) เช็ค session cookie สำหรับ /dashboard, /profile (lightweight ไม่ hit DB)
- *    role check (admin) ทำใน layout (Server Component) อีกชั้น
+ * เว็บผู้ใช้ไม่มีหน้า /dashboard แล้ว:
+ * - production apex/www ที่เข้า /dashboard จะ redirect ไป dashboard subdomain
+ * - /profile ยังเช็ค session cookie แบบ lightweight ไม่ hit DB
  *
  * cookie session แชร์ข้ามซับโดเมนผ่าน better-auth crossSubDomainCookies (ตั้ง COOKIE_DOMAIN)
  */
 function isProtectedPath(pathname: string): boolean {
-  return (
-    pathname === "/dashboard" ||
-    pathname.startsWith("/dashboard/") ||
-    pathname.startsWith("/profile")
-  );
+  return pathname.startsWith("/profile");
+}
+
+function isDashboardPath(pathname: string): boolean {
+  return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
 }
 
 export async function proxy(request: NextRequest) {
@@ -42,31 +39,19 @@ export async function proxy(request: NextRequest) {
     !host.includes(".");
   const isDashboardHost = !isLocal && host.split(".")[0] === "dashboard";
 
-  // ── 1) แยก subdomain (เฉพาะโดเมนจริง) ──
-  if (!isLocal) {
-    if (isDashboardHost) {
-      // ซับโดเมนแอดมิน: root → /dashboard (rewrite ให้ URL สะอาด)
-      if (pathname === "/" || pathname === "") {
-        // มาพร้อม ?auth (layout เด้งมาตอนยังไม่ล็อกอิน) → ปล่อยหน้า login แสดง กัน loop
-        if (request.nextUrl.searchParams.has("auth")) return NextResponse.next();
-        const url = request.nextUrl.clone();
-        url.pathname = "/dashboard";
-        return NextResponse.rewrite(url);
-      }
-    } else if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
-      // ซับโดเมนผู้ใช้ (www/apex): ห้ามเข้าหน้าแอดมิน → เด้งไป dashboard subdomain
-      const dashHost = host.startsWith("www.")
-        ? `dashboard.${host.slice(4)}`
-        : `dashboard.${host}`;
-      const url = new URL(request.url);
-      url.host = dashHost;
-      url.protocol = "https:";
-      url.port = "";
-      return NextResponse.redirect(url);
-    }
+  // เว็บผู้ใช้ไม่ serve dashboard แล้ว ให้ส่งไป admin project แยกบน dashboard subdomain
+  if (!isLocal && !isDashboardHost && isDashboardPath(pathname)) {
+    const dashHost = host.startsWith("www.")
+      ? `dashboard.${host.slice(4)}`
+      : `dashboard.${host}`;
+    const url = new URL(request.url);
+    url.host = dashHost;
+    url.protocol = "https:";
+    url.port = "";
+    return NextResponse.redirect(url);
   }
 
-  // ── 2) ต้องมี session cookie สำหรับ /dashboard, /profile ──
+  // ต้องมี session cookie สำหรับ /profile
   if (isProtectedPath(pathname)) {
     const sessionCookie = getSessionCookie(request);
     if (!sessionCookie) {
@@ -81,6 +66,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // "/" สำหรับ rewrite ซับโดเมนแอดมิน · /dashboard, /profile สำหรับ gate + block
-  matcher: ["/", "/dashboard/:path*", "/profile/:path*"],
+  matcher: ["/dashboard/:path*", "/profile/:path*"],
 };

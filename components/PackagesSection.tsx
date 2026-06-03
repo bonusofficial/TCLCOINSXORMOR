@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { TrendingUp, Tag, Loader2 } from "lucide-react";
+import { TrendingUp, Tag } from "lucide-react";
 import { useProducts } from "@/lib/contexts/PublicDataContext";
 import { UserRole } from "@/lib/booking";
 import { PackageCard } from "@/components/PackageCard";
 import { getProductAvailability } from "@/lib/product-utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface PackagesSectionProps {
   onSelectPackage: (productId: number) => void;
@@ -92,9 +93,22 @@ export default function PackagesSection({
 
         {/* Packages Grid */}
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-brand-ink-soft">
-            <Loader2 className="h-5 w-5 animate-spin mr-2" />
-            <span className="font-bold">กำลังโหลด...</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-brand-surface border border-brand-green-100 rounded-3xl p-5"
+              >
+                <Skeleton className="h-44 w-full rounded-2xl mb-4" />
+                <Skeleton className="h-5 w-2/3 mb-2.5" />
+                <Skeleton className="h-3.5 w-1/2 mb-5" />
+                <div className="flex items-center justify-between mb-5">
+                  <Skeleton className="h-7 w-24" />
+                  <Skeleton className="h-4 w-14" />
+                </div>
+                <Skeleton className="h-11 w-full rounded-xl" />
+              </div>
+            ))}
           </div>
         ) : displayProducts.length === 0 ? (
           <div className="bg-brand-surface border border-brand-green-100 rounded-3xl p-12 text-center">
