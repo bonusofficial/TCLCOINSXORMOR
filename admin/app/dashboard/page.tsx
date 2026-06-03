@@ -204,7 +204,7 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
 
 function DashboardSkeleton() {
   return (
-    <main className="flex-1 px-6 lg:px-8 py-7 space-y-7 max-w-[1480px] w-full mx-auto">
+    <main className="flex-1 px-6 lg:px-8 py-7 space-y-7 max-w-[1480px] w-full mx-auto will-change-auto">
       {/* Stat Cards */}
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -336,10 +336,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void fetchDashboard();
-    }, 0);
-    return () => window.clearTimeout(timer);
+    void fetchDashboard();
   }, [fetchDashboard]);
 
   if (loading) return <DashboardSkeleton />;
@@ -354,7 +351,7 @@ export default function DashboardPage() {
   const rangeCopy = revenueRangeCopy(chartRange, currentYear);
 
   return (
-    <main className="flex-1 px-6 lg:px-8 py-7 space-y-7 max-w-[1480px] w-full mx-auto">
+    <main className="flex-1 px-6 lg:px-8 py-7 space-y-7 max-w-[1480px] w-full mx-auto will-change-auto">
 
           {/* ═══ Stat Cards ═══ */}
           <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
@@ -365,7 +362,7 @@ export default function DashboardPage() {
               return (
                 <div
                   key={s.label}
-                  className="group relative bg-brand-surface border border-brand-green-100 rounded-[22px] p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+                  className="group relative bg-brand-surface border border-brand-green-100 rounded-[22px] p-5 shadow-sm hover:shadow-lg transition-shadow duration-300"
                 >
                   <div className="flex items-start justify-between">
                     <div className={`w-11 h-11 rounded-2xl ${c.iconBg} ${c.iconText} flex items-center justify-center`}>
@@ -447,72 +444,74 @@ export default function DashboardPage() {
               </div>
 
               {/* shadcn / Recharts Area Chart */}
-              <ChartContainer
-                config={REVENUE_CHART_CONFIG}
-                className="aspect-auto h-[300px] w-full"
-              >
-                <AreaChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-brand-green)" stopOpacity={0.45} />
-                      <stop offset="100%" stopColor="var(--color-brand-green)" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="strokeRevenue" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="var(--color-brand-green-700)" />
-                      <stop offset="100%" stopColor="var(--color-brand-green)" />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    vertical={false}
-                    strokeDasharray="4 6"
-                    stroke="var(--color-brand-green-100)"
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={10}
-                    tick={{ fill: "var(--color-brand-ink-soft)", fontSize: 11, fontWeight: 600 }}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    width={48}
-                    tick={{ fill: "var(--color-brand-ink-soft)", fontSize: 11, fontWeight: 600 }}
-                    tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
-                  />
-                  <ChartTooltip
-                    cursor={{ stroke: "var(--color-brand-green-600)", strokeWidth: 1.5, strokeDasharray: "4 4" }}
-                    content={
-                      <ChartTooltipContent
-                        indicator="dot"
-                        labelFormatter={(label) => `${rangeCopy.tooltipPrefix} ${label}`}
-                        formatter={(value) => [`฿${Number(value).toLocaleString("en-US")}`, " รายได้"]}
-                      />
-                    }
-                  />
-                  <Area
-                    dataKey="value"
-                    type="monotone"
-                    stroke="url(#strokeRevenue)"
-                    strokeWidth={2.5}
-                    fill="url(#fillRevenue)"
-                    activeDot={{
-                      r: 6,
-                      fill: "var(--color-brand-green-700)",
-                      stroke: "white",
-                      strokeWidth: 3,
-                    }}
-                    dot={{
-                      r: 3.5,
-                      fill: "white",
-                      stroke: "var(--color-brand-green-700)",
-                      strokeWidth: 2,
-                    }}
-                  />
-                </AreaChart>
-              </ChartContainer>
+              <div className="will-change-auto">
+                <ChartContainer
+                  config={REVENUE_CHART_CONFIG}
+                  className="aspect-auto h-[300px] w-full"
+                >
+                  <AreaChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--color-brand-green)" stopOpacity={0.45} />
+                        <stop offset="100%" stopColor="var(--color-brand-green)" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="strokeRevenue" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="var(--color-brand-green-700)" />
+                        <stop offset="100%" stopColor="var(--color-brand-green)" />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      vertical={false}
+                      strokeDasharray="4 6"
+                      stroke="var(--color-brand-green-100)"
+                    />
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={10}
+                      tick={{ fill: "var(--color-brand-ink-soft)", fontSize: 11, fontWeight: 600 }}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                      width={48}
+                      tick={{ fill: "var(--color-brand-ink-soft)", fontSize: 11, fontWeight: 600 }}
+                      tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
+                    />
+                    <ChartTooltip
+                      cursor={{ stroke: "var(--color-brand-green-600)", strokeWidth: 1.5, strokeDasharray: "4 4" }}
+                      content={
+                        <ChartTooltipContent
+                          indicator="dot"
+                          labelFormatter={(label) => `${rangeCopy.tooltipPrefix} ${label}`}
+                          formatter={(value) => [`฿${Number(value).toLocaleString("en-US")}`, " รายได้"]}
+                        />
+                      }
+                    />
+                    <Area
+                      dataKey="value"
+                      type="monotone"
+                      stroke="url(#strokeRevenue)"
+                      strokeWidth={2.5}
+                      fill="url(#fillRevenue)"
+                      activeDot={{
+                        r: 6,
+                        fill: "var(--color-brand-green-700)",
+                        stroke: "white",
+                        strokeWidth: 3,
+                      }}
+                      dot={{
+                        r: 3.5,
+                        fill: "white",
+                        stroke: "var(--color-brand-green-700)",
+                        strokeWidth: 2,
+                      }}
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              </div>
             </div>
 
             {/* Recent Bookings */}

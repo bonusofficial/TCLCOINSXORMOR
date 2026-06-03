@@ -98,7 +98,7 @@ export default function HeroSection({
     config.agentLink?.trim() || LINE_GROUPS.agent.href;
 
   return (
-    <section className="relative pt-10 md:pt-14 pb-20 overflow-hidden bg-brand-surface">
+    <section className="relative pt-10 md:pt-14 pb-20 overflow-hidden bg-brand-surface" style={{ contentVisibility: 'auto' }}>
 
       {/* Soft brand backdrop — no banner here, just gentle color */}
       <div className="absolute inset-0 pointer-events-none -z-0">
@@ -126,8 +126,8 @@ export default function HeroSection({
           <div className="marquee-pause relative min-w-0 flex-1 overflow-hidden z-0">
             <span className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#FFE7E3] to-transparent" />
             <div
-              className="flex w-max animate-marquee whitespace-nowrap will-change-transform"
-              style={{ animationDuration: "22s" }}
+              className="flex w-max animate-marquee whitespace-nowrap"
+              style={{ animationDuration: "22s", willChange: "transform" }}
             >
               {[0, 1, 2, 3].map((i) => (
                 <span
@@ -226,7 +226,7 @@ export default function HeroSection({
 
         {/* ════════ PREMIUM BANNER CARD — separated, with arrows ════════ */}
         <div
-          className="relative rounded-[36px] overflow-hidden shadow-[0_30px_60px_-25px_rgba(8, 238, 32,0.35)] border border-brand-green-100 bg-brand-surface animate-in fade-in slide-in-from-bottom-6 duration-1000"
+          className="relative rounded-[36px] overflow-hidden shadow-[0_30px_60px_-25px_rgba(8, 238, 32,0.35)] border border-brand-green-100 bg-brand-surface animate-in fade-in slide-in-from-bottom-6 duration-1000 will-change-auto"
           onMouseEnter={() => setBannerPaused(true)}
           onMouseLeave={() => setBannerPaused(false)}
           role="region"
@@ -246,7 +246,7 @@ export default function HeroSection({
               {/* Slides track */}
               <div className="aspect-[1920/720] md:aspect-[1920/620] relative">
                 <div
-                  className="flex h-full w-full transition-transform duration-[700ms] ease-[cubic-bezier(0.22,0.8,0.3,1)]"
+                  className="flex h-full w-full transition-transform duration-500 ease-out will-change-auto"
                   style={{ transform: `translateX(-${bannerIndex * 100}%)` }}
                 >
                   {banners.map((b, i) => (
@@ -256,6 +256,7 @@ export default function HeroSection({
                         alt={`แบนเนอร์ ${i + 1}`}
                         className="w-full h-full object-cover select-none"
                         draggable={false}
+                        loading={i === 0 ? "eager" : "lazy"}
                       />
                     </div>
                   ))}

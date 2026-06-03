@@ -159,6 +159,24 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Optimize scrolling and reduce layout shifts */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent layout shift during image/banner loading */
+  img, video {
+    content-visibility: auto;
+  }
+
+  /* Reduce paint operations on scroll */
+  section {
+    contain: layout style paint;
   }
 }
 
@@ -306,12 +324,3 @@
   animation-play-state: paused;
 }
 
-.reveal {
-  opacity: 0;
-  transform: translateY(34px);
-  transition: all 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.reveal.in {
-  opacity: 1;
-  transform: translateY(0);
-}

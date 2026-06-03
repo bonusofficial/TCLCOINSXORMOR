@@ -70,28 +70,6 @@ export default function Home() {
     router.push("/queue");
   };
 
-  // Scroll reveal animation loader hook
-  useEffect(() => {
-    const handleScrollReveal = () => {
-      const reveals = document.querySelectorAll(".reveal");
-      reveals.forEach((element) => {
-        const windowHeight = window.innerHeight;
-        const elementTop = element.getBoundingClientRect().top;
-        const elementVisible = 120; // threshold
-
-        if (elementTop < windowHeight - elementVisible) {
-          element.classList.add("in");
-        }
-      });
-    };
-
-    // Run once on load and attach listener
-    handleScrollReveal();
-    window.addEventListener("scroll", handleScrollReveal);
-
-    return () => window.removeEventListener("scroll", handleScrollReveal);
-  }, []);
-
   return (
     <div className="min-h-screen bg-brand-paper font-sans text-brand-ink selection:bg-brand-green/20 overflow-x-hidden flex flex-col">
       {/* NAVBAR */}
@@ -126,33 +104,23 @@ export default function Home() {
       />
 
       {/* HOW IT WORKS */}
-      <div className="reveal">
-        <HowItWorks onOpenBooking={handleDefaultBooking} />
-      </div>
+      <HowItWorks onOpenBooking={handleDefaultBooking} />
 
       {/* CUSTOMER REVIEWS */}
-      <div className="reveal">
-        <ReviewsSection />
-      </div>
+      <ReviewsSection />
 
       {/* PACKAGES */}
-      <div className="reveal">
-        <PackagesSection
-          onSelectPackage={handleSelectPackage}
-          userRole={userRole}
-          username={sessionUser?.username ?? null}
-        />
-      </div>
+      <PackagesSection
+        onSelectPackage={handleSelectPackage}
+        userRole={userRole}
+        username={sessionUser?.username ?? null}
+      />
 
       {/* SYSTEM STATS */}
-      <div className="reveal">
-        <StatsSection />
-      </div>
+      <StatsSection />
 
       {/* SUPPORT */}
-      <div className="reveal">
-        <SupportSection />
-      </div>
+      <SupportSection />
 
       {/* FOOTER — แสดงผ่าน ConditionalFooter ใน root layout */}
 

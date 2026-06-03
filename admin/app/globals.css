@@ -159,6 +159,19 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Optimize scrolling performance */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent scroll jank on images and transitions during page load */
+  img, svg, video {
+    will-change: auto;
   }
 }
 

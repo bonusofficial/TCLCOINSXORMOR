@@ -12,7 +12,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-brand-paper flex font-sans text-brand-ink">
+    <div className="min-h-screen bg-brand-paper flex font-sans text-brand-ink" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Mobile backdrop */}
       {mobileNavOpen && (
         <div
@@ -27,7 +27,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         onClose={() => setMobileNavOpen(false)}
       />
 
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
         <DashboardTopBar onMenuOpen={() => setMobileNavOpen(true)} />
         {children}
       </div>
