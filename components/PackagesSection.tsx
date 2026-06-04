@@ -23,8 +23,8 @@ export default function PackagesSection({
   
   const { products, loading } = useProducts();
 
-  // แสดงเฉพาะแพ็กที่เปิดจองอยู่จริง (อยู่ในวันขายและช่วงเวลา slot)
-  // ตัวที่ไม่อยู่ในช่วงเวลา / ปิดรับ / สินค้าหมด จะถูกซ่อนเพื่อไม่ให้ลูกค้าสับสน
+  // แสดงเฉพาะแพ็กที่เปิดจองอยู่จริง แล้วจัดอันดับจากยอดจองจริง
+  // popular = อันดับ 1-3, recommended = อันดับ 4 เป็นต้นไป
   const displayProducts = useMemo(() => {
     if (products.length === 0) return [];
 
@@ -32,13 +32,26 @@ export default function PackagesSection({
       (p) => getProductAvailability(p).status === "open"
     );
 
-    const sorted = [...active].sort((a, b) => Number(a.price) - Number(b.price));
+    const ranked = [...active]
+      .sort((a, b) => {
+        const queueDiff = b.queueCount - a.queueCount;
+        if (queueDiff !== 0) return queueDiff;
+
+        const priceDiff = Number(a.price) - Number(b.price);
+        if (priceDiff !== 0) return priceDiff;
+
+        return b.id - a.id;
+      })
+      .map((product, index) => ({
+        product,
+        rank: index + 1,
+      }));
 
     if (activeTab === "popular") {
-      return sorted.slice(0, Math.max(3, Math.ceil(sorted.length / 2)));
-    } else {
-      return sorted.slice(Math.max(3, Math.ceil(sorted.length / 2)));
+      return ranked.slice(0, 3);
     }
+
+    return ranked.slice(3);
   }, [products, activeTab]);
 
   // คิวสูงสุดในบรรดาสินค้าทั้งหมด — ใช้ทำ % แถบความนิยมแบบสัมพัทธ์ในการ์ด
@@ -122,15 +135,15 @@ export default function PackagesSection({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {displayProducts.map((p, i) => (
+            {displayProducts.map(({ product, rank }) => (
               <PackageCard
-                key={p.id}
-                idx={i + 1}
-                product={p}
+                key={product.id}
+                idx={rank}
+                product={product}
                 userRole={userRole}
                 username={username}
                 maxQueueCount={maxQueueCount}
-                onSelect={() => onSelectPackage(p.id)}
+                onSelect={() => onSelectPackage(product.id)}
               />
             ))}
           </div>

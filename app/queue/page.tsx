@@ -17,8 +17,6 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
-import AnnouncementBell from "@/components/AnnouncementBell";
-import { Marquee } from "@/components/ui/Marquee";
 import { publicApi } from "@/lib/eden";
 import {
   useConfig,
@@ -27,7 +25,6 @@ import {
 } from "@/lib/contexts/PublicDataContext";
 import { useSession, signOut } from "@/lib/auth-client";
 import {
-  generateBookingCode,
   formatBookingDateTime,
   statusStyle,
   type UserRole,
@@ -40,6 +37,21 @@ import { copyToClipboard } from "@/lib/utils";
  * Types — Reuse PublicProduct + TimeSlot from context
  * ───────────────────────────────────────────── */
 
+function sortByMostBooked(a: QueueProduct, b: QueueProduct) {
+  const queueDiff = b.queueCount - a.queueCount;
+  if (queueDiff !== 0) return queueDiff;
+
+  const priceDiff = Number(a.price) - Number(b.price);
+  if (priceDiff !== 0) return priceDiff;
+
+  return b.id - a.id;
+}
+
+function formatApiDate(value: unknown) {
+  if (typeof value === "string") return value;
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
 
 /* ─────────────────────────────────────────────
  * Page
@@ -91,9 +103,14 @@ function QueueContent() {
 
   // Prefill phone from session
   useEffect(() => {
-    if (user?.phone && !phone) setPhone(user.phone);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.phone]);
+    if (!user?.phone || phone) return;
+
+    const id = window.setTimeout(() => {
+      setPhone(user.phone ?? "");
+    }, 0);
+
+    return () => window.clearTimeout(id);
+  }, [user?.phone, phone]);
 
   // re-render ตามเวลา เพื่อให้สถานะ/ฟิลเตอร์ เปิด-ปิด อัปเดตเองแบบ real-time
   const nowTick = useNowTick();
@@ -112,8 +129,8 @@ function QueueContent() {
       return true;
     });
 
-    // เรียงตามราคาจากถูกไปแพง
-    return [...filtered].sort((a, b) => Number(a.price) - Number(b.price));
+    // เรียงตามยอดจองจริงจากมากไปน้อย
+    return [...filtered].sort(sortByMostBooked);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, search, nowTick]);
 
@@ -161,8 +178,15 @@ function QueueContent() {
   useEffect(() => {
     if (paramProductId && products.length > 0 && !selectedProductId) {
       const p = products.find((x) => x.id === Number(paramProductId));
-      if (p) handlePickProduct(p);
+      if (!p) return;
+
+      const id = window.setTimeout(() => {
+        handlePickProduct(p);
+      }, 0);
+
+      return () => window.clearTimeout(id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramProductId, products, selectedProductId]);
 
   const formValid =
@@ -202,17 +226,9 @@ function QueueContent() {
         code: booking.bookingCode,
         productName: booking.productName,
         price: booking.price,
-        date: typeof booking.bookingDate === "string"
-          ? booking.bookingDate
-          : ((booking.bookingDate as any) instanceof Date
-            ? (booking.bookingDate as any).toISOString()
-            : String(booking.bookingDate)),
+        date: formatApiDate(booking.bookingDate),
         time: booking.bookingTime ?? "",
-        bookedAt: typeof booking.createdAt === "string"
-          ? booking.createdAt
-          : ((booking.createdAt as any) instanceof Date
-            ? (booking.createdAt as any).toISOString()
-            : String(booking.createdAt)),
+        bookedAt: formatApiDate(booking.createdAt),
       });
       // reset form
       setSelectedProductId(null);
@@ -525,6 +541,7 @@ function QueueContent() {
                     </option>
                     {products
                       .filter((p) => getProductAvailability(p).status === "open")
+                      .sort(sortByMostBooked)
                       .map((p) => (
                         <option
                           key={p.id}
