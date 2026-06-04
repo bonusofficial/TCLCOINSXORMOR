@@ -673,12 +673,13 @@ export default function AuthModal({
                   <button
                     type="submit"
                     disabled={loading}
+                    aria-busy={loading}
                     className="w-full rounded-2xl bg-gradient-to-r from-brand-green to-brand-green-600 hover:from-brand-green-600 hover:to-brand-green-700 py-4.5 px-4 text-base font-extrabold text-white shadow-lg shadow-brand-green/20 hover:scale-[1.01] hover:shadow-brand-green/35 transition duration-250 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     {loading ? (
                       <>
                         <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                        กำลังดำเนินการ...
+                        <span aria-live="polite">กำลังโหลด</span>
                       </>
                     ) : (
                       <>

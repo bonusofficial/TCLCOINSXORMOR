@@ -1676,7 +1676,7 @@ export default function SettingsPage() {
                       ประกาศแจ้งเตือน
                     </h2>
                     <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
-                      แสดงเป็น popup กลางจอ + ที่กระดิ่งมุมขวาบนในหน้าแรก · กด &ldquo;รับทราบ&rdquo; จะซ่อน 1 วัน
+                      แสดงเป็น popup กลางจอ + ที่กระดิ่งมุมขวาบนในหน้าแรก · กด &ldquo;รับทราบ&rdquo; จะซ่อน 5 ชั่วโมง
                     </p>
                   </div>
                   <button

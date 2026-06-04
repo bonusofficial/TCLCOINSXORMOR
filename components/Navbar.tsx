@@ -20,6 +20,7 @@ import {
   Settings2,
   Copy,
   MessageCircle,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/utils";
@@ -126,7 +127,9 @@ export default function Navbar({
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [authOpening, setAuthOpening] = useState<"login" | "register" | null>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const authOpeningTimerRef = useRef<number | null>(null);
 
   // Active state per nav link — based on current pathname
   const pathname = usePathname();
@@ -167,6 +170,30 @@ export default function Navbar({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [accountMenuOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (authOpeningTimerRef.current) {
+        window.clearTimeout(authOpeningTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleMobileAuthOpen = (tab: "login" | "register") => {
+    if (authOpening) return;
+
+    setAuthOpening(tab);
+    setMobileMenuOpen(false);
+    onOpenAuth(tab);
+
+    if (authOpeningTimerRef.current) {
+      window.clearTimeout(authOpeningTimerRef.current);
+    }
+    authOpeningTimerRef.current = window.setTimeout(() => {
+      setAuthOpening(null);
+      authOpeningTimerRef.current = null;
+    }, 700);
+  };
 
   const role = ROLE_CONFIG[userRole];
   const isAdmin = userRole === "admin";
@@ -535,24 +562,39 @@ export default function Navbar({
             ) : (
               <div className="flex flex-col gap-2.5">
                 <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onOpenAuth("login");
-                  }}
-                  className="w-full py-3.5 rounded-2xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 transition flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={() => handleMobileAuthOpen("login")}
+                  disabled={authOpening !== null}
+                  aria-busy={authOpening === "login"}
+                  className="w-full py-3.5 rounded-2xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-75"
                 >
-                  <LogIn className="h-4.5 w-4.5" />
-                  เข้าสู่ระบบ
+                  {authOpening === "login" ? (
+                    <>
+                      <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                      <span aria-live="polite">กำลังโหลด</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="h-4.5 w-4.5" />
+                      เข้าสู่ระบบ
+                    </>
+                  )}
                 </button>
                 <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onOpenAuth("register");
-                  }}
-                  className="w-full py-3.5 rounded-2xl font-extrabold text-sm text-brand-ink bg-brand-green-50 hover:bg-brand-green-100 hover:text-brand-green border border-brand-green-100 transition flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={() => handleMobileAuthOpen("register")}
+                  disabled={authOpening !== null}
+                  className="w-full py-3.5 rounded-2xl font-extrabold text-sm text-brand-ink bg-brand-green-50 hover:bg-brand-green-100 hover:text-brand-green border border-brand-green-100 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-75"
                 >
-                  <UserPlus className="h-4.5 w-4.5" />
-                  สมัครสมาชิกใหม่
+                  {authOpening === "register" ? (
+                    <>
+                      <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                      <span aria-live="polite">กำลังโหลด</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4.5 w-4.5" />
+                      สมัครสมาชิกใหม่
+                    </>
+                  )}
                 </button>
               </div>
             )}

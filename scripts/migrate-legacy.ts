@@ -3,6 +3,7 @@
  *
  *   # 1) ดูตัวอย่าง (dry-run — ไม่เขียน DB):
  *   npx tsx scripts/migrate-legacy.ts /path/to/old.sql
+ *   npx tsx scripts/migrate-legacy.ts /path/to/old.sql.zip
  *
  *   # 2) รันจริง (ล้างตารางที่เกี่ยวข้องใน DB ปลายทาง แล้ว import ใหม่):
  *   MIGRATE_CONFIRM=yes npx tsx scripts/migrate-legacy.ts /path/to/old.sql
@@ -11,6 +12,8 @@
  *   MIGRATE_TARGET_URL  ปลายทาง (ดีฟอลต์ = DATABASE_URL ใน .env)
  *   MIGRATE_CONFIRM     ต้อง = "yes" ถึงจะเขียนจริง (ไม่งั้น dry-run)
  *   MIGRATE_WIPE_ALL    "1" = ล้าง banners/reviews/audit_logs ด้วย (ดีฟอลต์เก็บไว้)
+ *   MIGRATE_SKIP_CONFIG "1" = เก็บ config ปัจจุบันไว้ ไม่ import settings จาก legacy
+ *   MIGRATE_ALIAS_SQL_FILE path ไฟล์ SQL/ZIP รุ่นก่อนหน้า ใช้ map ชื่อเก่าจาก email เดียวกัน
  *
  * การแปลงหลัก:
  *   - products + product_dates + time_slots → products (saleDates/timeSlots เป็น JSON)
@@ -21,6 +24,7 @@
 import "dotenv/config";
 import { readFileSync } from "fs";
 import { randomUUID } from "crypto";
+import { execFileSync } from "child_process";
 import { makeClient } from "./_db-helpers";
 
 /* ───────── SQL dump parser (รูปแบบ mysqldump: INSERT INTO `t` VALUES (...),(...);) ───────── */
@@ -109,6 +113,22 @@ function toObjects(rows: Cell[][], cols: string[]): Record<string, Cell>[] {
   });
 }
 
+function readSqlDump(file: string): string {
+  if (!file.toLowerCase().endsWith(".zip")) return readFileSync(file, "utf8");
+
+  try {
+    return execFileSync("unzip", ["-p", file], {
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 1024,
+    });
+  } catch (error) {
+    throw new Error(
+      `อ่านไฟล์ zip ไม่สำเร็จ: ${file} (ต้องมีคำสั่ง unzip ในเครื่อง/server)`,
+      { cause: error }
+    );
+  }
+}
+
 /* ───────── helpers ───────── */
 function toDate(v: Cell): Date | null {
   if (v == null) return null;
@@ -128,6 +148,19 @@ const capRole = (lv: Cell): string => {
 };
 function normalizeIdentity(v: Cell | string | null | undefined): string {
   return str(v ?? "").trim().toLowerCase();
+}
+/** key หลวม — ตัดคำร้าน (coinsbyormor/byormor/coins/ormor) + อักขระคั่น/ช่องว่าง
+ *  เพื่อจับชื่อที่ลูกค้าพิมพ์ต่างรูปแบบ (เช่น "คริสตินา|ByOrmor-62" ↔ "คริสตินา-coinsbyormor-62") */
+function coreKey(v: Cell | string | null | undefined): string {
+  return str(v ?? "")
+    .toLowerCase()
+    .replace(/coinsbyormor|byormor|coins|ormor/g, "")
+    .replace(/[^a-z0-9฀-๿]+/g, "");
+}
+/** เลขท้ายชื่อ (รหัสลูกค้าในกลุ่ม OpenChat) — ใช้ match สำรองเมื่อชื่อเพี้ยน */
+function numKey(v: Cell | string | null | undefined): string {
+  const m = str(v ?? "").match(/(\d+)\D*$/);
+  return m ? m[1] : "";
 }
 function rememberLegacyUserIdentity(
   map: Map<string, string>,
@@ -188,12 +221,14 @@ const COLS = {
 
 async function main() {
   const file = process.argv[2] || process.env.LEGACY_SQL_FILE;
-  if (!file) throw new Error("ระบุ path ไฟล์ .sql เป็น argument (หรือ LEGACY_SQL_FILE)");
+  if (!file) throw new Error("ระบุ path ไฟล์ .sql/.zip เป็น argument (หรือ LEGACY_SQL_FILE)");
   const confirm = process.env.MIGRATE_CONFIRM === "yes";
   const targetUrl = process.env.MIGRATE_TARGET_URL || process.env.DATABASE_URL;
+  const aliasFile = process.env.MIGRATE_ALIAS_SQL_FILE || process.env.LEGACY_ALIAS_SQL_FILE;
   if (!targetUrl) throw new Error("ไม่พบ DATABASE_URL (หรือ MIGRATE_TARGET_URL)");
 
-  const sql = readFileSync(file, "utf8");
+  const sql = readSqlDump(file);
+  const aliasSql = aliasFile ? readSqlDump(aliasFile) : "";
 
   const users = toObjects(parseInsert(sql, "users", COLS.users), COLS.users);
   const products = toObjects(parseInsert(sql, "products", COLS.products), COLS.products);
@@ -202,9 +237,23 @@ async function main() {
   const bookings = toObjects(parseInsert(sql, "bookings", COLS.bookings), COLS.bookings);
   const account = toObjects(parseInsert(sql, "account", COLS.account), COLS.account);
   const settings = toObjects(parseInsert(sql, "settings", COLS.settings), COLS.settings);
+  const aliasUsers = aliasSql
+    ? toObjects(parseInsert(aliasSql, "users", COLS.users), COLS.users)
+    : [];
+  const aliasValuesByEmail = new Map<string, Array<Cell | string | null | undefined>>();
+  for (const u of aliasUsers) {
+    const email = normalizeIdentity(u.email);
+    if (!email) continue;
+    const aliases = aliasValuesByEmail.get(email) ?? [];
+    aliases.push(u.name, u.users_code, u.shop_name, u.line_id);
+    aliasValuesByEmail.set(email, aliases);
+  }
 
   console.log(`📄 อ่านไฟล์: ${file}`);
   console.log(`   users=${users.length} products=${products.length} product_dates=${pdates.length} time_slots=${slots.length} bookings=${bookings.length} account=${account.length} settings=${settings.length}\n`);
+  if (aliasFile) {
+    console.log(`🔗 alias users: ${aliasUsers.length} แถว จาก ${aliasFile}\n`);
+  }
 
   // ── เตรียมข้อมูลฝั่งใหม่ ──
   // products: รวม dates + slots
@@ -254,8 +303,10 @@ async function main() {
     const u0 = sortedUsers[0];
     if (u0)
       console.log(`   user "${str(u0.email)}" → username="${str(u0.name).trim() || str(u0.users_code).trim()}", memberNo=1 (OMTC-00001), role=${capRole(u0.level)}, bcrypt ${str(u0.password).slice(0, 7)}`);
-    console.log(`\n   จะเขียน: config=1, user=${sortedUsers.length}, account(auth)=${sortedUsers.length}, products=${products.length}, accounts(การเงิน)=${account.length}, bookings=${uniqueBookings.length}`);
-    console.log(`\n👉 ตรวจสอบแล้วรันจริงด้วย:  MIGRATE_CONFIRM=yes npx tsx scripts/migrate-legacy.ts "${file}"`);
+    console.log(`\n   จะเขียน: config=${settings[0] ? 1 : 0}, user=${sortedUsers.length}, account(auth)=${sortedUsers.length}, products=${products.length}, accounts(การเงิน)=${account.length}, bookings=${uniqueBookings.length}`);
+    const aliasEnv = aliasFile ? `MIGRATE_ALIAS_SQL_FILE="${aliasFile}" ` : "";
+    console.log(`\n👉 รันจริงแบบ import settings ด้วย:  ${aliasEnv}MIGRATE_CONFIRM=yes npx tsx scripts/migrate-legacy.ts "${file}"`);
+    console.log(`👉 รันจริงแบบเก็บ config เดิมไว้: ${aliasEnv}MIGRATE_CONFIRM=yes MIGRATE_SKIP_CONFIG=1 npx tsx scripts/migrate-legacy.ts "${file}"`);
     return;
   }
 
@@ -327,16 +378,42 @@ async function main() {
     let memberNo = 0;
     const usedUsernames = new Set<string>();
     const legacyUserIdByIdentity = new Map<string, string>();
+    // map สำรองแบบหลวม (ตัด collision ทิ้ง กันลิงก์ผิดคน)
+    const coreToUid = new Map<string, string>();
+    const numToUid = new Map<string, string>();
+    const coreCollision = new Set<string>();
+    const numCollision = new Set<string>();
+    const rememberLooseIdentity = (
+      uid: string,
+      values: Array<Cell | string | null | undefined>
+    ) => {
+      for (const value of values) {
+        const ck = coreKey(value);
+        if (ck.length >= 2) {
+          if (coreToUid.has(ck) && coreToUid.get(ck) !== uid) coreCollision.add(ck);
+          else coreToUid.set(ck, uid);
+        }
+        const nk = numKey(value);
+        if (nk) {
+          if (numToUid.has(nk) && numToUid.get(nk) !== uid) numCollision.add(nk);
+          else numToUid.set(nk, uid);
+        }
+      }
+    };
     for (const u of sortedUsers) {
       memberNo++;
       const uid = randomUUID();
       const username = makeUniqueUsername(u, memberNo, usedUsernames);
+      const aliasValues = aliasValuesByEmail.get(normalizeIdentity(u.email)) ?? [];
       rememberLegacyUserIdentity(legacyUserIdByIdentity, uid, [
         u.name,
         u.users_code,
         u.email,
         username,
+        ...aliasValues,
       ]);
+      // สะสม key หลวมจากชื่อ (เก็บเฉพาะที่ไม่ชนกัน)
+      rememberLooseIdentity(uid, [u.name, u.users_code, ...aliasValues]);
       await prisma.user.create({
         data: {
           id: uid,
@@ -366,6 +443,15 @@ async function main() {
         },
       });
     }
+
+    // ตัด key ที่ชนกันทิ้ง (กันลิงก์ booking ผิดคน) แล้วสร้างตัว resolve
+    for (const k of coreCollision) coreToUid.delete(k);
+    for (const k of numCollision) numToUid.delete(k);
+    const resolveUserId = (uname: string): string | null =>
+      legacyUserIdByIdentity.get(normalizeIdentity(uname)) ??
+      coreToUid.get(coreKey(uname)) ??
+      numToUid.get(numKey(uname)) ??
+      null;
 
     // products (รวม dates + slots)
     for (const p of products) {
@@ -420,7 +506,7 @@ async function main() {
           productId: codeToProductId.get(str(b.product_code)) ?? null,
           productCode: str(b.product_code) || null,
           productName: str(b.product_name),
-          userId: legacyUserIdByIdentity.get(normalizeIdentity(username)) ?? null,
+          userId: resolveUserId(username),
           username,
           phone: "-",
           content: str(b.content) || null,
@@ -434,7 +520,8 @@ async function main() {
       });
     }
 
-    console.log(`\n✓ Migrate สำเร็จ — config=1, user=${sortedUsers.length}, products=${products.length}, accounts=${account.length}, bookings=${uniqueBookings.length}`);
+    const configSummary = skipConfig ? "kept" : st ? "1" : "0";
+    console.log(`\n✓ Migrate สำเร็จ — config=${configSummary}, user=${sortedUsers.length}, products=${products.length}, accounts=${account.length}, bookings=${uniqueBookings.length}`);
     console.log(`  ผู้ใช้เดิม login ด้วย "username หรือ email" + รหัสผ่านเดิม · UID ใหม่ OMTC-00001..${String(memberNo).padStart(5, "0")}`);
   } finally {
     await prisma.$disconnect();

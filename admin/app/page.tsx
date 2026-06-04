@@ -31,6 +31,7 @@ export default function AdminLoginPage() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const currentUser = session?.user as AdminSessionUser | undefined;
   const currentRole = normalizeRole(currentUser?.role);
@@ -42,10 +43,23 @@ export default function AdminLoginPage() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (isAdmin) {
-      router.replace(getSafeNextPath());
+    if (isAdmin && !loading && !redirecting) {
+      const id = window.setTimeout(() => {
+        window.location.replace(getSafeNextPath());
+      }, 0);
+
+      return () => window.clearTimeout(id);
     }
-  }, [isAdmin, router]);
+  }, [isAdmin, loading, redirecting, router]);
+
+  const openDashboard = () => {
+    const nextPath = getSafeNextPath();
+
+    setRedirecting(true);
+    window.setTimeout(() => {
+      window.location.replace(nextPath);
+    }, 650);
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -91,9 +105,11 @@ export default function AdminLoginPage() {
         throw new Error("บัญชีนี้ไม่มีสิทธิ์ผู้ดูแลระบบ");
       }
 
-      toast.success("เข้าสู่ระบบเรียบร้อย", { id: toastId });
-      router.replace(getSafeNextPath());
-      router.refresh();
+      toast.success("เข้าสู่ระบบเรียบร้อย", {
+        id: toastId,
+        description: "กำลังเปิดหน้าแดชบอร์ดให้คุณ",
+      });
+      openDashboard();
     } catch (error) {
       const message = error instanceof Error ? error.message : "เกิดข้อผิดพลาดในระบบ";
       toast.error("เข้าสู่ระบบไม่สำเร็จ", {
@@ -147,9 +163,23 @@ export default function AdminLoginPage() {
           </div>
 
           <div className="flex flex-col justify-center border-t border-brand-green-100 bg-brand-surface p-6 md:border-l md:border-t-0 md:p-8">
-            {isPending || isAdmin ? (
-              <div className="flex min-h-[300px] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-brand-green" />
+            {isPending || isAdmin || redirecting ? (
+              <div className="flex min-h-[300px] flex-col items-center justify-center gap-4 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-green/10 text-brand-green ring-1 ring-brand-green/25">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+                <div>
+                  <p className="text-base font-black text-brand-ink">
+                    {isPending && !isAdmin && !redirecting
+                      ? "กำลังตรวจสอบสถานะ"
+                      : "เข้าสู่ระบบเรียบร้อย"}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-brand-ink-soft">
+                    {isPending && !isAdmin && !redirecting
+                      ? "ระบบกำลังตรวจสอบ session ของผู้ดูแล"
+                      : "กำลังเปิดหน้าแดชบอร์ดให้คุณ"}
+                  </p>
+                </div>
               </div>
             ) : isSignedInNonAdmin ? (
               <div className="space-y-5">
@@ -164,8 +194,17 @@ export default function AdminLoginPage() {
                   disabled={loading}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-4 text-sm font-black text-brand-paper transition hover:bg-brand-green-600 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogIn className="h-5 w-5" />}
-                  ออกจากบัญชีนี้
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      กำลังออกจากระบบ
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="h-5 w-5" />
+                      ออกจากบัญชีนี้
+                    </>
+                  )}
                 </button>
               </div>
             ) : (
@@ -211,10 +250,22 @@ export default function AdminLoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
+                  aria-busy={loading}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-4 text-sm font-black text-brand-paper transition hover:bg-brand-green-600 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogIn className="h-5 w-5" />}
-                  เข้าสู่ระบบแอดมิน
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span aria-live="polite">
+                        {redirecting ? "กำลังเปิดแดชบอร์ด" : "กำลังเข้าสู่ระบบ"}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="h-5 w-5" />
+                      เข้าสู่ระบบแอดมิน
+                    </>
+                  )}
                 </button>
               </form>
             )}

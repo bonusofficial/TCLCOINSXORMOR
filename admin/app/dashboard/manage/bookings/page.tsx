@@ -316,11 +316,49 @@ export default function BookingsPage() {
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
-    items.forEach((b) => {
+    // คำนวณจากข้อมูลที่กรองด้วย date และ search แล้ว (ยกเว้น status filter)
+    const baseFiltered = items.filter((b) => {
+      // Date filtering logic
+      if (dateFilter !== "all") {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        const dayOfWeek = startOfToday.getDay();
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const startOfThisWeek = new Date(startOfToday);
+        startOfThisWeek.setDate(startOfToday.getDate() + diffToMonday);
+
+        const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const bDate = new Date(b.createdAt);
+        if (dateFilter === "today" && bDate < startOfToday) return false;
+        if (dateFilter === "this_week" && bDate < startOfThisWeek) return false;
+        if (dateFilter === "this_month" && bDate < startOfThisMonth) return false;
+        if (dateFilter === "custom" && selectedSpecificDate) {
+          const bDateStr = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, "0")}-${String(bDate.getDate()).padStart(2, "0")}`;
+          if (bDateStr !== selectedSpecificDate) return false;
+        }
+      }
+
+      // Search filter
+      const q = search.trim().toLowerCase();
+      if (q) {
+        return (
+          b.bookingCode.toLowerCase().includes(q) ||
+          b.username.toLowerCase().includes(q) ||
+          b.productName.toLowerCase().includes(q) ||
+          b.phone.includes(q)
+        );
+      }
+
+      return true;
+    });
+
+    baseFiltered.forEach((b) => {
       counts[b.status] = (counts[b.status] ?? 0) + 1;
     });
     return counts;
-  }, [items]);
+  }, [items, dateFilter, selectedSpecificDate, search]);
 
   // Paginated items
   const paginatedItems = useMemo(() => {
@@ -461,9 +499,12 @@ export default function BookingsPage() {
             จัดการการจอง
           </h1>
           <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
-            ทั้งหมด <b className="text-brand-green">{items.length}</b> รายการ
-            {filtered.length !== items.length && (
-              <> · กรองได้ <b className="text-brand-green">{filtered.length}</b></>
+            {dateFilter === "all" && !search ? (
+              <>ทั้งหมด <b className="text-brand-green">{items.length}</b> รายการ</>
+            ) : (
+              <>
+                กรองได้ <b className="text-brand-green">{Object.values(stats).reduce((a, b) => a + b, 0)}</b> จากทั้งหมด <b className="text-brand-ink-soft">{items.length}</b> รายการ
+              </>
             )}
           </p>
         </div>
@@ -490,7 +531,7 @@ export default function BookingsPage() {
               : "bg-brand-surface text-brand-ink-soft border-brand-green-100 hover:text-brand-green"
           }`}
         >
-          ทั้งหมด ({items.length})
+          ทั้งหมด ({Object.values(stats).reduce((a, b) => a + b, 0)})
         </button>
         {BOOKING_STATUSES.map((s) => {
           const sty = statusStyle(s);

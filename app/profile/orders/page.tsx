@@ -8,26 +8,24 @@ import {
   ChevronLeft,
   Search,
   Copy,
-  Receipt,
   Clock,
-  Trash2,
   Loader2,
-  AlertOctagon,
-  MessageCircle,
   Coins,
   Ban,
-  CheckCircle,
   FileText,
   Calendar,
   Lock,
   ChevronDown,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import Navbar, { formatDisplayID } from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
 import { publicApi } from "@/lib/eden";
 import { useConfig, useProducts } from "@/lib/contexts/PublicDataContext";
 import { Marquee } from "@/components/ui/Marquee";
-import { getProductAvailability, fmt } from "@/lib/product-utils";
+import { Pagination } from "@/components/ui/pagination";
+import { fmt } from "@/lib/product-utils";
 import { copyToClipboard } from "@/lib/utils";
 
 type UserRole = "member" | "agent" | "admin";
@@ -64,6 +62,12 @@ interface BookingItem {
   updatedAt: string;
 }
 
+type CopyFeedback = {
+  type: "success" | "error";
+  title: string;
+  description: string;
+};
+
 export default function OrdersHistoryPage() {
   const { data: session, isPending } = useSession();
   const { config } = useConfig();
@@ -92,23 +96,63 @@ export default function OrdersHistoryPage() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
   const isLoggedIn = !!user;
-  const userRole = resolveUserRole(user);
 
   // Bookings list state
   const [bookings, setBookings] = useState<BookingItem[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
+  const [copyFeedback, setCopyFeedback] = useState<CopyFeedback | null>(null);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "success" | "cancelled">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const showCopyFeedback = (feedback: CopyFeedback) => {
+    setCopyFeedback(feedback);
+  };
+
+  useEffect(() => {
+    if (!copyFeedback) return;
+
+    const id = window.setTimeout(() => {
+      setCopyFeedback(null);
+    }, 2600);
+
+    return () => window.clearTimeout(id);
+  }, [copyFeedback]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusFilterChange = (value: "all" | "pending" | "success" | "cancelled") => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (value: "newest" | "oldest") => {
+    setSortBy(value);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
+    setCurrentPage(Math.min(Math.max(1, page), totalPages));
+  };
+
+  const handlePageSizeChange = (value: number) => {
+    setPageSize(value);
+    setCurrentPage(1);
+  };
 
   // Fetch orders
   useEffect(() => {
     if (!isLoggedIn) return;
     let mounted = true;
 
-    setLoadingBookings(true);
     publicApi.bookings.api.v0.bookings.get()
       .then(({ data, error }) => {
         if (!mounted) return;
@@ -132,7 +176,7 @@ export default function OrdersHistoryPage() {
   }, [isLoggedIn]);
 
   // Copy booking detail handler (Precisely formatted as requested)
-  const handleCopyBooking = (b: BookingItem) => {
+  const handleCopyBooking = async (b: BookingItem) => {
     const datePart = formatThaiDateFull(b.bookingDate);
     // ยศจาก prefix ของรหัสการจอง: MB=ลูกค้าทั่วไป, AG=ตัวแทน, ADM=แอดมิน
     const prefix = (b.bookingCode.split("-")[0] || "").toUpperCase();
@@ -151,9 +195,31 @@ export default function OrdersHistoryPage() {
 จองเมื่อ: ${formatPressedAt(b.createdAt)}
 รายละเอียด: ${b.content || "-"}`;
 
-    copyToClipboard(textToCopy);
-    toast.success("คัดลอกรายละเอียดข้อมูลการจองแล้ว!", {
+    const toastId = toast.loading("กำลังคัดลอกรายละเอียดข้อมูลการจอง...", {
       description: b.bookingCode,
+    });
+    const copied = await copyToClipboard(textToCopy);
+    if (copied) {
+      showCopyFeedback({
+        type: "success",
+        title: "คัดลอกข้อมูลแล้ว",
+        description: b.bookingCode,
+      });
+      toast.success("คัดลอกรายละเอียดข้อมูลการจองแล้ว!", {
+        id: toastId,
+        description: b.bookingCode,
+      });
+      return;
+    }
+
+    showCopyFeedback({
+      type: "error",
+      title: "คัดลอกข้อมูลไม่สำเร็จ",
+      description: "กรุณาลองอีกครั้ง",
+    });
+    toast.error("คัดลอกข้อมูลไม่สำเร็จ", {
+      id: toastId,
+      description: "กรุณาลองอีกครั้ง หรือเลือกข้อความเพื่อคัดลอกเอง",
     });
   };
 
@@ -163,7 +229,7 @@ export default function OrdersHistoryPage() {
     const tId = toast.loading("กำลังดำเนินการยกเลิกคิวจอง...");
     
     try {
-      const { data, error } = await publicApi.bookings.api.v0.bookings({ id }).cancel.patch();
+      const { error } = await publicApi.bookings.api.v0.bookings({ id }).cancel.patch();
       if (error) {
         const msg = (error.value as { message?: string })?.message || "ยกเลิกไม่สำเร็จ";
         toast.error(msg, { id: tId });
@@ -174,7 +240,7 @@ export default function OrdersHistoryPage() {
       setBookings((prev) =>
         prev.map((b) => (b.id === id ? { ...b, status: "ยกเลิก" } : b))
       );
-    } catch (e) {
+    } catch {
       toast.error("เกิดข้อผิดพลาดการเชื่อมต่อระบบในการยกเลิก", { id: tId });
     }
   };
@@ -259,34 +325,36 @@ export default function OrdersHistoryPage() {
   };
 
   // Filter & Sort computation
-  const filteredBookings = useMemo(() => {
-    return bookings
-      .filter((b) => {
-        // Search filter
-        const matchSearch =
-          b.bookingCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          b.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (b.bookingTime ?? "").toLowerCase().includes(searchQuery.toLowerCase());
+  const normalizedSearch = searchQuery.toLowerCase();
+  const filteredBookings = bookings
+    .filter((b) => {
+      const matchSearch =
+        b.bookingCode.toLowerCase().includes(normalizedSearch) ||
+        b.productName.toLowerCase().includes(normalizedSearch) ||
+        (b.bookingTime ?? "").toLowerCase().includes(normalizedSearch);
 
-        // Status filter
-        if (statusFilter === "all") return matchSearch;
-        if (statusFilter === "pending") {
-          return matchSearch && (b.status === "รอตรวจสอบ" || b.status === "กำลังดำเนินการ");
-        }
-        if (statusFilter === "success") {
-          return matchSearch && b.status === "สำเร็จ";
-        }
-        if (statusFilter === "cancelled") {
-          return matchSearch && b.status === "ยกเลิก";
-        }
-        return matchSearch;
-      })
-      .sort((a, b) => {
-        const timeA = new Date(a.createdAt).getTime();
-        const timeB = new Date(b.createdAt).getTime();
-        return sortBy === "newest" ? timeB - timeA : timeA - timeB;
-      });
-  }, [bookings, searchQuery, statusFilter, sortBy]);
+      if (statusFilter === "all") return matchSearch;
+      if (statusFilter === "pending") {
+        return matchSearch && (b.status === "รอตรวจสอบ" || b.status === "กำลังดำเนินการ");
+      }
+      if (statusFilter === "success") {
+        return matchSearch && b.status === "สำเร็จ";
+      }
+      if (statusFilter === "cancelled") {
+        return matchSearch && b.status === "ยกเลิก";
+      }
+      return matchSearch;
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return sortBy === "newest" ? timeB - timeA : timeA - timeB;
+    });
+
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const pageStart = (safeCurrentPage - 1) * pageSize;
+  const paginatedBookings = filteredBookings.slice(pageStart, pageStart + pageSize);
 
   // Logged-out state UI gate
   if (!isPending && !user) {
@@ -337,6 +405,39 @@ export default function OrdersHistoryPage() {
 
   return (
     <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col">
+      {copyFeedback && (
+        <div className="fixed inset-x-4 top-4 z-[9999] pointer-events-none sm:left-auto sm:right-6 sm:top-6 sm:w-[360px]">
+          <div
+            role={copyFeedback.type === "error" ? "alert" : "status"}
+            aria-live="polite"
+            className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-2xl ring-1 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 ${
+              copyFeedback.type === "success"
+                ? "border-brand-green bg-brand-surface-soft/95 text-brand-ink shadow-brand-green/25 ring-brand-green/25"
+                : "border-rose-400 bg-brand-surface-soft/95 text-brand-ink shadow-rose-500/20 ring-rose-400/20"
+            }`}
+          >
+            <span
+              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                copyFeedback.type === "success"
+                  ? "bg-brand-green/15 text-brand-green"
+                  : "bg-rose-500/15 text-rose-400"
+              }`}
+            >
+              {copyFeedback.type === "success" ? (
+                <CheckCircle className="h-4.5 w-4.5" />
+              ) : (
+                <AlertCircle className="h-4.5 w-4.5" />
+              )}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-black leading-5">{copyFeedback.title}</p>
+              <p className="mt-0.5 truncate text-xs font-bold text-brand-ink-soft">
+                {copyFeedback.description}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <Navbar
         onOpenAuth={(tab) => {
           setAuthTab(tab);
@@ -386,7 +487,7 @@ export default function OrdersHistoryPage() {
                 type="text"
                 placeholder="ค้นหารหัสจอง หรือ สินค้า..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-full border border-brand-green-100 bg-brand-surface text-sm font-semibold outline-none transition focus:border-brand-green focus:ring-4 focus:ring-brand-green/10 text-brand-ink placeholder:text-brand-ink-soft/50 shadow-sm"
               />
             </div>
@@ -407,7 +508,7 @@ export default function OrdersHistoryPage() {
                 return (
                   <button
                     key={chip.key}
-                    onClick={() => setStatusFilter(chip.key)}
+                    onClick={() => handleStatusFilterChange(chip.key)}
                     className={`px-4.5 py-2 rounded-full font-extrabold text-xs transition duration-200 cursor-pointer ${
                       isActive
                         ? "bg-brand-green text-white shadow-md shadow-brand-green/20"
@@ -426,7 +527,7 @@ export default function OrdersHistoryPage() {
               <div className="relative">
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as "newest" | "oldest")}
+                  onChange={(e) => handleSortChange(e.target.value as "newest" | "oldest")}
                   className="appearance-none pl-3.5 pr-8 py-1.5 bg-brand-green-50/50 hover:bg-brand-green-50 text-brand-green border border-brand-green-100 rounded-full font-black text-xs cursor-pointer outline-none transition"
                 >
                   <option value="newest">ล่าสุด</option>
@@ -471,7 +572,7 @@ export default function OrdersHistoryPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredBookings.map((b) => {
+            {paginatedBookings.map((b) => {
               const badge = getStatusBadge(b.status);
               const isUnpaid = b.status === "รอตรวจสอบ" || b.status === "รอชำระเงิน";
               const productImage =
@@ -491,6 +592,7 @@ export default function OrdersHistoryPage() {
                         #{b.bookingCode}
                       </span>
                       <button
+                        type="button"
                         onClick={() => handleCopyBooking(b)}
                         className="w-7.5 h-7.5 rounded-lg bg-brand-green-50 hover:bg-brand-green text-brand-green hover:text-white flex items-center justify-center transition cursor-pointer group/copy"
                         title="คัดลอกรายละเอียดคิวจอง"
@@ -618,6 +720,14 @@ export default function OrdersHistoryPage() {
                 </div>
               );
             })}
+            <Pagination
+              currentPage={safeCurrentPage}
+              totalItems={filteredBookings.length}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              pageSizeOptions={[5, 10, 20, 50]}
+            />
           </div>
         )}
       </main>
