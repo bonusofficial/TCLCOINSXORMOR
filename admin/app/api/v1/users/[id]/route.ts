@@ -10,8 +10,14 @@ import { logAudit } from "@/lib/server/audit";
 const Params = t.Object({ id: t.String({ minLength: 1 }) });
 
 const UserUpdateBody = t.Object({
+  memberNo: t.Optional(t.Union([t.Number(), t.Null()])),
   name: t.Optional(t.String({ maxLength: 120 })),
-  phone: t.Optional(t.String({ maxLength: 30 })),
+  email: t.Optional(t.String({ maxLength: 255 })),
+  username: t.Optional(t.Union([t.String({ maxLength: 30 }), t.Null()])),
+  displayUsername: t.Optional(t.Union([t.String({ maxLength: 120 }), t.Null()])),
+  image: t.Optional(t.Union([t.String(), t.Null()])),
+  phone: t.Optional(t.Union([t.String({ maxLength: 30 }), t.Null()])),
+  emailVerified: t.Optional(t.Boolean()),
   role: t.Optional(
     t.Union([t.Literal("member"), t.Literal("agent"), t.Literal("admin")])
   ),
@@ -25,6 +31,7 @@ function shape(u: {
   name: string;
   email: string;
   username: string | null;
+  displayUsername: string | null;
   image: string | null;
   role: string | null;
   phone: string | null;
@@ -65,14 +72,115 @@ const app = new Elysia({ prefix: "/api/v1/users" })
       if (!before)
         return status(404, { ok: false, message: "ไม่พบผู้ใช้" });
 
+      const nextMemberNo =
+        body.memberNo === undefined
+          ? undefined
+          : body.memberNo === null
+            ? null
+            : Number(body.memberNo);
+      if (
+        nextMemberNo !== undefined &&
+        nextMemberNo !== null &&
+        (!Number.isInteger(nextMemberNo) || nextMemberNo <= 0)
+      ) {
+        return status(400, {
+          ok: false,
+          message: "UID ต้องเป็นเลขจำนวนเต็มมากกว่า 0",
+        });
+      }
+
+      const nextName = body.name?.trim();
+      if (body.name !== undefined && !nextName) {
+        return status(400, { ok: false, message: "ต้องระบุชื่อผู้ใช้" });
+      }
+
+      const nextEmail = body.email?.trim().toLowerCase();
+      if (
+        body.email !== undefined &&
+        (!nextEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail))
+      ) {
+        return status(400, { ok: false, message: "รูปแบบอีเมลไม่ถูกต้อง" });
+      }
+
+      const rawUsername =
+        body.username === undefined || body.username === null
+          ? body.username
+          : body.username.trim();
+      const nextUsername =
+        rawUsername === undefined
+          ? undefined
+          : rawUsername
+            ? rawUsername.toLowerCase()
+            : null;
+      if (
+        nextUsername &&
+        (nextUsername.length < 3 || nextUsername.length > 30)
+      ) {
+        return status(400, {
+          ok: false,
+          message: "Username ต้องมี 3-30 ตัวอักษร",
+        });
+      }
+
+      const nextDisplayUsername =
+        body.displayUsername === undefined
+          ? undefined
+          : body.displayUsername?.trim() || nextUsername || null;
+      const nextImage =
+        body.image === undefined ? undefined : body.image?.trim() || null;
+      const nextPhone =
+        body.phone === undefined ? undefined : body.phone?.trim() || null;
+      const nextShopName =
+        body.shopName === undefined ? undefined : body.shopName?.trim() || null;
+      const nextLineId =
+        body.lineId === undefined ? undefined : body.lineId?.trim() || null;
+
+      const [memberNoHit, emailHit, usernameHit] = await Promise.all([
+        nextMemberNo !== undefined && nextMemberNo !== null
+          ? prisma.user.findFirst({
+              where: { id: { not: params.id }, memberNo: nextMemberNo },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
+        nextEmail
+          ? prisma.user.findFirst({
+              where: { id: { not: params.id }, email: nextEmail },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
+        nextUsername
+          ? prisma.user.findFirst({
+              where: { id: { not: params.id }, username: nextUsername },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
+      ]);
+
+      if (memberNoHit)
+        return status(400, { ok: false, message: "UID นี้ถูกใช้แล้ว" });
+      if (emailHit)
+        return status(400, { ok: false, message: "อีเมลนี้ถูกใช้แล้ว" });
+      if (usernameHit)
+        return status(400, { ok: false, message: "Username นี้ถูกใช้แล้ว" });
+
       const saved = await prisma.user.update({
         where: { id: params.id },
         data: {
-          ...(body.name !== undefined && { name: body.name }),
-          ...(body.phone !== undefined && { phone: body.phone }),
+          ...(nextMemberNo !== undefined && { memberNo: nextMemberNo }),
+          ...(nextName !== undefined && { name: nextName }),
+          ...(nextEmail !== undefined && { email: nextEmail }),
+          ...(nextUsername !== undefined && { username: nextUsername }),
+          ...(nextDisplayUsername !== undefined && {
+            displayUsername: nextDisplayUsername,
+          }),
+          ...(nextImage !== undefined && { image: nextImage }),
+          ...(nextPhone !== undefined && { phone: nextPhone }),
+          ...(body.emailVerified !== undefined && {
+            emailVerified: body.emailVerified,
+          }),
           ...(body.role !== undefined && { role: body.role }),
-          ...(body.shopName !== undefined && { shopName: body.shopName }),
-          ...(body.lineId !== undefined && { lineId: body.lineId }),
+          ...(nextShopName !== undefined && { shopName: nextShopName }),
+          ...(nextLineId !== undefined && { lineId: nextLineId }),
         },
       });
 
@@ -84,15 +192,27 @@ const app = new Elysia({ prefix: "/api/v1/users" })
         entityId: saved.id,
         details: {
           before: {
+            memberNo: before.memberNo,
             name: before.name,
+            email: before.email,
+            username: before.username,
+            displayUsername: before.displayUsername,
+            image: before.image,
             phone: before.phone,
+            emailVerified: before.emailVerified,
             role: before.role,
             shopName: before.shopName,
             lineId: before.lineId,
           },
           after: {
+            memberNo: saved.memberNo,
             name: saved.name,
+            email: saved.email,
+            username: saved.username,
+            displayUsername: saved.displayUsername,
+            image: saved.image,
             phone: saved.phone,
+            emailVerified: saved.emailVerified,
             role: saved.role,
             shopName: saved.shopName,
             lineId: saved.lineId,

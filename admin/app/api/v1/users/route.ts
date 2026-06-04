@@ -23,6 +23,7 @@ const app = new Elysia({ prefix: "/api/v1/users" })
           name: true,
           email: true,
           username: true,
+          displayUsername: true,
           image: true,
           role: true,
           phone: true,
