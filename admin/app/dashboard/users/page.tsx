@@ -163,7 +163,7 @@ export default function UsersPage() {
 
   // Handle Export to Excel (CSV with UTF-8 BOM)
   const handleExport = () => {
-    const headers = ["UID", "ชื่อ", "อีเมล", "Username", "ชื่อที่แสดง", "ชื่อร้าน", "ไอดีไลน์เติม Coins", "บทบาท (Role)", "เบอร์โทรศัพท์", "ยืนยันอีเมล", "สมัครเมื่อ"];
+    const headers = ["UID", "ชื่อผู้ใช้", "อีเมล", "Username", "ชื่อที่แสดง", "ชื่อร้าน", "ไอดีไลน์เติม Coins", "บทบาท (Role)", "เบอร์โทรศัพท์", "ยืนยันอีเมล", "สมัครเมื่อ"];
     const rows = filtered.map(u => [
       formatDisplayID(u.memberNo, u.id),
       u.name,
@@ -953,7 +953,10 @@ function UserEditModal({
               />
           </div>
           <div>
-              <label className={editLabelCls}>ชื่อ-นามสกุล</label>
+              <label className={editLabelCls}>
+                <UserIcon className="h-3.5 w-3.5 text-brand-green" />
+                ชื่อผู้ใช้
+              </label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
