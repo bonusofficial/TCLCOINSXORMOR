@@ -82,6 +82,7 @@ export default function ProfilePage() {
         id?: string;
         memberNo?: number | null;
         username?: string | null;
+        displayUsername?: string | null;
         name?: string | null;
         email?: string | null;
         image?: string | null;
@@ -105,6 +106,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Account info (name & phone are editable)
+  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   // ข้อมูลร้าน (สำหรับตัวแทน) — ชื่อร้านปัจจุบัน + ไอดีไลน์ที่ใช้เติม Coins
@@ -122,12 +124,13 @@ export default function ProfilePage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedback | null>(null);
 
-  // Initialize phone & name from user
+  // Initialize editable account fields from user
   useEffect(() => {
     if (!user) return;
 
     const id = window.setTimeout(() => {
       setPhone(user.phone ?? "");
+      setUsername(user.displayUsername ?? user.username ?? "");
       setName(user.name ?? "");
       setShopName(user.shopName ?? "");
       setLineId(user.lineId ?? "");
@@ -148,6 +151,7 @@ export default function ProfilePage() {
 
   const displayName = useMemo(
     () =>
+      user?.displayUsername ||
       user?.username ||
       user?.name ||
       user?.email?.split("@")[0] ||
@@ -255,13 +259,33 @@ export default function ProfilePage() {
     setSavingInfo(true);
     const id = toast.loading("กำลังบันทึก...");
     try {
-      // เช็คชื่อร้าน/ไอดีไลน์ ห้ามซ้ำกับผู้ใช้คนอื่น ก่อนบันทึก
+      const nextUsername = username.trim();
+      if (nextUsername.length < 3) {
+        toast.warning("ชื่อผู้ใช้สั้นเกินไป", {
+          id,
+          description: "ต้องมีอย่างน้อย 3 ตัวอักษร",
+        });
+        setSavingInfo(false);
+        return;
+      }
+      if (nextUsername.length > 30) {
+        toast.warning("ชื่อผู้ใช้ยาวเกินไป", {
+          id,
+          description: "ต้องไม่เกิน 30 ตัวอักษร",
+        });
+        setSavingInfo(false);
+        return;
+      }
+
+      // เช็คชื่อผู้ใช้/ชื่อร้าน/ไอดีไลน์ ห้ามซ้ำกับผู้ใช้คนอื่น ก่อนบันทึก
       const check = await profileApi.api.v1.profile.unique.post({
+        username: nextUsername,
         shopName: shopName.trim(),
         lineId: lineId.trim(),
       });
       if (check.error || (check.data && !check.data.ok)) {
         const taken: string[] = [];
+        if (check.data?.usernameTaken) taken.push("ชื่อผู้ใช้นี้");
         if (check.data?.shopNameTaken) taken.push("ชื่อร้านนี้");
         if (check.data?.lineIdTaken) taken.push("ไอดีไลน์นี้");
         toast.error("ข้อมูลซ้ำกับผู้ใช้อื่น", {
@@ -274,7 +298,14 @@ export default function ProfilePage() {
         return;
       }
 
-      const res = await authClient.updateUser({ name, phone, shopName, lineId } as Parameters<typeof authClient.updateUser>[0]);
+      const res = await authClient.updateUser({
+        name,
+        username: nextUsername,
+        displayUsername: nextUsername,
+        phone,
+        shopName,
+        lineId,
+      } as Parameters<typeof authClient.updateUser>[0]);
       if (res.error) {
         toast.error("บันทึกไม่สำเร็จ", {
           id,
@@ -284,6 +315,7 @@ export default function ProfilePage() {
         return;
       }
       toast.success("อัปเดตข้อมูลแล้ว", { id });
+      setUsername(nextUsername);
       refetch();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในระบบ";
@@ -571,7 +603,7 @@ export default function ProfilePage() {
             ข้อมูลบัญชี
           </h2>
           <p className="text-xs text-brand-ink-soft font-bold mb-5">
-            ข้อมูลหลักทางด้านอีเมลและชื่อผู้ใช้จะไม่สามารถเปลี่ยนแปลงได้ เบอร์โทรศัพท์ ชื่อร้าน และไอดีไลน์สามารถอัปเดตและบันทึกข้อมูลได้ตามต้องการ
+            อีเมลไม่สามารถเปลี่ยนแปลงได้ ชื่อผู้ใช้ เบอร์โทรศัพท์ ชื่อร้าน และไอดีไลน์สามารถอัปเดตและบันทึกข้อมูลได้ตามต้องการ
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -594,8 +626,11 @@ export default function ProfilePage() {
               </label>
               <input
                 type="text"
-                value={user?.username ?? ""}
-                disabled
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="ชื่อผู้ใช้สำหรับเข้าสู่ระบบ"
+                autoComplete="username"
+                maxLength={30}
                 className={inputCls}
               />
             </div>
