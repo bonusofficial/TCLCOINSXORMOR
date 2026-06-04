@@ -41,18 +41,10 @@ export const auth = betterAuth({
     "https://dashboard.ormorstore.rdcw.xyz",
     "http://dashboard.ormorstore.rdcw.xyz",
   ],
-  // แชร์ cookie session ข้ามซับโดเมน (www ↔ dashboard) — ตั้ง COOKIE_DOMAIN=".ormorxtc.com" ใน production
-  // เว้นว่าง (เช่น localhost) = cookie แบบ host-only ปกติ
-  ...(process.env.COOKIE_DOMAIN?.trim()
-    ? {
-        advanced: {
-          crossSubDomainCookies: {
-            enabled: true,
-            domain: process.env.COOKIE_DOMAIN.trim(),
-          },
-        },
-      }
-    : {}),
+  // cookie เว็บผู้ใช้ใช้ชื่อ "ormor-user" + host-only (ไม่แชร์ข้ามซับโดเมน) → แยกจาก login แอดมิน
+  advanced: {
+    cookiePrefix: "ormor-user",
+  },
   session: {
     expiresIn: AUTH_SESSION_MAX_AGE_SECONDS,
     updateAge: AUTH_SESSION_MAX_AGE_SECONDS,

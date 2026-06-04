@@ -19,8 +19,11 @@ import {
   Download,
   CalendarDays,
   Receipt,
+  ChevronDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { accountsApi } from "@/lib/eden";
+import { DatePicker } from "@/components/ui/DatePicker";
 import {
   Table,
   TableHeader,
@@ -69,12 +72,26 @@ const fmtDateTime = (s: string) =>
     minute: "2-digit",
   });
 
+const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+const monthKey = (s: string) => {
+  const d = new Date(s);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+const monthLabel = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  return `${THAI_MONTHS[(m || 1) - 1]} ${y + 543}`;
+};
+
 export default function SalesProfitSection() {
   const [rows, setRows] = useState<SalesRow[]>([]);
   const [summary, setSummary] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "this_week" | "this_month" | "month" | "custom">("all");
+  const [selectedSpecificDate, setSelectedSpecificDate] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(""); // "YYYY-MM"
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,48 +112,126 @@ export default function SalesProfitSection() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateFilter, selectedSpecificDate, selectedMonth, sortOrder]);
+
+  // กรองตามช่วงเวลา (ใช้ completedAt = วันที่ปิดการขาย)
+  const filtered = useMemo(() => {
+    if (dateFilter === "all") return rows;
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dow = startOfToday.getDay();
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfToday.getDate() + (dow === 0 ? -6 : 1 - dow));
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return rows.filter((r) => {
+      const d = new Date(r.completedAt);
+      if (dateFilter === "today" && d < startOfToday) return false;
+      if (dateFilter === "this_week" && d < startOfWeek) return false;
+      if (dateFilter === "this_month" && d < startOfMonth) return false;
+      if (dateFilter === "month" && selectedMonth && monthKey(r.completedAt) !== selectedMonth) return false;
+      if (dateFilter === "custom" && selectedSpecificDate) {
+        const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        if (ds !== selectedSpecificDate) return false;
+      }
+      return true;
+    });
+  }, [rows, dateFilter, selectedMonth, selectedSpecificDate]);
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const ta = new Date(a.completedAt).getTime();
+      const tb = new Date(b.completedAt).getTime();
+      return sortOrder === "newest" ? tb - ta : ta - tb;
+    });
+  }, [filtered, sortOrder]);
+
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return rows.slice(start, start + pageSize);
-  }, [rows, currentPage, pageSize]);
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, currentPage, pageSize]);
+
+  // เดือนที่มีข้อมูล (สำหรับ dropdown)
+  const monthOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) set.add(monthKey(r.completedAt));
+    return Array.from(set).sort().reverse();
+  }, [rows]);
+
+  // ยอดของช่วงที่กรอง (การ์ดเปลี่ยนตามตัวกรอง)
+  const filteredSummary = useMemo(() => {
+    let sales = 0, cost = 0, profit = 0;
+    for (const r of filtered) {
+      sales += Number(r.salePrice) || 0;
+      cost += Number(r.cost) || 0;
+      profit += Number(r.profit) || 0;
+    }
+    return { sales, cost, profit };
+  }, [filtered]);
+
+  // สรุปแยกรายเดือน (สำหรับส่งออก)
+  const monthlyBreakdown = useMemo(() => {
+    const map = new Map<string, { sales: number; cost: number; profit: number }>();
+    for (const r of filtered) {
+      const k = monthKey(r.completedAt);
+      const e = map.get(k) ?? { sales: 0, cost: 0, profit: 0 };
+      e.sales += Number(r.salePrice) || 0;
+      e.cost += Number(r.cost) || 0;
+      e.profit += Number(r.profit) || 0;
+      map.set(k, e);
+    }
+    return Array.from(map.entries())
+      .sort((x, y) => (x[0] < y[0] ? 1 : -1))
+      .map(([ym, v]) => ({ ym, ...v }));
+  }, [filtered]);
+
+  const periodLabel =
+    dateFilter === "all" ? "ทั้งหมด"
+    : dateFilter === "today" ? "วันนี้"
+    : dateFilter === "this_week" ? "สัปดาห์นี้"
+    : dateFilter === "this_month" ? "เดือนนี้"
+    : dateFilter === "month" && selectedMonth ? monthLabel(selectedMonth)
+    : dateFilter === "custom" && selectedSpecificDate ? selectedSpecificDate
+    : "ทั้งหมด";
 
   const handleExport = () => {
-    const headers = [
-      "วันที่",
-      "สินค้า",
-      "ราคาขาย",
-      "ต้นทุน",
-      "กำไร",
-      "ลูกค้า",
-      "รหัสจอง",
-    ];
-    const body = rows.map((r) => [
-      fmtDateTime(r.completedAt),
-      r.productName,
-      r.salePrice,
-      r.cost,
-      r.profit,
-      r.username,
-      r.bookingCode,
-    ]);
-    const csv =
-      "﻿" +
-      [headers, ...body]
-        .map((row) =>
-          row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")
-        )
-        .join("\n");
+    const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const out: string[] = [];
+
+    // สรุปรวมของช่วงที่เลือก
+    out.push([`กำไรจากการขาย (${periodLabel})`].map(q).join(","));
+    out.push(["ยอดขายรวม", "ต้นทุนรวม", "กำไรรวม", "จำนวนออเดอร์"].map(q).join(","));
+    out.push([fmt(filteredSummary.sales), fmt(filteredSummary.cost), fmt(filteredSummary.profit), filtered.length].map(q).join(","));
+    out.push("");
+
+    // สรุปแยกรายเดือน
+    out.push(["สรุปรายเดือน"].map(q).join(","));
+    out.push(["เดือน", "ยอดขาย", "ต้นทุน", "กำไร"].map(q).join(","));
+    for (const m of monthlyBreakdown) {
+      out.push([monthLabel(m.ym), fmt(m.sales), fmt(m.cost), fmt(m.profit)].map(q).join(","));
+    }
+    out.push("");
+
+    // รายการทั้งหมด
+    out.push(["รายการทั้งหมด"].map(q).join(","));
+    out.push(["วันที่", "สินค้า", "ราคาขาย", "ต้นทุน", "กำไร", "ลูกค้า", "รหัสจอง"].map(q).join(","));
+    for (const r of sorted) {
+      out.push([fmtDateTime(r.completedAt), r.productName, r.salePrice, r.cost, r.profit, r.username, r.bookingCode].map(q).join(","));
+    }
+    const csv = "﻿" + out.join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `sales_profit_${new Date().toISOString().slice(0, 10)}.csv`;
+    const fileSuffix = dateFilter === "month" && selectedMonth ? selectedMonth : new Date().toISOString().slice(0, 10);
+    link.download = `sales_profit_${fileSuffix}.csv`;
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     toast.success("ส่งออกข้อมูลสำเร็จ", {
-      description: `ดาวน์โหลดเรียบร้อย (${rows.length} รายการ)`,
+      description: `${periodLabel} · ${filtered.length} รายการ`,
     });
   };
 
@@ -177,6 +272,15 @@ export default function SalesProfitSection() {
         </div>
       </div>
 
+      {/* ป้ายช่วงที่เลือก */}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] font-extrabold text-brand-ink-soft uppercase">ยอดสรุป</span>
+        <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-brand-green-50 text-brand-green">
+          {periodLabel}
+        </span>
+        <span className="text-[11px] font-bold text-brand-ink-soft/70">· {filtered.length} ออเดอร์</span>
+      </div>
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {/* กำไรวันนี้ — เด่นสุด */}
@@ -193,23 +297,89 @@ export default function SalesProfitSection() {
         </div>
 
         <SummaryCard
-          label="ยอดขายรวม"
-          value={summary?.totalSales ?? "0"}
+          label="ยอดขาย"
+          value={String(filteredSummary.sales)}
           icon={<TrendingUp className="h-5 w-5" strokeWidth={2.5} />}
           tone="green"
         />
         <SummaryCard
-          label="ต้นทุนรวม"
-          value={summary?.totalCost ?? "0"}
+          label="ต้นทุน"
+          value={String(filteredSummary.cost)}
           icon={<Coins className="h-5 w-5" strokeWidth={2.5} />}
           tone="rose"
         />
         <SummaryCard
-          label="กำไรรวม"
-          value={summary?.totalProfit ?? "0"}
+          label="กำไร"
+          value={String(filteredSummary.profit)}
           icon={<Wallet className="h-5 w-5" strokeWidth={2.5} />}
           tone="gold"
         />
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-4 items-stretch sm:items-center justify-end">
+        <div className="relative inline-flex items-center">
+          <CalendarDays className="absolute left-3 h-4 w-4 text-brand-ink-soft" />
+          <select
+            value={dateFilter}
+            onChange={(e) => {
+              const v = e.target.value as typeof dateFilter;
+              setDateFilter(v);
+              if (v !== "custom") setSelectedSpecificDate("");
+              if (v !== "month") setSelectedMonth("");
+            }}
+            className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-xs font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
+          >
+            <option value="all">ทั้งหมด (วันที่)</option>
+            <option value="today">วันนี้</option>
+            <option value="this_week">สัปดาห์นี้</option>
+            <option value="this_month">เดือนนี้</option>
+            <option value="month">เลือกเดือน...</option>
+            <option value="custom">ระบุวันที่...</option>
+          </select>
+          <ChevronDown className="absolute right-3 h-4 w-4 text-brand-ink-soft pointer-events-none" />
+        </div>
+
+        {dateFilter === "month" && (
+          <div className="relative inline-flex items-center">
+            <CalendarDays className="absolute left-3 h-4 w-4 text-brand-ink-soft" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-xs font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
+            >
+              <option value="">เลือกเดือน</option>
+              {monthOptions.map((ym) => (
+                <option key={ym} value={ym}>
+                  {monthLabel(ym)}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 h-4 w-4 text-brand-ink-soft pointer-events-none" />
+          </div>
+        )}
+
+        {dateFilter === "custom" && (
+          <DatePicker
+            value={selectedSpecificDate}
+            onChange={setSelectedSpecificDate}
+            placeholder="เลือกวันที่ต้องการกรอง"
+            className="w-full sm:w-44 flex-shrink-0"
+          />
+        )}
+
+        <div className="relative inline-flex items-center">
+          <ArrowUpDown className="absolute left-3 h-4 w-4 text-brand-ink-soft" />
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+            className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-xs font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
+          >
+            <option value="newest">ใหม่ล่าสุด</option>
+            <option value="oldest">เก่าที่สุด</option>
+          </select>
+          <ChevronDown className="absolute right-3 h-4 w-4 text-brand-ink-soft pointer-events-none" />
+        </div>
       </div>
 
       {/* Table */}
@@ -218,14 +388,16 @@ export default function SalesProfitSection() {
           <Loader2 className="h-5 w-5 animate-spin mr-2" />
           <span className="font-bold">กำลังโหลด...</span>
         </div>
-      ) : rows.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="bg-brand-surface border border-brand-green-100 rounded-3xl p-10 text-center">
           <Receipt className="h-10 w-10 mx-auto text-brand-green mb-2" />
           <p className="font-display font-black text-base text-brand-ink mb-1">
-            ยังไม่มีรายการขายที่สำเร็จ
+            {rows.length === 0 ? "ยังไม่มีรายการขายที่สำเร็จ" : "ไม่มีรายการขายในช่วงที่เลือก"}
           </p>
           <p className="text-xs text-brand-ink-soft font-bold">
-            เมื่อกด &ldquo;สำเร็จ&rdquo; ในหน้าจองคิว ออเดอร์จะถูกดึงมาคำนวณกำไรที่นี่อัตโนมัติ
+            {rows.length === 0
+              ? "เมื่อกดสำเร็จในหน้าจองคิว ออเดอร์จะถูกดึงมาคำนวณกำไรที่นี่อัตโนมัติ"
+              : "ลองเปลี่ยนช่วงเวลาหรือเดือนที่เลือก"}
           </p>
         </div>
       ) : (
@@ -284,7 +456,7 @@ export default function SalesProfitSection() {
 
           <Pagination
             currentPage={currentPage}
-            totalItems={rows.length}
+            totalItems={filtered.length}
             pageSize={pageSize}
             onPageChange={setCurrentPage}
             onPageSizeChange={setPageSize}

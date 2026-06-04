@@ -53,7 +53,7 @@ export async function proxy(request: NextRequest) {
 
   // ต้องมี session cookie สำหรับ /profile
   if (isProtectedPath(pathname)) {
-    const sessionCookie = getSessionCookie(request);
+    const sessionCookie = getSessionCookie(request, { cookiePrefix: "ormor-user" });
     if (!sessionCookie) {
       const url = new URL("/", request.url);
       url.searchParams.set("auth", "required");

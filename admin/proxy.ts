@@ -5,7 +5,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
-    const sessionCookie = getSessionCookie(request);
+    const sessionCookie = getSessionCookie(request, { cookiePrefix: "ormor-admin" });
     if (!sessionCookie) {
       const url = new URL("/", request.url);
       url.searchParams.set("auth", "required");
