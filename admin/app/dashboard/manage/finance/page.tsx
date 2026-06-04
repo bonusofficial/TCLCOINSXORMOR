@@ -41,12 +41,6 @@ interface AccountRow {
   createdAt: string;
 }
 
-interface Summary {
-  totalIncome: string;
-  totalExpense: string;
-  balance: string;
-}
-
 const fmt = (v: string | number) =>
   Number(v).toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -62,20 +56,28 @@ const fmtDate = (s: string) => {
   });
 };
 
+const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+/** "YYYY-MM" จากวันที่ */
+const monthKey = (s: string) => {
+  const d = new Date(s);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+/** "มิ.ย. 2569" จาก "YYYY-MM" */
+const monthLabel = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  return `${THAI_MONTHS[(m || 1) - 1]} ${y + 543}`;
+};
+
 export default function FinancePage() {
   const [items, setItems] = useState<AccountRow[]>([]);
-  const [summary, setSummary] = useState<Summary>({
-    totalIncome: "0",
-    totalExpense: "0",
-    balance: "0",
-  });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "รายรับ" | "รายจ่าย">("all");
   const [editing, setEditing] = useState<AccountRow | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [dateFilter, setDateFilter] = useState<"all" | "today" | "this_week" | "this_month" | "custom">("all");
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "this_week" | "this_month" | "month" | "custom">("all");
   const [selectedSpecificDate, setSelectedSpecificDate] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<string>(""); // "YYYY-MM"
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   // Pagination state
@@ -92,7 +94,6 @@ export default function FinancePage() {
     }
     if (data.ok) {
       setItems(data.data);
-      setSummary(data.summary);
     }
     setLoading(false);
   }, []);
@@ -104,7 +105,7 @@ export default function FinancePage() {
   // Reset to first page when filter, dateFilter, custom date or sortOrder changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, dateFilter, selectedSpecificDate, sortOrder]);
+  }, [filter, dateFilter, selectedSpecificDate, selectedMonth, sortOrder]);
 
   const handleDelete = async (a: AccountRow) => {
     if (!confirm("ลบรายการนี้?")) return;
@@ -145,6 +146,9 @@ export default function FinancePage() {
         if (dateFilter === "today" && rowDate < startOfToday) return false;
         if (dateFilter === "this_week" && rowDate < startOfThisWeek) return false;
         if (dateFilter === "this_month" && rowDate < startOfThisMonth) return false;
+        if (dateFilter === "month" && selectedMonth) {
+          if (monthKey(a.date) !== selectedMonth) return false;
+        }
         if (dateFilter === "custom" && selectedSpecificDate) {
           const rowDateStr = `${rowDate.getFullYear()}-${String(rowDate.getMonth() + 1).padStart(2, "0")}-${String(rowDate.getDate()).padStart(2, "0")}`;
           if (rowDateStr !== selectedSpecificDate) return false;
@@ -152,9 +156,52 @@ export default function FinancePage() {
         return true;
       });
     }
-    
+
     return result;
-  }, [items, filter, dateFilter, selectedSpecificDate]);
+  }, [items, filter, dateFilter, selectedSpecificDate, selectedMonth]);
+
+  // เดือนที่มีข้อมูล (สำหรับ dropdown เลือกเดือน) — ใหม่→เก่า
+  const monthOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of items) set.add(monthKey(a.date));
+    return Array.from(set).sort().reverse();
+  }, [items]);
+
+  // ยอดสรุปของ "ชุดที่กรองอยู่" (เปลี่ยนตามตัวกรอง/เดือนที่เลือก)
+  const displaySummary = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    for (const a of filtered) {
+      income += Number(a.income) || 0;
+      expense += Number(a.expense) || 0;
+    }
+    return { totalIncome: income, totalExpense: expense, balance: income - expense };
+  }, [filtered]);
+
+  // สรุปแยกรายเดือน (ใช้ในการส่งออก) — ใหม่→เก่า
+  const monthlyBreakdown = useMemo(() => {
+    const map = new Map<string, { income: number; expense: number }>();
+    for (const a of filtered) {
+      const k = monthKey(a.date);
+      const e = map.get(k) ?? { income: 0, expense: 0 };
+      e.income += Number(a.income) || 0;
+      e.expense += Number(a.expense) || 0;
+      map.set(k, e);
+    }
+    return Array.from(map.entries())
+      .sort((x, y) => (x[0] < y[0] ? 1 : -1))
+      .map(([ym, v]) => ({ ym, ...v, balance: v.income - v.expense }));
+  }, [filtered]);
+
+  // ป้ายบอกช่วงที่กำลังดู
+  const periodLabel =
+    dateFilter === "all" ? "ทั้งหมด"
+    : dateFilter === "today" ? "วันนี้"
+    : dateFilter === "this_week" ? "สัปดาห์นี้"
+    : dateFilter === "this_month" ? "เดือนนี้"
+    : dateFilter === "month" && selectedMonth ? monthLabel(selectedMonth)
+    : dateFilter === "custom" && selectedSpecificDate ? fmtDate(selectedSpecificDate)
+    : "ทั้งหมด";
 
   // Sort filtered items
   const sorted = useMemo(() => {
@@ -183,17 +230,30 @@ export default function FinancePage() {
       fmtDate(a.createdAt)
     ]);
     
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const q = (val: string | number) => `"${String(val).replace(/"/g, '""')}"`;
+    const summaryBlock = [
+      [`\u0E2A\u0E23\u0E38\u0E1B\u0E1A\u0E31\u0E0D\u0E0A\u0E35\u0E23\u0E31\u0E1A-\u0E08\u0E48\u0E32\u0E22 (${periodLabel})`].map(q).join(","),
+      ["\u0E23\u0E32\u0E22\u0E23\u0E31\u0E1A\u0E23\u0E27\u0E21", "\u0E23\u0E32\u0E22\u0E08\u0E48\u0E32\u0E22\u0E23\u0E27\u0E21", "\u0E04\u0E07\u0E40\u0E2B\u0E25\u0E37\u0E2D", "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23"].map(q).join(","),
+      [fmt(displaySummary.totalIncome), fmt(displaySummary.totalExpense), fmt(displaySummary.balance), filtered.length].map(q).join(","),
+      "",
+      ["\u0E2A\u0E23\u0E38\u0E1B\u0E23\u0E32\u0E22\u0E40\u0E14\u0E37\u0E2D\u0E19"].map(q).join(","),
+      ["\u0E40\u0E14\u0E37\u0E2D\u0E19", "\u0E23\u0E32\u0E22\u0E23\u0E31\u0E1A", "\u0E23\u0E32\u0E22\u0E08\u0E48\u0E32\u0E22", "\u0E04\u0E07\u0E40\u0E2B\u0E25\u0E37\u0E2D"].map(q).join(","),
+      ...monthlyBreakdown.map((m) => [monthLabel(m.ym), fmt(m.income), fmt(m.expense), fmt(m.balance)].map(q).join(",")),
+      "",
+      ["\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14"].map(q).join(","),
+    ];
+    const csvContent = "\uFEFF" + [...summaryBlock, headers.join(","), ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `finance_${new Date().toISOString().slice(0, 10)}.csv`);
+    const fileSuffix = dateFilter === "month" && selectedMonth ? selectedMonth : new Date().toISOString().slice(0, 10);
+    link.setAttribute("download", `finance_${fileSuffix}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("ส่งออกข้อมูลสำเร็จ", { description: `ดาวน์โหลดเรียบร้อยแล้ว (${filtered.length} รายการ)` });
+    toast.success("ส่งออกข้อมูลสำเร็จ", { description: `${periodLabel} · ${filtered.length} รายการ` });
   };
 
   // Paginated items
@@ -243,16 +303,23 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Summary */}
+      {/* Summary — ยอดของช่วงที่เลือก */}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] font-extrabold text-brand-ink-soft uppercase">ยอดสรุป</span>
+        <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-brand-green-50 text-brand-green">
+          {periodLabel}
+        </span>
+        <span className="text-[11px] font-bold text-brand-ink-soft/70">· {filtered.length} รายการ</span>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <div className="bg-brand-surface border border-brand-green-100 rounded-2xl p-4 flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-brand-green-50 text-brand-green flex items-center justify-center flex-shrink-0">
             <TrendingUp className="h-5 w-5" strokeWidth={2.5} />
           </div>
           <div className="min-w-0">
-            <p className="text-[10.5px] font-extrabold text-brand-ink-soft uppercase">รายรับรวม</p>
+            <p className="text-[10.5px] font-extrabold text-brand-ink-soft uppercase">รายรับ</p>
             <p className="font-display font-black text-lg text-brand-green leading-tight">
-              ฿{fmt(summary.totalIncome)}
+              ฿{fmt(displaySummary.totalIncome)}
             </p>
           </div>
         </div>
@@ -261,9 +328,9 @@ export default function FinancePage() {
             <TrendingDown className="h-5 w-5" strokeWidth={2.5} />
           </div>
           <div className="min-w-0">
-            <p className="text-[10.5px] font-extrabold text-brand-ink-soft uppercase">รายจ่ายรวม</p>
+            <p className="text-[10.5px] font-extrabold text-brand-ink-soft uppercase">รายจ่าย</p>
             <p className="font-display font-black text-lg text-rose-400 leading-tight">
-              ฿{fmt(summary.totalExpense)}
+              ฿{fmt(displaySummary.totalExpense)}
             </p>
           </div>
         </div>
@@ -273,8 +340,8 @@ export default function FinancePage() {
           </div>
           <div className="min-w-0">
             <p className="text-[10.5px] font-extrabold text-brand-ink-soft uppercase">คงเหลือ</p>
-            <p className={`font-display font-black text-lg leading-tight ${Number(summary.balance) >= 0 ? "text-brand-gold-deep" : "text-rose-400"}`}>
-              ฿{fmt(summary.balance)}
+            <p className={`font-display font-black text-lg leading-tight ${displaySummary.balance >= 0 ? "text-brand-gold-deep" : "text-rose-400"}`}>
+              ฿{fmt(displaySummary.balance)}
             </p>
           </div>
         </div>
@@ -306,8 +373,10 @@ export default function FinancePage() {
             <select
               value={dateFilter}
               onChange={(e) => {
-                setDateFilter(e.target.value as any);
-                if (e.target.value !== "custom") setSelectedSpecificDate("");
+                const v = e.target.value as typeof dateFilter;
+                setDateFilter(v);
+                if (v !== "custom") setSelectedSpecificDate("");
+                if (v !== "month") setSelectedMonth("");
               }}
               className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-xs font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
             >
@@ -315,10 +384,30 @@ export default function FinancePage() {
               <option value="today">วันนี้</option>
               <option value="this_week">สัปดาห์นี้</option>
               <option value="this_month">เดือนนี้</option>
+              <option value="month">เลือกเดือน...</option>
               <option value="custom">ระบุวันที่...</option>
             </select>
             <ChevronDown className="absolute right-3 h-4 w-4 text-brand-ink-soft pointer-events-none" />
           </div>
+
+          {dateFilter === "month" && (
+            <div className="relative inline-flex items-center">
+              <CalendarDays className="absolute left-3 h-4 w-4 text-brand-ink-soft" />
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-xs font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
+              >
+                <option value="">เลือกเดือน</option>
+                {monthOptions.map((ym) => (
+                  <option key={ym} value={ym}>
+                    {monthLabel(ym)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 h-4 w-4 text-brand-ink-soft pointer-events-none" />
+            </div>
+          )}
 
           {dateFilter === "custom" && (
             <DatePicker
