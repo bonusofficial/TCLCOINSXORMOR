@@ -788,10 +788,15 @@ export default function AuthModal({
               </div>
               <h3 className="font-display font-black text-[26px] xl:text-[30px] leading-[1.05] tracking-tight text-brand-ink">
                 {config.welcomeTitle?.trim() ? (
-                  <span className="relative inline-block text-white">
-                    <BookOpen />
-                    {config.welcomeTitle}
-                    <span className="absolute left-0 right-0 bottom-0.5 h-2 bg-brand-gold/40 rounded -z-10 rotate-[-0.5deg]" />
+                  <span className="relative inline-flex max-w-full items-center justify-center gap-2 text-white">
+                    <BookOpen
+                      className="h-6 w-6 shrink-0 text-brand-gold xl:h-7 xl:w-7"
+                      strokeWidth={2.5}
+                    />
+                    <span className="relative min-w-0 break-words">
+                      {config.welcomeTitle}
+                      <span className="absolute left-0 right-0 bottom-0.5 h-2 bg-brand-gold/40 rounded -z-10 rotate-[-0.5deg]" />
+                    </span>
                   </span>
                 ) : (
                   <>
