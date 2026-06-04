@@ -216,16 +216,12 @@ export default function Navbar({
     return items;
   }, [adminDashboardHref, isAdmin, userRole]);
 
-  /* ── คัดลอก ID + แจ้ง toast ตามผลจริง ── */
-  const handleCopyId = async () => {
+  /* ── คัดลอก ID — ขึ้น toast ทันที แล้วค่อยคัดลอกเบื้องหลัง ── */
+  const handleCopyId = () => {
     if (!user?.id) return;
     const id = formatDisplayID(user.memberNo, user.id);
-    const ok = await copyToClipboard(id);
-    if (ok) {
-      toast.success("คัดลอก ID สำเร็จแล้ว!", { description: id });
-    } else {
-      toast.error("คัดลอก ID ไม่สำเร็จ", { description: "กรุณาลองอีกครั้ง" });
-    }
+    toast.success("คัดลอก ID สำเร็จแล้ว!", { description: id });
+    void copyToClipboard(id);
   };
 
   return (

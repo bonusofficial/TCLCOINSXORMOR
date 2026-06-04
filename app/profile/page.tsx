@@ -523,15 +523,11 @@ export default function ProfilePage() {
                 />
                 <button
                   type="button"
-                  onClick={async () => {
+                  onClick={() => {
                     if (!user?.id) return;
                     const uid = formatDisplayID(user.memberNo, user.id);
-                    const ok = await copyToClipboard(uid);
-                    if (ok) {
-                      toast.success("คัดลอก UID สำเร็จแล้ว!", { description: uid });
-                    } else {
-                      toast.error("คัดลอก UID ไม่สำเร็จ", { description: "กรุณาลองอีกครั้ง" });
-                    }
+                    toast.success("คัดลอก UID สำเร็จแล้ว!", { description: uid });
+                    void copyToClipboard(uid);
                   }}
                   className="absolute top-1/2 right-3.5 -translate-y-1/2 text-brand-green hover:scale-110 transition cursor-pointer"
                   title="คัดลอก UID"
