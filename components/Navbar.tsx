@@ -216,6 +216,18 @@ export default function Navbar({
     return items;
   }, [adminDashboardHref, isAdmin, userRole]);
 
+  /* ── คัดลอก ID + แจ้ง toast ตามผลจริง ── */
+  const handleCopyId = async () => {
+    if (!user?.id) return;
+    const id = formatDisplayID(user.memberNo, user.id);
+    const ok = await copyToClipboard(id);
+    if (ok) {
+      toast.success("คัดลอก ID สำเร็จแล้ว!", { description: id });
+    } else {
+      toast.error("คัดลอก ID ไม่สำเร็จ", { description: "กรุณาลองอีกครั้ง" });
+    }
+  };
+
   return (
     <div className="sticky top-[18px] z-80 px-7 max-w-[1240px] mx-auto w-full">
       <nav className="flex items-center justify-between bg-brand-surface/78 backdrop-blur-xl border border-brand-green-100/50 shadow-lg rounded-full py-2.5 pr-3.5 pl-5.5 transition-all duration-300">
@@ -337,12 +349,7 @@ export default function Navbar({
                       </p>
                       {(userRole === "agent" || userRole === "admin") && (
                         <div 
-                          onClick={() => {
-                            if (user?.id) {
-                              copyToClipboard(formatDisplayID(user.memberNo, user.id));
-                              toast.success("คัดลอก ID สำเร็จแล้ว!");
-                            }
-                          }}
+                          onClick={handleCopyId}
                           className="flex items-center gap-1 mt-1 bg-brand-paper hover:bg-brand-green-50 border border-brand-green-100 rounded-lg py-0.5 px-2 text-[9.5px] font-extrabold text-brand-ink-soft w-fit cursor-pointer transition select-none group/uid"
                           title="คัดลอก ID"
                         >
@@ -515,12 +522,7 @@ export default function Navbar({
                       </p>
                       {(userRole === "agent" || userRole === "admin") && (
                         <div 
-                          onClick={() => {
-                            if (user?.id) {
-                              copyToClipboard(formatDisplayID(user.memberNo, user.id));
-                              toast.success("คัดลอก ID สำเร็จแล้ว!");
-                            }
-                          }}
+                          onClick={handleCopyId}
                           className="flex items-center gap-1 bg-brand-paper border border-brand-green-100 rounded-lg py-0.5 px-1.5 text-[9.5px] font-extrabold text-brand-ink-soft cursor-pointer transition select-none group/uid"
                           title="คัดลอก ID"
                         >
