@@ -262,15 +262,16 @@ async function main() {
   // ── รันจริง ──
   const prisma = makeClient(targetUrl);
   const wipeAll = process.env.MIGRATE_WIPE_ALL === "1";
+  const skipConfig = process.env.MIGRATE_SKIP_CONFIG === "1"; // เก็บ config ปัจจุบันไว้ (ไม่ทับด้วย settings เก่า)
   try {
-    console.log("🧹 ล้างตารางปลายทาง...");
+    console.log("🧹 ล้างตารางปลายทาง..." + (skipConfig ? " (เก็บ config เดิมไว้)" : ""));
     // FK-safe: ลบ child (session/account) ก่อน user
     await prisma.session.deleteMany({});
     await prisma.account.deleteMany({});
     await prisma.bookings.deleteMany({});
     await prisma.accounts.deleteMany({});
     await prisma.products.deleteMany({});
-    await prisma.config.deleteMany({});
+    if (!skipConfig) await prisma.config.deleteMany({});
     await prisma.user.deleteMany({});
     if (wipeAll) {
       await prisma.reviews.deleteMany({});
@@ -282,9 +283,9 @@ async function main() {
       console.log("   (เก็บ reviews/banners/audit_logs ไว้ — ใช้ MIGRATE_WIPE_ALL=1 ถ้าต้องการล้างด้วย)");
     }
 
-    // config (จาก settings แถวแรก)
+    // config (จาก settings แถวแรก) — ข้ามถ้า MIGRATE_SKIP_CONFIG=1 (เก็บ config ปัจจุบันไว้)
     const st = settings[0];
-    if (st) {
+    if (!skipConfig && st) {
       const steps = [1, 2, 3, 4]
         .map((n) => ({ title: str(st[`step_${n}_title`]), desc: str(st[`step_${n}_desc`]) }))
         .filter((s) => s.title || s.desc);
