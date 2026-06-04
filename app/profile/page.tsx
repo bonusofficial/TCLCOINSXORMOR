@@ -26,6 +26,8 @@ import {
   MessageCircle,
   ArrowRight,
   Copy,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import Navbar, { formatDisplayID } from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
@@ -34,6 +36,12 @@ import { copyToClipboard } from "@/lib/utils";
 
 
 type UserRole = "member" | "agent" | "admin";
+
+type CopyFeedback = {
+  type: "success" | "error";
+  title: string;
+  description: string;
+};
 
 function resolveUserRole(user?: {
   role?: string | null;
@@ -112,16 +120,31 @@ export default function ProfilePage() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<CopyFeedback | null>(null);
 
   // Initialize phone & name from user
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+
+    const id = window.setTimeout(() => {
       setPhone(user.phone ?? "");
       setName(user.name ?? "");
       setShopName(user.shopName ?? "");
       setLineId(user.lineId ?? "");
-    }
+    }, 0);
+
+    return () => window.clearTimeout(id);
   }, [user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!copyFeedback) return;
+
+    const id = window.setTimeout(() => {
+      setCopyFeedback(null);
+    }, 2600);
+
+    return () => window.clearTimeout(id);
+  }, [copyFeedback]);
 
   const displayName = useMemo(
     () =>
@@ -137,6 +160,41 @@ export default function ProfilePage() {
   const RoleIcon = role.icon;
 
   const handlePickAvatar = () => fileInputRef.current?.click();
+
+  const handleCopyUid = async () => {
+    if (!user?.id) {
+      setCopyFeedback({
+        type: "error",
+        title: "คัดลอก UID ไม่สำเร็จ",
+        description: "ไม่พบ UID ของผู้ใช้งาน",
+      });
+      toast.error("คัดลอก UID ไม่สำเร็จ", {
+        description: "ไม่พบ UID ของผู้ใช้งาน",
+      });
+      return;
+    }
+
+    const uid = formatDisplayID(user.memberNo, user.id);
+    const copied = await copyToClipboard(uid);
+    if (copied) {
+      setCopyFeedback({
+        type: "success",
+        title: "คัดลอก UID แล้ว",
+        description: uid,
+      });
+      toast.success("คัดลอก UID สำเร็จแล้ว!", { description: uid });
+      return;
+    }
+
+    setCopyFeedback({
+      type: "error",
+      title: "คัดลอก UID ไม่สำเร็จ",
+      description: "กรุณาลองอีกครั้ง",
+    });
+    toast.error("คัดลอก UID ไม่สำเร็จ", {
+      description: "กรุณาลองอีกครั้ง",
+    });
+  };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -336,6 +394,39 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col">
+      {copyFeedback && (
+        <div className="fixed inset-x-4 top-4 z-[9999] pointer-events-none sm:left-auto sm:right-6 sm:top-6 sm:w-[340px]">
+          <div
+            role={copyFeedback.type === "error" ? "alert" : "status"}
+            aria-live="polite"
+            className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-2xl ring-1 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 ${
+              copyFeedback.type === "success"
+                ? "border-brand-green bg-brand-surface-soft/95 text-brand-ink shadow-brand-green/25 ring-brand-green/25"
+                : "border-rose-400 bg-brand-surface-soft/95 text-brand-ink shadow-rose-500/20 ring-rose-400/20"
+            }`}
+          >
+            <span
+              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                copyFeedback.type === "success"
+                  ? "bg-brand-green/15 text-brand-green"
+                  : "bg-rose-500/15 text-rose-400"
+              }`}
+            >
+              {copyFeedback.type === "success" ? (
+                <CheckCircle className="h-4.5 w-4.5" />
+              ) : (
+                <AlertCircle className="h-4.5 w-4.5" />
+              )}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-black leading-5">{copyFeedback.title}</p>
+              <p className="mt-0.5 truncate text-xs font-bold text-brand-ink-soft">
+                {copyFeedback.description}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <Navbar
         onOpenAuth={(tab) => {
           setAuthTab(tab);
@@ -523,12 +614,7 @@ export default function ProfilePage() {
                 />
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!user?.id) return;
-                    const uid = formatDisplayID(user.memberNo, user.id);
-                    toast.success("คัดลอก UID สำเร็จแล้ว!", { description: uid });
-                    void copyToClipboard(uid);
-                  }}
+                  onClick={handleCopyUid}
                   className="absolute top-1/2 right-3.5 -translate-y-1/2 text-brand-green hover:scale-110 transition cursor-pointer"
                   title="คัดลอก UID"
                 >

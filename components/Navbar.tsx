@@ -21,6 +21,8 @@ import {
   Copy,
   MessageCircle,
   Loader2,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/utils";
@@ -35,6 +37,12 @@ import {
 } from "@/components/ui/drawer";
 
 type UserRole = "member" | "agent" | "admin";
+
+type CopyFeedback = {
+  type: "success" | "error";
+  title: string;
+  description: string;
+};
 
 interface NavbarProps {
   onOpenAuth: (tab: "login" | "register") => void;
@@ -128,6 +136,7 @@ export default function Navbar({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [authOpening, setAuthOpening] = useState<"login" | "register" | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<CopyFeedback | null>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const authOpeningTimerRef = useRef<number | null>(null);
 
@@ -170,6 +179,16 @@ export default function Navbar({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [accountMenuOpen]);
+
+  useEffect(() => {
+    if (!copyFeedback) return;
+
+    const id = window.setTimeout(() => {
+      setCopyFeedback(null);
+    }, 2600);
+
+    return () => window.clearTimeout(id);
+  }, [copyFeedback]);
 
   useEffect(() => {
     return () => {
@@ -217,15 +236,76 @@ export default function Navbar({
   }, [adminDashboardHref, isAdmin, userRole]);
 
   /* ── คัดลอก ID — ขึ้น toast ทันที แล้วค่อยคัดลอกเบื้องหลัง ── */
-  const handleCopyId = () => {
-    if (!user?.id) return;
+  const handleCopyId = async () => {
+    if (!user?.id) {
+      setCopyFeedback({
+        type: "error",
+        title: "คัดลอก ID ไม่สำเร็จ",
+        description: "ไม่พบ UID ของผู้ใช้งาน",
+      });
+      toast.error("คัดลอก ID ไม่สำเร็จ", {
+        description: "ไม่พบ UID ของผู้ใช้งาน",
+      });
+      return;
+    }
+
     const id = formatDisplayID(user.memberNo, user.id);
-    toast.success("คัดลอก ID สำเร็จแล้ว!", { description: id });
-    void copyToClipboard(id);
+    const copied = await copyToClipboard(id);
+    if (copied) {
+      setCopyFeedback({
+        type: "success",
+        title: "คัดลอก ID แล้ว",
+        description: id,
+      });
+      toast.success("คัดลอก ID สำเร็จแล้ว!", { description: id });
+      return;
+    }
+
+    setCopyFeedback({
+      type: "error",
+      title: "คัดลอก ID ไม่สำเร็จ",
+      description: "กรุณาลองอีกครั้ง",
+    });
+    toast.error("คัดลอก ID ไม่สำเร็จ", {
+      description: "กรุณาลองอีกครั้ง",
+    });
   };
 
   return (
     <div className="sticky top-[18px] z-80 px-7 max-w-[1240px] mx-auto w-full">
+      {copyFeedback && (
+        <div className="fixed inset-x-4 top-4 z-[9999] pointer-events-none sm:left-auto sm:right-6 sm:top-6 sm:w-[340px]">
+          <div
+            role={copyFeedback.type === "error" ? "alert" : "status"}
+            aria-live="polite"
+            className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-2xl ring-1 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 ${
+              copyFeedback.type === "success"
+                ? "border-brand-green bg-brand-surface-soft/95 text-brand-ink shadow-brand-green/25 ring-brand-green/25"
+                : "border-rose-400 bg-brand-surface-soft/95 text-brand-ink shadow-rose-500/20 ring-rose-400/20"
+            }`}
+          >
+            <span
+              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                copyFeedback.type === "success"
+                  ? "bg-brand-green/15 text-brand-green"
+                  : "bg-rose-500/15 text-rose-400"
+              }`}
+            >
+              {copyFeedback.type === "success" ? (
+                <CheckCircle className="h-4.5 w-4.5" />
+              ) : (
+                <AlertCircle className="h-4.5 w-4.5" />
+              )}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-black leading-5">{copyFeedback.title}</p>
+              <p className="mt-0.5 truncate text-xs font-bold text-brand-ink-soft">
+                {copyFeedback.description}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <nav className="flex items-center justify-between bg-brand-surface/78 backdrop-blur-xl border border-brand-green-100/50 shadow-lg rounded-full py-2.5 pr-3.5 pl-5.5 transition-all duration-300">
 
         {/* Left Side: Brand/Logo & Nav Links (Desktop) */}
