@@ -105,9 +105,8 @@ export default function ProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Account info (name & phone are editable)
+  // Account info
   const [username, setUsername] = useState("");
-  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   // ข้อมูลร้าน (สำหรับตัวแทน) — ชื่อร้านปัจจุบัน + ไอดีไลน์ที่ใช้เติม Coins
   const [shopName, setShopName] = useState("");
@@ -130,8 +129,7 @@ export default function ProfilePage() {
 
     const id = window.setTimeout(() => {
       setPhone(user.phone ?? "");
-      setUsername(user.displayUsername ?? user.username ?? "");
-      setName(user.name ?? "");
+      setUsername(user.username ?? user.displayUsername ?? "");
       setShopName(user.shopName ?? "");
       setLineId(user.lineId ?? "");
     }, 0);
@@ -151,8 +149,8 @@ export default function ProfilePage() {
 
   const displayName = useMemo(
     () =>
-      user?.displayUsername ||
       user?.username ||
+      user?.displayUsername ||
       user?.name ||
       user?.email?.split("@")[0] ||
       "บัญชีของฉัน",
@@ -299,7 +297,7 @@ export default function ProfilePage() {
       }
 
       const res = await authClient.updateUser({
-        name,
+        name: nextUsername,
         username: nextUsername,
         displayUsername: nextUsername,
         phone,

@@ -13,7 +13,7 @@ const UserUpdateBody = t.Object({
   memberNo: t.Optional(t.Union([t.Number(), t.Null()])),
   name: t.Optional(t.String({ maxLength: 120 })),
   email: t.Optional(t.String({ maxLength: 255 })),
-  username: t.Optional(t.Union([t.String({ maxLength: 30 }), t.Null()])),
+  username: t.Optional(t.String({ maxLength: 30 })),
   displayUsername: t.Optional(t.Union([t.String({ maxLength: 120 }), t.Null()])),
   image: t.Optional(t.Union([t.String(), t.Null()])),
   phone: t.Optional(t.Union([t.String({ maxLength: 30 }), t.Null()])),
@@ -89,7 +89,29 @@ const app = new Elysia({ prefix: "/api/v1/users" })
         });
       }
 
-      const nextName = body.name?.trim();
+      const rawUsername =
+        body.username === undefined ? undefined : body.username.trim();
+      const nextUsername =
+        rawUsername === undefined ? undefined : rawUsername.toLowerCase();
+      if (body.username !== undefined && !nextUsername) {
+        return status(400, { ok: false, message: "ต้องระบุ Username" });
+      }
+      if (
+        nextUsername &&
+        (nextUsername.length < 3 || nextUsername.length > 30)
+      ) {
+        return status(400, {
+          ok: false,
+          message: "Username ต้องมี 3-30 ตัวอักษร",
+        });
+      }
+
+      const nextName =
+        body.name !== undefined
+          ? body.name.trim()
+          : nextUsername !== undefined
+            ? nextUsername
+            : undefined;
       if (body.name !== undefined && !nextName) {
         return status(400, { ok: false, message: "ต้องระบุชื่อผู้ใช้" });
       }
@@ -102,29 +124,11 @@ const app = new Elysia({ prefix: "/api/v1/users" })
         return status(400, { ok: false, message: "รูปแบบอีเมลไม่ถูกต้อง" });
       }
 
-      const rawUsername =
-        body.username === undefined || body.username === null
-          ? body.username
-          : body.username.trim();
-      const nextUsername =
-        rawUsername === undefined
-          ? undefined
-          : rawUsername
-            ? rawUsername.toLowerCase()
-            : null;
-      if (
-        nextUsername &&
-        (nextUsername.length < 3 || nextUsername.length > 30)
-      ) {
-        return status(400, {
-          ok: false,
-          message: "Username ต้องมี 3-30 ตัวอักษร",
-        });
-      }
-
       const nextDisplayUsername =
         body.displayUsername === undefined
-          ? undefined
+          ? nextUsername !== undefined
+            ? nextUsername
+            : undefined
           : body.displayUsername?.trim() || nextUsername || null;
       const nextImage =
         body.image === undefined ? undefined : body.image?.trim() || null;

@@ -16,8 +16,6 @@ import {
   Mail,
   AtSign,
   Phone,
-  Hash,
-  Image as ImageIcon,
   Store,
   MessageCircle,
   Download,
@@ -163,13 +161,11 @@ export default function UsersPage() {
 
   // Handle Export to Excel (CSV with UTF-8 BOM)
   const handleExport = () => {
-    const headers = ["UID", "ชื่อผู้ใช้", "อีเมล", "Username", "ชื่อที่แสดง", "ชื่อร้าน", "ไอดีไลน์เติม Coins", "บทบาท (Role)", "เบอร์โทรศัพท์", "ยืนยันอีเมล", "สมัครเมื่อ"];
+    const headers = ["UID", "Username", "อีเมล", "ชื่อร้าน", "ไอดีไลน์เติม Coins", "บทบาท (Role)", "เบอร์โทรศัพท์", "ยืนยันอีเมล", "สมัครเมื่อ"];
     const rows = filtered.map(u => [
       formatDisplayID(u.memberNo, u.id),
-      u.name,
-      u.email,
       u.username || "—",
-      u.displayUsername || "—",
+      u.email,
       u.shopName || "—",
       u.lineId || "—",
       ROLE_META[normalizeRole(u.role)].label,
@@ -310,7 +306,7 @@ export default function UsersPage() {
                 {paginatedItems.map((u) => {
                   const role = normalizeRole(u.role);
                   const RoleIcon = ROLE_META[role].icon;
-                  const displayUsername = u.displayUsername || u.username;
+                  const usernameLabel = u.username || u.email;
                   return (
                     <TableRow key={u.id}>
                       <TableCell className="py-3 px-4">
@@ -323,11 +319,11 @@ export default function UsersPage() {
                           />
                           <div className="min-w-0">
                             <div className="font-display font-extrabold text-[13.5px] text-brand-ink line-clamp-1">
-                              {u.name}
+                              {usernameLabel}
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                              {displayUsername && (
-                                <span className="text-[11px] text-brand-ink-soft font-bold">@{displayUsername}</span>
+                              {u.username && (
+                                <span className="text-[11px] text-brand-ink-soft font-bold">@{u.username}</span>
                               )}
                               <span className="text-[9.5px] bg-brand-green-50 text-brand-green border border-brand-green-100 rounded px-1 font-mono font-bold">
                                 ID: {formatDisplayID(u.memberNo, u.id)}
@@ -396,7 +392,7 @@ export default function UsersPage() {
             {paginatedItems.map((u) => {
               const role = normalizeRole(u.role);
               const RoleIcon = ROLE_META[role].icon;
-              const displayUsername = u.displayUsername || u.username;
+              const usernameLabel = u.username || u.email;
               return (
                 <article key={u.id} className="bg-brand-surface border border-brand-green-100 rounded-2xl p-3 flex gap-3 shadow-xs">
                   <img
@@ -407,7 +403,7 @@ export default function UsersPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="font-display font-extrabold text-sm text-brand-ink line-clamp-1">{u.name}</div>
+                      <div className="font-display font-extrabold text-sm text-brand-ink line-clamp-1">{usernameLabel}</div>
                       <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-black flex-shrink-0 ${ROLE_META[role].bg} ${ROLE_META[role].text}`}>
                         <RoleIcon className="h-2.5 w-2.5" strokeWidth={2.5} />
                         {ROLE_META[role].label}
@@ -415,8 +411,8 @@ export default function UsersPage() {
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                       <div className="text-[11px] text-brand-ink-soft font-medium line-clamp-1">{u.email}</div>
-                      {displayUsername && (
-                        <span className="text-[10.5px] text-brand-green font-extrabold">@{displayUsername}</span>
+                      {u.username && (
+                        <span className="text-[10.5px] text-brand-green font-extrabold">@{u.username}</span>
                       )}
                       <span className="text-[9px] bg-brand-green-50 text-brand-green border border-brand-green-100 rounded px-1 font-mono font-bold whitespace-nowrap">
                         ID: {formatDisplayID(u.memberNo, u.id)}
@@ -788,33 +784,16 @@ function UserEditModal({
   onClose: () => void;
   onSaved: (u: AppUser) => void;
 }) {
-  const [memberNo, setMemberNo] = useState(user.memberNo?.toString() ?? "");
   const [email, setEmail] = useState(user.email);
   const [username, setUsername] = useState(user.username ?? "");
-  const [displayUsername, setDisplayUsername] = useState(
-    user.displayUsername ?? user.username ?? ""
-  );
-  const [name, setName] = useState(user.name);
-  const [image, setImage] = useState(user.image ?? "");
   const [phone, setPhone] = useState(user.phone ?? "");
   const [shopName, setShopName] = useState(user.shopName ?? "");
   const [lineId, setLineId] = useState(user.lineId ?? "");
-  const [emailVerified, setEmailVerified] = useState(user.emailVerified);
   const [role, setRole] = useState<UserRole>(normalizeRole(user.role));
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     if (saving) return;
-
-    const nextMemberNoText = memberNo.trim();
-    const nextMemberNo = nextMemberNoText ? Number(nextMemberNoText) : null;
-    if (
-      nextMemberNo !== null &&
-      (!Number.isInteger(nextMemberNo) || nextMemberNo <= 0)
-    ) {
-      toast.warning("UID ต้องเป็นเลขจำนวนเต็มมากกว่า 0");
-      return;
-    }
 
     const nextEmail = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
@@ -823,14 +802,12 @@ function UserEditModal({
     }
 
     const nextUsername = username.trim();
-    if (nextUsername && (nextUsername.length < 3 || nextUsername.length > 30)) {
-      toast.warning("Username ต้องมี 3-30 ตัวอักษร");
+    if (!nextUsername) {
+      toast.warning("ต้องระบุ Username");
       return;
     }
-
-    const nextName = name.trim();
-    if (!nextName) {
-      toast.warning("ต้องระบุชื่อผู้ใช้");
+    if (nextUsername.length < 3 || nextUsername.length > 30) {
+      toast.warning("Username ต้องมี 3-30 ตัวอักษร");
       return;
     }
 
@@ -840,14 +817,11 @@ function UserEditModal({
       const { data, error } = await usersApi.item.api.v1
         .users({ id: user.id })
         .patch({
-          memberNo: nextMemberNo,
           email: nextEmail,
-          username: nextUsername || null,
-          displayUsername: displayUsername.trim() || nextUsername || null,
-          name: nextName,
-          image: image.trim() || null,
+          username: nextUsername,
+          displayUsername: nextUsername,
+          name: nextUsername,
           phone: phone.trim() || null,
-          emailVerified,
           role,
           shopName: shopName.trim() || null,
           lineId: lineId.trim() || null,
@@ -871,9 +845,6 @@ function UserEditModal({
         <header className="flex items-center justify-between p-5 border-b border-brand-green-100/60 flex-shrink-0">
           <div className="min-w-0">
             <h3 className="font-display font-black text-lg text-brand-ink">แก้ไขผู้ใช้</h3>
-            <p className="text-[11px] font-bold text-brand-ink-soft mt-0.5 truncate">
-              {formatDisplayID(user.memberNo, user.id)} · {user.id}
-            </p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-brand-surface border border-brand-green-100 flex items-center justify-center text-brand-ink-soft hover:text-brand-green cursor-pointer">
             <X className="h-4.5 w-4.5" />
@@ -883,14 +854,14 @@ function UserEditModal({
         <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5">
           <div className="flex items-center gap-3 rounded-2xl border border-brand-green-100 bg-brand-surface p-3">
             <img
-              src={image || fallbackAvatar(name || email)}
-              alt={name || email}
+              src={user.image || fallbackAvatar(username || email)}
+              alt={username || email}
               referrerPolicy="no-referrer"
               className="h-14 w-14 rounded-full object-cover ring-2 ring-brand-green-100"
             />
             <div className="min-w-0">
               <div className="font-display font-black text-brand-ink truncate">
-                {name || "ไม่มีชื่อ"}
+                {username || "ไม่มี Username"}
               </div>
               <div className="text-[11px] font-bold text-brand-ink-soft truncate">
                 {email || "ไม่มีอีเมล"}
@@ -899,20 +870,6 @@ function UserEditModal({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className={editLabelCls}>
-                <Hash className="h-3.5 w-3.5 text-brand-green" />
-                UID / เลขสมาชิก
-              </label>
-              <input
-                value={memberNo}
-                onChange={(e) => setMemberNo(e.target.value)}
-                inputMode="numeric"
-                placeholder="เว้นว่างได้"
-                className={editInputCls}
-              />
-            </div>
-
           <div>
               <label className={editLabelCls}>
               <Mail className="h-3.5 w-3.5 text-brand-green" />
@@ -939,43 +896,6 @@ function UserEditModal({
                 className={editInputCls}
               />
           </div>
-          <div>
-              <label className={editLabelCls}>
-                <AtSign className="h-3.5 w-3.5 text-brand-green" />
-                ชื่อที่แสดง
-              </label>
-              <input
-                value={displayUsername}
-                onChange={(e) => setDisplayUsername(e.target.value)}
-                maxLength={120}
-                placeholder="ถ้าเว้นว่างจะใช้ username"
-                className={editInputCls}
-              />
-          </div>
-          <div>
-              <label className={editLabelCls}>
-                <UserIcon className="h-3.5 w-3.5 text-brand-green" />
-                ชื่อผู้ใช้
-              </label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={120}
-                className={editInputCls}
-              />
-            </div>
-            <div>
-              <label className={editLabelCls}>
-                <ImageIcon className="h-3.5 w-3.5 text-brand-green" />
-                รูปโปรไฟล์ URL
-              </label>
-              <input
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="https://..."
-                className={editInputCls}
-              />
-            </div>
             <div>
               <label className={editLabelCls}>
               <Phone className="h-3.5 w-3.5 text-brand-green" />
@@ -1013,24 +933,6 @@ function UserEditModal({
                 placeholder="ไม่มีไลน์เติมเงิน"
                 className={editInputCls}
               />
-            </div>
-
-            <div>
-              <label className={editLabelCls}>
-                <CheckCircle className="h-3.5 w-3.5 text-brand-green" />
-                สถานะยืนยันอีเมล
-              </label>
-              <label className="flex items-center justify-between gap-3 rounded-xl border border-brand-green-100 bg-brand-paper px-3.5 py-2.5 cursor-pointer">
-                <span className="text-sm font-extrabold text-brand-ink">
-                  {emailVerified ? "ยืนยันแล้ว" : "ยังไม่ยืนยัน"}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={emailVerified}
-                  onChange={(e) => setEmailVerified(e.target.checked)}
-                  className="h-4.5 w-4.5 accent-brand-green cursor-pointer"
-                />
-              </label>
             </div>
           </div>
 
