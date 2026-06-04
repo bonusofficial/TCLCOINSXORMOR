@@ -28,6 +28,7 @@ import {
   Check,
   Store,
   MessageCircle,
+  BookOpen,
 } from "lucide-react";
 
 interface AuthModalProps {
@@ -788,6 +789,7 @@ export default function AuthModal({
               <h3 className="font-display font-black text-[26px] xl:text-[30px] leading-[1.05] tracking-tight text-brand-ink">
                 {config.welcomeTitle?.trim() ? (
                   <span className="relative inline-block text-white">
+                    <BookOpen />
                     {config.welcomeTitle}
                     <span className="absolute left-0 right-0 bottom-0.5 h-2 bg-brand-gold/40 rounded -z-10 rotate-[-0.5deg]" />
                   </span>
