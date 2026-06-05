@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
 import {
   Zap,
@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Sparkles,
   Lock,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { publicApi } from "@/lib/eden";
@@ -58,6 +59,30 @@ export default function HeroSection({
   const [bannerIndex, setBannerIndex] = useState(0);
   const [bannerPaused, setBannerPaused] = useState(false);
   const [qrTab, setQrTab] = useState<"member" | "agent">("member");
+  const [authOpening, setAuthOpening] = useState<"login" | "register" | null>(null);
+  const authOpeningTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (authOpeningTimerRef.current) {
+        window.clearTimeout(authOpeningTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleAuthOpen = (tab: "login" | "register") => {
+    if (authOpening) return;
+    setAuthOpening(tab);
+    onOpenAuth?.(tab);
+    
+    if (authOpeningTimerRef.current) {
+      window.clearTimeout(authOpeningTimerRef.current);
+    }
+    authOpeningTimerRef.current = window.setTimeout(() => {
+      setAuthOpening(null);
+      authOpeningTimerRef.current = null;
+    }, 700);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -187,12 +212,22 @@ export default function HeroSection({
             ) : (
               <button
                 type="button"
-                onClick={() => onOpenAuth?.("login")}
-                className="relative inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-extrabold text-sm md:text-base text-white bg-gradient-to-r from-brand-green-700 via-brand-green-600 to-brand-green shadow-lg shadow-brand-green-600/35 hover:shadow-xl hover:shadow-brand-lime/50 hover:-translate-y-1 transition duration-200 cursor-pointer overflow-hidden group/cta"
+                disabled={authOpening !== null}
+                onClick={() => handleAuthOpen("login")}
+                className="relative inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-extrabold text-sm md:text-base text-white bg-gradient-to-r from-brand-green-700 via-brand-green-600 to-brand-green shadow-lg shadow-brand-green-600/35 hover:shadow-xl hover:shadow-brand-lime/50 hover:-translate-y-1 transition duration-200 cursor-pointer overflow-hidden group/cta disabled:opacity-75 disabled:cursor-not-allowed disabled:hover:-translate-y-0"
               >
                 <span className="absolute inset-0 rounded-full ring-2 ring-brand-lime/0 group-hover/cta:ring-brand-lime/60 transition duration-300 pointer-events-none" />
-                เข้าสู่ระบบตอนนี้
-                <ArrowRight className="h-4.5 w-4.5 transition-transform group-hover/cta:translate-x-1" />
+                {authOpening === "login" ? (
+                  <>
+                    <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                    กำลังโหลด
+                  </>
+                ) : (
+                  <>
+                    เข้าสู่ระบบตอนนี้
+                    <ArrowRight className="h-4.5 w-4.5 transition-transform group-hover/cta:translate-x-1" />
+                  </>
+                )}
               </button>
             )}
             <a

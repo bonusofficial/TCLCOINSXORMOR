@@ -392,25 +392,46 @@ export default function ProfilePage() {
     if (changingPassword) return;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
+      setProfileFeedback({
+        type: "warning",
+        title: "กรอกข้อมูลให้ครบ",
+        description: "กรุณากรอกรหัสผ่านเดิม รหัสผ่านใหม่ และยืนยันรหัสผ่าน",
+      });
       toast.warning("กรอกข้อมูลให้ครบ");
       return;
     }
     if (newPassword.length < 8) {
+      setProfileFeedback({
+        type: "warning",
+        title: "รหัสผ่านใหม่สั้นเกินไป",
+        description: "ต้องมีอย่างน้อย 8 ตัวอักษร",
+      });
       toast.warning("รหัสผ่านใหม่สั้นเกินไป", {
         description: "ต้องมีอย่างน้อย 8 ตัวอักษร",
       });
       return;
     }
     if (newPassword !== confirmPassword) {
+      setProfileFeedback({
+        type: "warning",
+        title: "รหัสผ่านยืนยันไม่ตรงกัน",
+        description: "กรุณาพิมพ์รหัสผ่านใหม่และยืนยันรหัสผ่านให้ตรงกัน",
+      });
       toast.warning("รหัสผ่านยืนยันไม่ตรงกัน");
       return;
     }
     if (currentPassword === newPassword) {
+      setProfileFeedback({
+        type: "warning",
+        title: "รหัสผ่านใหม่ซ้ำกับรหัสเดิม",
+        description: "กรุณาตั้งรหัสผ่านใหม่ที่ไม่ซ้ำกับรหัสผ่านปัจจุบัน",
+      });
       toast.warning("รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสเดิม");
       return;
     }
 
     setChangingPassword(true);
+    setProfileFeedback(null);
     const id = toast.loading("กำลังเปลี่ยนรหัสผ่าน...");
     try {
       const res = await authClient.changePassword({
@@ -419,6 +440,12 @@ export default function ProfilePage() {
         revokeOtherSessions: true,
       });
       if (res.error) {
+        setProfileFeedback({
+          type: "error",
+          title: "เปลี่ยนรหัสไม่สำเร็จ",
+          description:
+            res.error.message ?? "รหัสผ่านเดิมอาจไม่ถูกต้อง",
+        });
         toast.error("เปลี่ยนรหัสไม่สำเร็จ", {
           id,
           description:
@@ -431,11 +458,21 @@ export default function ProfilePage() {
         id,
         description: "เซสชันอื่นถูกออกจากระบบเพื่อความปลอดภัย",
       });
+      setProfileFeedback({
+        type: "success",
+        title: "เปลี่ยนรหัสผ่านสำเร็จ",
+        description: "ระบบบันทึกรหัสผ่านใหม่เรียบร้อยแล้ว",
+      });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในระบบ";
+      setProfileFeedback({
+        type: "error",
+        title: "เปลี่ยนรหัสไม่สำเร็จ",
+        description: msg,
+      });
       toast.error("เปลี่ยนรหัสไม่สำเร็จ", { id, description: msg });
     } finally {
       setChangingPassword(false);

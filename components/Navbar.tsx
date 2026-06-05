@@ -203,7 +203,7 @@ export default function Navbar({
     };
   }, []);
 
-  const handleMobileAuthOpen = (tab: "login" | "register") => {
+  const handleAuthOpen = (tab: "login" | "register") => {
     if (authOpening) return;
 
     setAuthOpening(tab);
@@ -478,18 +478,38 @@ export default function Navbar({
           ) : (
             <>
               <button
-                onClick={() => onOpenAuth("register")}
-                className="hidden sm:inline-flex items-center gap-1.5 px-5 py-3 rounded-full font-bold text-[13.5px] text-brand-ink hover:bg-brand-green-50 hover:text-brand-green transition duration-200"
+                onClick={() => handleAuthOpen("register")}
+                disabled={authOpening !== null}
+                className="hidden sm:inline-flex items-center gap-1.5 px-5 py-3 rounded-full font-bold text-[13.5px] text-brand-ink hover:bg-brand-green-50 hover:text-brand-green transition duration-200 disabled:opacity-75 disabled:cursor-not-allowed"
               >
-                <UserPlus className="h-4 w-4" />
-                สมัครสมาชิก
+                {authOpening === "register" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    กำลังโหลด
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4" />
+                    สมัครสมาชิก
+                  </>
+                )}
               </button>
               <button
-                onClick={() => onOpenAuth("login")}
-                className="px-6 py-3 rounded-full font-extrabold text-[13.5px] text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex items-center gap-1.5 cursor-pointer"
+                onClick={() => handleAuthOpen("login")}
+                disabled={authOpening !== null}
+                className="px-6 py-3 rounded-full font-extrabold text-[13.5px] text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 hover:shadow-lg hover:-translate-y-0.5 transition duration-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed disabled:hover:-translate-y-0 disabled:hover:shadow-md"
               >
-                <LogIn className="h-4 w-4" />
-                เข้าสู่ระบบ
+                {authOpening === "login" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    กำลังโหลด
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="h-4 w-4" />
+                    เข้าสู่ระบบ
+                  </>
+                )}
               </button>
             </>
           )}
@@ -645,7 +665,7 @@ export default function Navbar({
             ) : (
               <div className="flex flex-col gap-2.5">
                 <button
-                  onClick={() => handleMobileAuthOpen("login")}
+                  onClick={() => handleAuthOpen("login")}
                   disabled={authOpening !== null}
                   aria-busy={authOpening === "login"}
                   className="w-full py-3.5 rounded-2xl font-extrabold text-sm text-white bg-gradient-to-r from-brand-green to-brand-green-600 shadow-md shadow-brand-green/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-75"
@@ -663,7 +683,7 @@ export default function Navbar({
                   )}
                 </button>
                 <button
-                  onClick={() => handleMobileAuthOpen("register")}
+                  onClick={() => handleAuthOpen("register")}
                   disabled={authOpening !== null}
                   className="w-full py-3.5 rounded-2xl font-extrabold text-sm text-brand-ink bg-brand-green-50 hover:bg-brand-green-100 hover:text-brand-green border border-brand-green-100 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-75"
                 >

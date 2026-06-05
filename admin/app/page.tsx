@@ -257,7 +257,7 @@ export default function AdminLoginPage() {
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
                       <span aria-live="polite">
-                        {redirecting ? "กำลังเปิดแดชบอร์ด" : "กำลังเข้าสู่ระบบ"}
+                        {redirecting ? "กำลังเปิดแดชบอร์ด" : "กำลังโหลด"}
                       </span>
                     </>
                   ) : (
