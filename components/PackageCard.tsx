@@ -116,6 +116,8 @@ export function PackageCard({
 
   const isOpen = avail.status === "open";
   const isSoon = avail.status === "soon";
+  const isEnded = avail.status === "ended";
+  const isOutOfStock = avail.status === "outOfStock";
   const productDescription = p.description.trim();
   const noteText = p.note?.trim();
   const buttonDisabled = !isOpen;
@@ -123,13 +125,29 @@ export function PackageCard({
     ? "เปิดรับจองอยู่"
     : isSoon
       ? "ยังไม่ถึงเวลาจอง"
-      : avail.label;
+      : isOutOfStock
+        ? "สินค้าหมด"
+        : "ปิดจองแล้ว";
   const statusDetail = [dateLabel, timeLabel && `เวลา ${timeLabel}`].filter(Boolean).join(" · ");
   const buttonLabel = isSoon
     ? "ยังไม่ถึงเวลาจอง"
-    : idx === 1
+    : isEnded
+      ? "ปิดจองแล้ว"
+      : isOutOfStock
+        ? "สินค้าหมด"
+        : idx === 1
       ? "จองเลย – แพ็กเกจที่คนซื้อเยอะที่สุด"
       : "จองสินค้าเลย!";
+  const statusTone = isOpen
+    ? "bg-brand-green/15 text-brand-green border-brand-green/30"
+    : isSoon
+      ? "bg-amber-500/15 text-amber-300 border-amber-500/40"
+      : "bg-rose-500/12 text-rose-300 border-rose-500/35";
+  const statusDotTone = isOpen
+    ? "bg-brand-green animate-pulse"
+    : isSoon
+      ? "bg-brand-gold"
+      : "bg-rose-400";
 
   return (
     <article className={`relative bg-[#0d0f12]/45 backdrop-blur-md border-2 rounded-3xl p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col ${
@@ -229,12 +247,8 @@ export function PackageCard({
 
       {/* Status + booking window — สถานะ + วันที่/ช่วงเวลาเปิดรับ */}
       <div className="mb-3 rounded-xl border border-brand-green-100/30 bg-brand-surface/40 p-2.5 space-y-1.5">
-        <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border ${
-          isOpen
-            ? "bg-brand-green/15 text-brand-green border-brand-green/30"
-            : "bg-amber-500/15 text-amber-300 border-amber-500/40"
-        }`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${isOpen ? "bg-brand-green animate-pulse" : "bg-brand-gold"}`} />
+        <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border ${statusTone}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${statusDotTone}`} />
           {statusTitle}
         </span>
         {statusDetail && (
@@ -265,7 +279,7 @@ export function PackageCard({
           {isSoon ? (
             <Clock className="h-4 w-4" />
           ) : (
-            idx === 1 && <Rocket className="h-4 w-4 animate-bounce" />
+            isOpen && idx === 1 && <Rocket className="h-4 w-4 animate-bounce" />
           )}
           <span>{buttonLabel}</span>
         </button>

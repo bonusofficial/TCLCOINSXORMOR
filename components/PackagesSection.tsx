@@ -23,16 +23,16 @@ export default function PackagesSection({
   
   const { products, loading } = useProducts();
 
-  // แสดงเฉพาะแพ็กที่เปิดจองอยู่จริง แล้วจัดอันดับจากยอดจองจริง
+  // แสดงทุกแพ็กที่ยังมีสต็อก แม้ยังไม่ถึงเวลาหรือปิดจองแล้ว เพื่อให้ลูกค้าเห็นรอบถัดไป/สถานะล่าสุด
   // popular = อันดับ 1-3, recommended = อันดับ 4 เป็นต้นไป
   const displayProducts = useMemo(() => {
     if (products.length === 0) return [];
 
-    const active = products.filter(
-      (p) => getProductAvailability(p).status === "open"
+    const visible = products.filter(
+      (p) => getProductAvailability(p).status !== "outOfStock"
     );
 
-    const ranked = [...active]
+    const ranked = [...visible]
       .sort((a, b) => {
         const queueDiff = b.queueCount - a.queueCount;
         if (queueDiff !== 0) return queueDiff;

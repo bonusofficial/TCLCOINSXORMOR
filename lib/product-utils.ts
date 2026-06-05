@@ -7,8 +7,6 @@ import { UserRole } from "@/lib/booking";
  * — กัน SSR (server เป็น UTC) คำนวณวันที่/เวลาเพี้ยน
  * — กัน user ที่ตั้ง timezone เครื่องผิด เห็นสถานะไม่ตรงกับ admin
  */
-const TH_TZ = "Asia/Bangkok";
-
 export const todayISO = () => {
   const d = new Date();
   const ICTDate = new Date(d.getTime() + 7 * 60 * 60 * 1000);
@@ -51,6 +49,25 @@ export const fmtThaiDate = (iso: string) => {
   return `${parseInt(d)} ${months[parseInt(mo) - 1]} ${parseInt(y) + 543}`;
 };
 
+function getFirstSlotStart(p: QueueProduct) {
+  const firstSlot = [...p.timeSlots]
+    .sort((a, b) => padHHMM(a.start).localeCompare(padHHMM(b.start)))[0];
+
+  return firstSlot ? padHHMM(firstSlot.start) : "";
+}
+
+function getUpcomingDateAvailability(p: QueueProduct, saleDates: string[], today: string) {
+  const upcoming = [...saleDates].sort().find((d) => d > today);
+  if (!upcoming) return null;
+
+  const firstSlotStart = getFirstSlotStart(p);
+  return {
+    status: "soon" as const,
+    label: `เปิดจองวันที่ ${fmtThaiDate(upcoming)}${firstSlotStart ? ` เวลา ${firstSlotStart}` : ""}`,
+    message: "ยังไม่ถึงเวลาจอง",
+  };
+}
+
 export function getProductAvailability(p: QueueProduct): {
   status: "open" | "soon" | "ended" | "outOfStock";
   label: string;
@@ -60,7 +77,11 @@ export function getProductAvailability(p: QueueProduct): {
     return { status: "outOfStock", label: "สินค้าหมด" };
   }
   if (!p.saleDates.length) {
-    return { status: "ended", label: "ไม่ระบุวันขาย" };
+    return {
+      status: "ended",
+      label: "ไม่ระบุวันขาย",
+      message: "ปิดจองแล้ว",
+    };
   }
   const today = todayISO();
   const now = currentHHMM();
@@ -68,14 +89,14 @@ export function getProductAvailability(p: QueueProduct): {
   const isToday = saleDates.includes(today);
 
   if (!isToday) {
-    const upcoming = [...saleDates].sort().find((d) => d >= today);
-    if (upcoming && upcoming > today) {
-      return {
-        status: "soon",
-        label: "เปิดจองวันที่ " + fmtThaiDate(upcoming),
-      };
-    }
-    return { status: "ended", label: "ปิดรับแล้ว" };
+    const upcomingAvailability = getUpcomingDateAvailability(p, saleDates, today);
+    if (upcomingAvailability) return upcomingAvailability;
+
+    return {
+      status: "ended",
+      label: "เลยกำหนดจองแล้ว",
+      message: "ปิดจองแล้ว",
+    };
   }
 
   // เป็นวันนี้ — เช็คเวลา (pad ก่อนเทียบ string เสมอ)
@@ -92,14 +113,18 @@ export function getProductAvailability(p: QueueProduct): {
   if (upcomingSlot) {
     return {
       status: "soon",
-      label: `เปิด ${padHHMM(upcomingSlot.start)}`,
+      label: `เปิดจองวันนี้ เวลา ${padHHMM(upcomingSlot.start)}`,
       message: "ยังไม่ถึงเวลาจอง",
     };
   }
+
+  const upcomingAvailability = getUpcomingDateAvailability(p, saleDates, today);
+  if (upcomingAvailability) return upcomingAvailability;
+
   return {
     status: "ended",
-    label: "หมดช่วงเวลาจองวันนี้",
-    message: "ไม่อยู่ในช่วงเวลาจอง",
+    label: "เลยช่วงเวลาจองแล้ว",
+    message: "ปิดจองแล้ว",
   };
 }
 

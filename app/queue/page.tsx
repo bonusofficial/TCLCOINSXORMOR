@@ -171,10 +171,10 @@ function QueueContent() {
       if (q && !p.name.toLowerCase().includes(q) && !p.description.toLowerCase().includes(q))
         return false;
 
-      // แสดงแพ็กที่เปิดจองแล้ว และแพ็กที่ยังไม่ถึงเวลาจอง
-      // สินค้าหมด / ปิดรับแล้ว / ไม่ระบุวันขาย ยังซ่อนเหมือนเดิม
+      // แสดงแพ็กที่ยังมีสต็อกทั้งหมด เพื่อให้เห็นรอบอนาคตและสถานะปิดจองแล้ว
+      // สินค้าหมดยังซ่อนเหมือนเดิม
       const availability = getProductAvailability(p);
-      if (availability.status !== "open" && availability.status !== "soon") return false;
+      if (availability.status === "outOfStock") return false;
 
       return true;
     });
@@ -324,9 +324,14 @@ function QueueContent() {
     }
     const availability = getProductAvailability(p);
     if (availability.status !== "open") {
+      const title =
+        availability.status === "outOfStock"
+          ? "สินค้าหมด"
+          : availability.message ?? "ยังไม่ถึงเวลาจอง";
+
       showBookingNotice({
         type: "warning",
-        title: availability.message ?? "ยังไม่ถึงเวลาจอง",
+        title,
         description: availability.label,
       });
       return;
@@ -616,7 +621,7 @@ function QueueContent() {
               สินค้า<span className="text-brand-green">ยอดนิยม</span>
             </h1>
             <p className="text-xs text-brand-ink-soft font-bold mt-1">
-              จัดอันดับจากยอดจองจริงของลูกค้า — แพ็กที่ยังไม่ถึงเวลาจองจะแสดงสถานะรอเวลาไว้ก่อน
+              จัดอันดับจากยอดจองจริงของลูกค้า — แพ็กที่ยังไม่ถึงเวลาหรือปิดจองแล้วจะแสดงสถานะไว้ให้เห็น
             </p>
           </div>
 
@@ -645,7 +650,7 @@ function QueueContent() {
               ยังไม่มีแพ็กเกจที่แสดงตอนนี้
             </p>
             <p className="text-xs text-brand-ink-soft font-bold">
-              ขณะนี้ไม่มีแพ็กเกจที่เปิดจองหรือรอเวลาเปิดจอง สินค้าหมดและแพ็กที่ปิดรับแล้วจะไม่แสดง
+              ขณะนี้ไม่มีแพ็กเกจที่ยังมีสต็อกให้แสดง สินค้าหมดจะถูกซ่อนเหมือนเดิม
             </p>
           </div>
         ) : (
@@ -810,7 +815,7 @@ function QueueContent() {
                       ))}
                   </select>
                   <p className="text-[10.5px] font-bold text-brand-ink-soft mt-1.5">
-                    ช่องนี้แสดงเฉพาะแพ็กเกจที่<span className="text-brand-green">เปิดจองอยู่</span>เท่านั้น — แพ็กที่ยังไม่ถึงเวลาจองจะแสดงในการ์ดด้านบน
+                    ช่องนี้แสดงเฉพาะแพ็กเกจที่<span className="text-brand-green">เปิดจองอยู่</span>เท่านั้น — แพ็กที่ยังไม่ถึงเวลาหรือปิดจองแล้วจะแสดงในการ์ดด้านบน
                   </p>
                 </div>
                 <div>
