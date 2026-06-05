@@ -1323,6 +1323,7 @@ export const BookingsScalarFieldEnum = {
   phone: 'phone',
   content: 'content',
   price: 'price',
+  cost: 'cost',
   status: 'status',
   bookingDate: 'bookingDate',
   bookingTime: 'bookingTime',

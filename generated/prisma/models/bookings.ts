@@ -34,12 +34,14 @@ export type BookingsAvgAggregateOutputType = {
   id: number | null
   productId: number | null
   price: runtime.Decimal | null
+  cost: runtime.Decimal | null
 }
 
 export type BookingsSumAggregateOutputType = {
   id: number | null
   productId: number | null
   price: runtime.Decimal | null
+  cost: runtime.Decimal | null
 }
 
 export type BookingsMinAggregateOutputType = {
@@ -53,6 +55,7 @@ export type BookingsMinAggregateOutputType = {
   phone: string | null
   content: string | null
   price: runtime.Decimal | null
+  cost: runtime.Decimal | null
   status: string | null
   bookingDate: Date | null
   bookingTime: string | null
@@ -71,6 +74,7 @@ export type BookingsMaxAggregateOutputType = {
   phone: string | null
   content: string | null
   price: runtime.Decimal | null
+  cost: runtime.Decimal | null
   status: string | null
   bookingDate: Date | null
   bookingTime: string | null
@@ -89,6 +93,7 @@ export type BookingsCountAggregateOutputType = {
   phone: number
   content: number
   price: number
+  cost: number
   status: number
   bookingDate: number
   bookingTime: number
@@ -102,12 +107,14 @@ export type BookingsAvgAggregateInputType = {
   id?: true
   productId?: true
   price?: true
+  cost?: true
 }
 
 export type BookingsSumAggregateInputType = {
   id?: true
   productId?: true
   price?: true
+  cost?: true
 }
 
 export type BookingsMinAggregateInputType = {
@@ -121,6 +128,7 @@ export type BookingsMinAggregateInputType = {
   phone?: true
   content?: true
   price?: true
+  cost?: true
   status?: true
   bookingDate?: true
   bookingTime?: true
@@ -139,6 +147,7 @@ export type BookingsMaxAggregateInputType = {
   phone?: true
   content?: true
   price?: true
+  cost?: true
   status?: true
   bookingDate?: true
   bookingTime?: true
@@ -157,6 +166,7 @@ export type BookingsCountAggregateInputType = {
   phone?: true
   content?: true
   price?: true
+  cost?: true
   status?: true
   bookingDate?: true
   bookingTime?: true
@@ -262,6 +272,7 @@ export type BookingsGroupByOutputType = {
   phone: string
   content: string | null
   price: runtime.Decimal
+  cost: runtime.Decimal | null
   status: string
   bookingDate: Date
   bookingTime: string | null
@@ -303,6 +314,7 @@ export type bookingsWhereInput = {
   phone?: Prisma.StringFilter<"bookings"> | string
   content?: Prisma.StringNullableFilter<"bookings"> | string | null
   price?: Prisma.DecimalFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalNullableFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFilter<"bookings"> | string
   bookingDate?: Prisma.DateTimeFilter<"bookings"> | Date | string
   bookingTime?: Prisma.StringNullableFilter<"bookings"> | string | null
@@ -321,6 +333,7 @@ export type bookingsOrderByWithRelationInput = {
   phone?: Prisma.SortOrder
   content?: Prisma.SortOrderInput | Prisma.SortOrder
   price?: Prisma.SortOrder
+  cost?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   bookingDate?: Prisma.SortOrder
   bookingTime?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -343,6 +356,7 @@ export type bookingsWhereUniqueInput = Prisma.AtLeast<{
   phone?: Prisma.StringFilter<"bookings"> | string
   content?: Prisma.StringNullableFilter<"bookings"> | string | null
   price?: Prisma.DecimalFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalNullableFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFilter<"bookings"> | string
   bookingDate?: Prisma.DateTimeFilter<"bookings"> | Date | string
   bookingTime?: Prisma.StringNullableFilter<"bookings"> | string | null
@@ -361,6 +375,7 @@ export type bookingsOrderByWithAggregationInput = {
   phone?: Prisma.SortOrder
   content?: Prisma.SortOrderInput | Prisma.SortOrder
   price?: Prisma.SortOrder
+  cost?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   bookingDate?: Prisma.SortOrder
   bookingTime?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -387,6 +402,7 @@ export type bookingsScalarWhereWithAggregatesInput = {
   phone?: Prisma.StringWithAggregatesFilter<"bookings"> | string
   content?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
   price?: Prisma.DecimalWithAggregatesFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.DecimalNullableWithAggregatesFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringWithAggregatesFilter<"bookings"> | string
   bookingDate?: Prisma.DateTimeWithAggregatesFilter<"bookings"> | Date | string
   bookingTime?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
@@ -404,6 +420,7 @@ export type bookingsCreateInput = {
   phone: string
   content?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: string
   bookingDate: Date | string
   bookingTime?: string | null
@@ -422,6 +439,7 @@ export type bookingsUncheckedCreateInput = {
   phone: string
   content?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: string
   bookingDate: Date | string
   bookingTime?: string | null
@@ -439,6 +457,7 @@ export type bookingsUpdateInput = {
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   bookingDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookingTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -457,6 +476,7 @@ export type bookingsUncheckedUpdateInput = {
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   bookingDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookingTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -475,6 +495,7 @@ export type bookingsCreateManyInput = {
   phone: string
   content?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: string
   bookingDate: Date | string
   bookingTime?: string | null
@@ -492,6 +513,7 @@ export type bookingsUpdateManyMutationInput = {
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   bookingDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookingTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -510,6 +532,7 @@ export type bookingsUncheckedUpdateManyInput = {
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   bookingDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookingTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -534,6 +557,7 @@ export type bookingsCountOrderByAggregateInput = {
   phone?: Prisma.SortOrder
   content?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  cost?: Prisma.SortOrder
   status?: Prisma.SortOrder
   bookingDate?: Prisma.SortOrder
   bookingTime?: Prisma.SortOrder
@@ -545,6 +569,7 @@ export type bookingsAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  cost?: Prisma.SortOrder
 }
 
 export type bookingsMaxOrderByAggregateInput = {
@@ -558,6 +583,7 @@ export type bookingsMaxOrderByAggregateInput = {
   phone?: Prisma.SortOrder
   content?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  cost?: Prisma.SortOrder
   status?: Prisma.SortOrder
   bookingDate?: Prisma.SortOrder
   bookingTime?: Prisma.SortOrder
@@ -576,6 +602,7 @@ export type bookingsMinOrderByAggregateInput = {
   phone?: Prisma.SortOrder
   content?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  cost?: Prisma.SortOrder
   status?: Prisma.SortOrder
   bookingDate?: Prisma.SortOrder
   bookingTime?: Prisma.SortOrder
@@ -587,10 +614,19 @@ export type bookingsSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  cost?: Prisma.SortOrder
 }
 
 export type DecimalFieldUpdateOperationsInput = {
   set?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
+}
+
+export type NullableDecimalFieldUpdateOperationsInput = {
+  set?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
   decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
   multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -610,6 +646,7 @@ export type bookingsSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   phone?: boolean
   content?: boolean
   price?: boolean
+  cost?: boolean
   status?: boolean
   bookingDate?: boolean
   bookingTime?: boolean
@@ -630,6 +667,7 @@ export type bookingsSelectScalar = {
   phone?: boolean
   content?: boolean
   price?: boolean
+  cost?: boolean
   status?: boolean
   bookingDate?: boolean
   bookingTime?: boolean
@@ -637,7 +675,7 @@ export type bookingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type bookingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "bookingCode" | "productId" | "productCode" | "productName" | "userId" | "username" | "phone" | "content" | "price" | "status" | "bookingDate" | "bookingTime" | "createdAt" | "updatedAt", ExtArgs["result"]["bookings"]>
+export type bookingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "bookingCode" | "productId" | "productCode" | "productName" | "userId" | "username" | "phone" | "content" | "price" | "cost" | "status" | "bookingDate" | "bookingTime" | "createdAt" | "updatedAt", ExtArgs["result"]["bookings"]>
 
 export type $bookingsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "bookings"
@@ -653,6 +691,7 @@ export type $bookingsPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     phone: string
     content: string | null
     price: runtime.Decimal
+    cost: runtime.Decimal | null
     status: string
     bookingDate: Date
     bookingTime: string | null
@@ -1037,6 +1076,7 @@ export interface bookingsFieldRefs {
   readonly phone: Prisma.FieldRef<"bookings", 'String'>
   readonly content: Prisma.FieldRef<"bookings", 'String'>
   readonly price: Prisma.FieldRef<"bookings", 'Decimal'>
+  readonly cost: Prisma.FieldRef<"bookings", 'Decimal'>
   readonly status: Prisma.FieldRef<"bookings", 'String'>
   readonly bookingDate: Prisma.FieldRef<"bookings", 'DateTime'>
   readonly bookingTime: Prisma.FieldRef<"bookings", 'String'>

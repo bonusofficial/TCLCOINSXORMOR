@@ -5,6 +5,7 @@ import {
   errorPlugin,
   loggerPlugin,
 } from "@/lib/server/middleware";
+import { renameDiscountEligibleUsername } from "@/lib/server/discount-sync";
 
 /**
  * ตรวจว่า "ชื่อผู้ใช้" / "ชื่อร้าน" / "ไอดีไลน์" ซ้ำกับผู้ใช้คนอื่นหรือไม่
@@ -61,6 +62,49 @@ const app = new Elysia({ prefix: "/api/v1/profile/unique" })
         shopName: t.Optional(t.String()),
         lineId: t.Optional(t.String()),
       }),
+      requireAuth: true,
+    }
+  )
+
+  /**
+   * หลังลูกค้าเปลี่ยน "ชื่อผู้ใช้" สำเร็จ → ย้ายสิทธิ์ส่วนลดพิเศษจากชื่อเก่าไปชื่อใหม่อัตโนมัติ
+   * - ชื่อใหม่ = username ปัจจุบันของผู้ใช้ (อ่านจาก DB ตาม session — เชื่อถือได้ ปลอมไม่ได้)
+   * - previousUsername = ชื่อเก่าที่ client แจ้งมา; ป้องกันการแย่งสิทธิ์โดยเช็คว่าชื่อเก่า
+   *   ต้องไม่ใช่ของผู้ใช้คนอื่นที่ยังใช้งานอยู่ (ต้องเป็นชื่อที่ "ว่างแล้ว" จากการเปลี่ยนของเจ้าตัว)
+   */
+  .post(
+    "/sync-discount",
+    async ({ body, user }) => {
+      const me = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { username: true },
+      });
+      const currentUsername = (me?.username ?? "").trim();
+      const previous = (body.previousUsername ?? "").trim();
+
+      if (
+        !currentUsername ||
+        !previous ||
+        previous.toLowerCase() === currentUsername.toLowerCase()
+      ) {
+        return { ok: true as const, updated: 0 };
+      }
+
+      // กันแย่งสิทธิ์: ชื่อเก่าต้องไม่มีผู้ใช้คนอื่นถือครองอยู่
+      const ownedByOther = await prisma.user.findFirst({
+        where: { id: { not: user.id }, username: previous },
+        select: { id: true },
+      });
+      if (ownedByOther) return { ok: true as const, updated: 0 };
+
+      const updated = await renameDiscountEligibleUsername(
+        previous,
+        currentUsername
+      );
+      return { ok: true as const, updated };
+    },
+    {
+      body: t.Object({ previousUsername: t.String() }),
       requireAuth: true,
     }
   );

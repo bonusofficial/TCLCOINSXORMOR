@@ -25,6 +25,10 @@ function bangkokStartOfToday(): Date {
   );
 }
 
+function productNameKey(name: string): string {
+  return name.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
   .use(loggerPlugin)
   .use(errorPlugin)
@@ -39,7 +43,7 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
         orderBy: { updatedAt: "desc" },
       });
 
-      // map productId → ต้นทุน (ดึงครั้งเดียว)
+      // map productId/productName → ต้นทุน (fallback สำหรับ booking เก่าที่ไม่ผูก productId)
       const productIds = [
         ...new Set(
           bookings
@@ -47,13 +51,32 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
             .filter((id): id is number => id != null)
         ),
       ];
-      const products = productIds.length
+      const productNames = [
+        ...new Set(
+          bookings
+            .map((b) => b.productName.trim())
+            .filter(Boolean)
+        ),
+      ];
+      const productFilters = [
+        ...(productIds.length ? [{ id: { in: productIds } }] : []),
+        ...(productNames.length ? [{ name: { in: productNames } }] : []),
+      ];
+      const products = productFilters.length
         ? await prisma.products.findMany({
-            where: { id: { in: productIds } },
-            select: { id: true, cost: true },
+            where: { OR: productFilters },
+            select: { id: true, name: true, cost: true },
+            orderBy: { id: "desc" },
           })
         : [];
       const costMap = new Map(products.map((p) => [p.id, Number(p.cost)]));
+      const costByName = new Map<string, number>();
+      for (const p of products) {
+        const key = productNameKey(p.name);
+        if (!costByName.has(key)) {
+          costByName.set(key, Number(p.cost));
+        }
+      }
 
       const startToday = bangkokStartOfToday();
 
@@ -66,7 +89,10 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
 
       const rows = bookings.map((b) => {
         const salePrice = Number(b.price);
-        const cost = b.productId != null ? costMap.get(b.productId) ?? 0 : 0;
+        const cost =
+          (b.productId != null ? costMap.get(b.productId) : undefined) ??
+          costByName.get(productNameKey(b.productName)) ??
+          0;
         const profit = salePrice - cost;
         const isToday = b.updatedAt >= startToday;
 

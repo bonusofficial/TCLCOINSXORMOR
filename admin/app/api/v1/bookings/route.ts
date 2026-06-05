@@ -21,6 +21,7 @@ function shape(b: {
   phone: string;
   content: string | null;
   price: { toString(): string };
+  cost: { toString(): string } | null;
   status: string;
   bookingDate: Date;
   bookingTime: string | null;
@@ -30,6 +31,7 @@ function shape(b: {
   return {
     ...b,
     price: b.price.toString(),
+    cost: b.cost != null ? b.cost.toString() : null,
     bookingDate: b.bookingDate.toISOString(),
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),

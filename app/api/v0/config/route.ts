@@ -17,11 +17,11 @@ const app = new Elysia({ prefix: "/api/v0/config" })
 
     const [config, activeQueues, totalCompleted, cancelledCount, totalUsers, stockAgg] = await Promise.all([
       prisma.config.findFirst({ orderBy: { id: "desc" } }),
+      // "ยอดคิวปัจจุบันที่กำลังดำเนินการ" → นับเฉพาะที่ระบบกำลังดำเนินการอยู่จริง
+      // (ไม่รวม "รอตรวจสอบ" ที่ยังไม่เริ่มทำ) ให้ตรงกับป้ายในหน้าแรก
       prisma.bookings.count({
         where: {
-          status: {
-            in: ["รอตรวจสอบ", "รอชำระเงิน", "ชำระแล้ว", "กำลังดำเนินการ"],
-          },
+          status: "กำลังดำเนินการ",
         },
       }),
       prisma.bookings.count({

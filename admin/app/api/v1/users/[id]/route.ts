@@ -6,6 +6,7 @@ import {
   loggerPlugin,
 } from "@/lib/server/middleware";
 import { logAudit } from "@/lib/server/audit";
+import { renameDiscountEligibleUsername } from "@/lib/server/discount-sync";
 
 const Params = t.Object({ id: t.String({ minLength: 1 }) });
 
@@ -109,9 +110,7 @@ const app = new Elysia({ prefix: "/api/v1/users" })
       const nextName =
         body.name !== undefined
           ? body.name.trim()
-          : nextUsername !== undefined
-            ? nextUsername
-            : undefined;
+          : undefined;
       if (body.name !== undefined && !nextName) {
         return status(400, { ok: false, message: "ต้องระบุชื่อผู้ใช้" });
       }
@@ -126,10 +125,8 @@ const app = new Elysia({ prefix: "/api/v1/users" })
 
       const nextDisplayUsername =
         body.displayUsername === undefined
-          ? nextUsername !== undefined
-            ? nextUsername
-            : undefined
-          : body.displayUsername?.trim() || nextUsername || null;
+          ? undefined
+          : body.displayUsername?.trim() || null;
       const nextImage =
         body.image === undefined ? undefined : body.image?.trim() || null;
       const nextPhone =
@@ -187,6 +184,15 @@ const app = new Elysia({ prefix: "/api/v1/users" })
           ...(nextLineId !== undefined && { lineId: nextLineId }),
         },
       });
+
+      // แอดมินเปลี่ยน username → ย้ายสิทธิ์ส่วนลดพิเศษให้ตามชื่อใหม่อัตโนมัติ
+      if (
+        nextUsername !== undefined &&
+        before.username &&
+        before.username !== nextUsername
+      ) {
+        await renameDiscountEligibleUsername(before.username, nextUsername);
+      }
 
       // determine action type
       const isRoleChange = body.role !== undefined && body.role !== before.role;

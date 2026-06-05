@@ -157,6 +157,7 @@ model bookings {
   phone       String   @db.VarChar(30)
   content     String?  @db.VarChar(500)
   price       Decimal  @db.Decimal(15, 2)
+  cost        Decimal? @db.Decimal(15, 2) // ต้นทุน ณ เวลาขาย (snapshot ตอนกด "สำเร็จ") — null = ยังไม่ล็อก ใช้ต้นทุนสดจาก product
   status      String   @default("รอตรวจสอบ") @db.VarChar(30)
   bookingDate DateTime
   bookingTime String?  @db.VarChar(50)

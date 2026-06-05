@@ -29,6 +29,7 @@ import {
   Store,
   MessageCircle,
   BookOpen,
+  TriangleAlert,
 } from "lucide-react";
 
 interface AuthModalProps {
@@ -61,6 +62,7 @@ export default function AuthModal({
   const [success, setSuccess] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   // Sync activeTab when modal re-opens with a different initialTab
   // (useState initializer only runs once; component stays mounted between opens)
@@ -71,6 +73,7 @@ export default function AuthModal({
       setActiveTab(initialTab);
       setSuccess(false);
       setShowPassword(false);
+      setLoginError(null);
     }, 0);
 
     return () => window.clearTimeout(id);
@@ -124,6 +127,7 @@ export default function AuthModal({
     setActiveTab(tab);
     setSuccess(false);
     setShowPassword(false);
+    setLoginError(null);
     if (tab === "forgot" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.username.trim())) {
       setFormData((prev) => ({ ...prev, email: prev.username.trim() }));
     }
@@ -131,7 +135,36 @@ export default function AuthModal({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    if (activeTab === "login") setLoginError(null);
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const showLoginWarning = (title: string, description: string) => {
+    setLoginError(description);
+    toast.warning(title, { description, duration: 5000 });
+  };
+
+  const showLoginFailure = (
+    toastId: string | number,
+    message?: string | null
+  ) => {
+    const raw = message?.trim();
+    const lower = raw?.toLowerCase() ?? "";
+    const description =
+      !raw ||
+      lower.includes("invalid") ||
+      lower.includes("password") ||
+      lower.includes("credential") ||
+      lower.includes("not found")
+        ? "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
+        : raw;
+
+    setLoginError(description);
+    toast.error("เข้าสู่ระบบไม่สำเร็จ", {
+      id: toastId,
+      description,
+      duration: 6000,
+    });
   };
 
   // Authoritative database-backed user role resolver
@@ -165,10 +198,19 @@ export default function AuthModal({
     e.preventDefault();
     if (loading) return;
     const input = formData.username.trim();
-    if (!input || !formData.password) {
-      toast.warning("กรอกข้อมูลให้ครบ", {
-        description: "กรุณาระบุชื่อผู้ใช้/อีเมล และรหัสผ่าน",
-      });
+    if (!input && !formData.password) {
+      showLoginWarning(
+        "กรอกข้อมูลให้ครบ",
+        "กรุณากรอกชื่อผู้ใช้/อีเมล และรหัสผ่าน"
+      );
+      return;
+    }
+    if (!input) {
+      showLoginWarning("กรุณากรอกชื่อผู้ใช้", "กรุณาระบุชื่อผู้ใช้หรืออีเมล");
+      return;
+    }
+    if (!formData.password) {
+      showLoginWarning("กรุณากรอกรหัสผ่าน", "กรุณากรอกรหัสผ่านก่อนเข้าสู่ระบบ");
       return;
     }
 
@@ -218,12 +260,7 @@ export default function AuthModal({
       }
 
       if (res.error) {
-        toast.error("เข้าสู่ระบบไม่สำเร็จ", {
-          id,
-          description:
-            res.error.message ??
-            "ไม่พบบัญชีนี้ หรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง",
-        });
+        showLoginFailure(id, res.error.message);
         setLoading(false);
         return;
       }
@@ -231,6 +268,11 @@ export default function AuthModal({
       // Fetch the actual database session to resolve authoritative role
       const sessionRes = await authClient.getSession({ fetchOptions: { cache: "no-store" } });
       const user = sessionRes?.data?.user;
+      if (!user) {
+        showLoginFailure(id, "ไม่สามารถยืนยันการเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง");
+        setLoading(false);
+        return;
+      }
       const role = resolveUserRole(user);
 
       const roleDesc =
@@ -244,7 +286,7 @@ export default function AuthModal({
       finishSuccess(role);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในระบบ";
-      toast.error("เข้าสู่ระบบไม่สำเร็จ", { id, description: msg });
+      showLoginFailure(id, msg);
       setLoading(false);
     }
   };
@@ -261,16 +303,29 @@ export default function AuthModal({
       });
       return;
     }
-    const failed = PASSWORD_RULES.filter((r) => !r.test(formData.password));
-    if (failed.length > 0) {
-      toast.warning("รหัสผ่านไม่ปลอดภัยพอ", {
-        description: `ขาด: ${failed.map((r) => r.label).join(" · ")}`,
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.warning("อีเมลไม่ถูกต้อง", {
+        description: "กรุณาระบุอีเมลที่ถูกต้อง",
+      });
+      return;
+    }
+    // เช็ค "รหัสผ่านยืนยัน" ก่อนเสมอ — ให้ขึ้น toast ทันทีถ้ายังไม่กรอก/ไม่ตรงกัน
+    if (!formData.confirmPassword) {
+      toast.warning("กรุณายืนยันรหัสผ่าน", {
+        description: "กรอกรหัสผ่านอีกครั้งในช่อง “ยืนยันรหัสผ่าน”",
       });
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      toast.warning("รหัสผ่านไม่ตรงกัน", {
-        description: "กรุณายืนยันรหัสผ่านให้ตรงกัน",
+      toast.error("รหัสผ่านไม่ตรงกัน", {
+        description: "รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง",
+      });
+      return;
+    }
+    const failed = PASSWORD_RULES.filter((r) => !r.test(formData.password));
+    if (failed.length > 0) {
+      toast.warning("รหัสผ่านไม่ปลอดภัยพอ", {
+        description: `ขาด: ${failed.map((r) => r.label).join(" · ")}`,
       });
       return;
     }
@@ -440,7 +495,7 @@ export default function AuthModal({
               </div>
 
               {/* Form Input pods */}
-              <form onSubmit={handleSubmit} className="space-y-4.5">
+              <form onSubmit={handleSubmit} noValidate className="space-y-4.5">
                 {activeTab === "forgot" ? (
                   <div className="relative group">
                     <div className="absolute top-1/2 left-4.5 -translate-y-1/2 flex items-center justify-center text-brand-ink-soft group-focus-within:text-brand-green transition duration-200">
@@ -548,31 +603,47 @@ export default function AuthModal({
 
                 {activeTab !== "forgot" && (
                   /* Password Input Pod */
-                  <div className="relative group">
-                    <div className="absolute top-1/2 left-4.5 -translate-y-1/2 flex items-center justify-center text-brand-ink-soft group-focus-within:text-brand-green transition duration-200">
-                      <Lock className="h-4.5 w-4.5" />
+                  <>
+                    <div className="relative group">
+                      <div className="absolute top-1/2 left-4.5 -translate-y-1/2 flex items-center justify-center text-brand-ink-soft group-focus-within:text-brand-green transition duration-200">
+                        <Lock className="h-4.5 w-4.5" />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="รหัสผ่าน"
+                        aria-invalid={activeTab === "login" && !!loginError}
+                        className={`w-full rounded-2xl border bg-brand-paper py-4.5 pr-12.5 pl-12.5 text-sm font-semibold outline-none transition focus:bg-brand-surface focus:ring-4 text-brand-ink placeholder:text-brand-ink-soft/70 ${
+                          activeTab === "login" && loginError
+                            ? "border-rose-400 focus:border-rose-400 focus:ring-rose-500/20"
+                            : "border-brand-green-100 focus:border-brand-green focus:ring-brand-green/20"
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute top-1/2 right-4.5 -translate-y-1/2 text-brand-ink-soft hover:text-brand-green transition"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4.5 w-4.5" />
+                        ) : (
+                          <Eye className="h-4.5 w-4.5" />
+                        )}
+                      </button>
                     </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="รหัสผ่าน"
-                      className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-12.5 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute top-1/2 right-4.5 -translate-y-1/2 text-brand-ink-soft hover:text-brand-green transition"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4.5 w-4.5" />
-                      ) : (
-                        <Eye className="h-4.5 w-4.5" />
-                      )}
-                    </button>
-                  </div>
+                    {activeTab === "login" && loginError && (
+                      <div
+                        role="alert"
+                        className="-mt-1 flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] font-bold leading-relaxed text-rose-300"
+                      >
+                        <TriangleAlert className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                        <span>{loginError}</span>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Password Strength Indicator — register only */}

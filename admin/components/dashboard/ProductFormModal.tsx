@@ -28,6 +28,13 @@ import {
   type TimeSlot,
 } from "@/lib/types/product";
 
+type DiscountUserOption = {
+  username: string | null;
+  displayUsername: string | null;
+  name: string;
+  email: string;
+};
+
 interface Props {
   open: boolean;
   initial: ProductParsed | null; // null = create mode
@@ -68,6 +75,18 @@ function defaultTimeSlot(): TimeSlot {
   return start < end ? { start, end } : { start: "23:58", end: "23:59" };
 }
 
+function displayUserLabel(
+  user: DiscountUserOption | undefined,
+  fallbackUsername: string
+) {
+  return (
+    user?.displayUsername?.trim() ||
+    user?.name?.trim() ||
+    user?.username?.trim() ||
+    fallbackUsername
+  );
+}
+
 export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -88,7 +107,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   const [selectedUsernames, setSelectedUsernames] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [allUsers, setAllUsers] = useState<Array<{ username: string | null; name: string; email: string }>>([]);
+  const [allUsers, setAllUsers] = useState<DiscountUserOption[]>([]);
   const [discountAmount, setDiscountAmount] = useState("0");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -102,6 +121,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
         setAllUsers(
           data.data.map((u) => ({
             username: u.username,
+            displayUsername: u.displayUsername ?? null,
             name: u.name ?? "",
             email: u.email,
           }))
@@ -833,21 +853,31 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
 
               {/* แสดงแท็กคนที่เลือกไว้ */}
               <div className="flex flex-wrap gap-2 mb-3">
-                {selectedUsernames.map((uname) => (
-                  <span
-                    key={uname}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-brand-green-50 text-brand-green border border-brand-green-100 shadow-sm"
-                  >
-                    @{uname}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedUsernames(selectedUsernames.filter((x) => x !== uname))}
-                      className="w-4 h-4 rounded-full bg-brand-green-100 hover:bg-rose-500 hover:text-white text-brand-green flex items-center justify-center transition cursor-pointer active:scale-90"
+                {selectedUsernames.map((uname) => {
+                  const selectedUser = allUsers.find((u) => u.username === uname);
+                  const label = displayUserLabel(selectedUser, uname);
+
+                  return (
+                    <span
+                      key={uname}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-brand-green-50 text-brand-green border border-brand-green-100 shadow-sm"
                     >
-                      <X className="h-2.5 w-2.5" />
-                    </button>
-                  </span>
-                ))}
+                      <span>{label}</span>
+                      {label !== uname && (
+                        <span className="text-[10px] font-black text-brand-green/70">
+                          @{uname}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUsernames(selectedUsernames.filter((x) => x !== uname))}
+                        className="w-4 h-4 rounded-full bg-brand-green-100 hover:bg-rose-500 hover:text-white text-brand-green flex items-center justify-center transition cursor-pointer active:scale-90"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </span>
+                  );
+                })}
                 {selectedUsernames.length === 0 && (
                   <span className="text-xs text-brand-ink-soft/60 font-bold py-1 select-none">
                     ยังไม่มีการเลือกสมาชิก (ใช้ราคาขายปกติทั่วไป)
@@ -877,6 +907,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                       if (!q) return !selectedUsernames.includes(u.username);
                       return (
                         (u.username.toLowerCase().includes(q) ||
+                         (u.displayUsername ?? "").toLowerCase().includes(q) ||
                          u.name.toLowerCase().includes(q) ||
                          u.email.toLowerCase().includes(q)) &&
                         !selectedUsernames.includes(u.username)
@@ -893,31 +924,36 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                           if (!q) return !selectedUsernames.includes(u.username);
                           return (
                             (u.username.toLowerCase().includes(q) ||
+                             (u.displayUsername ?? "").toLowerCase().includes(q) ||
                              u.name.toLowerCase().includes(q) ||
                              u.email.toLowerCase().includes(q)) &&
                             !selectedUsernames.includes(u.username)
                           );
                         })
-                        .map((u) => (
-                          <button
-                            key={u.username}
-                            type="button"
-                            onClick={() => {
-                              if (u.username) {
-                                setSelectedUsernames([...selectedUsernames, u.username]);
-                                setUserSearch("");
-                                setDropdownOpen(false);
-                              }
-                            }}
-                            className="w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold text-brand-ink hover:bg-brand-green-50 hover:text-brand-green transition flex items-center justify-between cursor-pointer"
-                          >
-                            <div>
-                              <div className="font-extrabold text-[12.5px]">@{u.username}</div>
-                              <div className="text-[10px] text-brand-ink-soft mt-0.5">{u.name || "ไม่มีชื่อ"} · {u.email}</div>
-                            </div>
-                            <Plus className="h-4 w-4 text-brand-green" />
-                          </button>
-                        ))
+                        .map((u) => {
+                          const label = displayUserLabel(u, u.username ?? "");
+
+                          return (
+                            <button
+                              key={u.username}
+                              type="button"
+                              onClick={() => {
+                                if (u.username) {
+                                  setSelectedUsernames([...selectedUsernames, u.username]);
+                                  setUserSearch("");
+                                  setDropdownOpen(false);
+                                }
+                              }}
+                              className="w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold text-brand-ink hover:bg-brand-green-50 hover:text-brand-green transition flex items-center justify-between cursor-pointer"
+                            >
+                              <div className="min-w-0">
+                                <div className="font-extrabold text-[12.5px] truncate">{label}</div>
+                                <div className="text-[10px] text-brand-ink-soft mt-0.5 truncate">@{u.username} · {u.email}</div>
+                              </div>
+                              <Plus className="h-4 w-4 text-brand-green flex-shrink-0" />
+                            </button>
+                          );
+                        })
                     )}
                   </div>
                 )}

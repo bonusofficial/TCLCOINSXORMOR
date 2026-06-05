@@ -78,6 +78,15 @@ function fallbackAvatar(identifier: string) {
   return `https://placehold.co/200x200/39C848/F7FDF7?text=${encodeURIComponent(c)}`;
 }
 
+function userDisplayName(u: Pick<AppUser, "displayUsername" | "name" | "username" | "email">) {
+  return (
+    u.displayUsername?.trim() ||
+    u.name?.trim() ||
+    u.username?.trim() ||
+    u.email
+  );
+}
+
 export default function UsersPage() {
   const [items, setItems] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,9 +170,10 @@ export default function UsersPage() {
 
   // Handle Export to Excel (CSV with UTF-8 BOM)
   const handleExport = () => {
-    const headers = ["UID", "Username", "อีเมล", "ชื่อร้าน", "ไอดีไลน์เติม Coins", "บทบาท (Role)", "เบอร์โทรศัพท์", "ยืนยันอีเมล", "สมัครเมื่อ"];
+    const headers = ["UID", "ชื่อที่แสดง", "Username", "อีเมล", "ชื่อร้าน", "ไอดีไลน์เติม Coins", "บทบาท (Role)", "เบอร์โทรศัพท์", "ยืนยันอีเมล", "สมัครเมื่อ"];
     const rows = filtered.map(u => [
       formatDisplayID(u.memberNo, u.id),
+      userDisplayName(u),
       u.username || "—",
       u.email,
       u.shopName || "—",
@@ -306,20 +316,20 @@ export default function UsersPage() {
                 {paginatedItems.map((u) => {
                   const role = normalizeRole(u.role);
                   const RoleIcon = ROLE_META[role].icon;
-                  const usernameLabel = u.username || u.email;
+                  const displayName = userDisplayName(u);
                   return (
                     <TableRow key={u.id}>
                       <TableCell className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <img
-                            src={u.image || fallbackAvatar(u.name || u.email)}
-                            alt={u.name}
+                            src={u.image || fallbackAvatar(displayName)}
+                            alt={displayName}
                             referrerPolicy="no-referrer"
                             className="w-10 h-10 rounded-full object-cover ring-2 ring-brand-green-100"
                           />
                           <div className="min-w-0">
                             <div className="font-display font-extrabold text-[13.5px] text-brand-ink line-clamp-1">
-                              {usernameLabel}
+                              {displayName}
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                               {u.username && (
@@ -392,18 +402,18 @@ export default function UsersPage() {
             {paginatedItems.map((u) => {
               const role = normalizeRole(u.role);
               const RoleIcon = ROLE_META[role].icon;
-              const usernameLabel = u.username || u.email;
+              const displayName = userDisplayName(u);
               return (
                 <article key={u.id} className="bg-brand-surface border border-brand-green-100 rounded-2xl p-3 flex gap-3 shadow-xs">
                   <img
-                    src={u.image || fallbackAvatar(u.name || u.email)}
-                    alt={u.name}
+                    src={u.image || fallbackAvatar(displayName)}
+                    alt={displayName}
                     referrerPolicy="no-referrer"
                     className="w-12 h-12 rounded-full object-cover ring-2 ring-brand-green-100 flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="font-display font-extrabold text-sm text-brand-ink line-clamp-1">{usernameLabel}</div>
+                      <div className="font-display font-extrabold text-sm text-brand-ink line-clamp-1">{displayName}</div>
                       <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-black flex-shrink-0 ${ROLE_META[role].bg} ${ROLE_META[role].text}`}>
                         <RoleIcon className="h-2.5 w-2.5" strokeWidth={2.5} />
                         {ROLE_META[role].label}
@@ -786,6 +796,7 @@ function UserEditModal({
 }) {
   const [email, setEmail] = useState(user.email);
   const [username, setUsername] = useState(user.username ?? "");
+  const [displayUsername, setDisplayUsername] = useState(userDisplayName(user));
   const [phone, setPhone] = useState(user.phone ?? "");
   const [shopName, setShopName] = useState(user.shopName ?? "");
   const [lineId, setLineId] = useState(user.lineId ?? "");
@@ -811,6 +822,12 @@ function UserEditModal({
       return;
     }
 
+    const nextDisplayUsername = displayUsername.trim() || nextUsername;
+    if (nextDisplayUsername.length > 120) {
+      toast.warning("ชื่อที่แสดงต้องไม่เกิน 120 ตัวอักษร");
+      return;
+    }
+
     setSaving(true);
     const tId = toast.loading("กำลังบันทึก...");
     try {
@@ -819,8 +836,8 @@ function UserEditModal({
         .patch({
           email: nextEmail,
           username: nextUsername,
-          displayUsername: nextUsername,
-          name: nextUsername,
+          displayUsername: nextDisplayUsername,
+          name: nextDisplayUsername,
           phone: phone.trim() || null,
           role,
           shopName: shopName.trim() || null,
@@ -854,14 +871,14 @@ function UserEditModal({
         <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5">
           <div className="flex items-center gap-3 rounded-2xl border border-brand-green-100 bg-brand-surface p-3">
             <img
-              src={user.image || fallbackAvatar(username || email)}
-              alt={username || email}
+              src={user.image || fallbackAvatar(displayUsername || username || email)}
+              alt={displayUsername || username || email}
               referrerPolicy="no-referrer"
               className="h-14 w-14 rounded-full object-cover ring-2 ring-brand-green-100"
             />
             <div className="min-w-0">
               <div className="font-display font-black text-brand-ink truncate">
-                {username || "ไม่มี Username"}
+                {displayUsername || username || "ไม่มีชื่อที่แสดง"}
               </div>
               <div className="text-[11px] font-bold text-brand-ink-soft truncate">
                 {email || "ไม่มีอีเมล"}
@@ -884,8 +901,21 @@ function UserEditModal({
           </div>
           <div>
               <label className={editLabelCls}>
+              <UserIcon className="h-3.5 w-3.5 text-brand-green" />
+              ชื่อที่แสดง
+            </label>
+              <input
+                value={displayUsername}
+                onChange={(e) => setDisplayUsername(e.target.value)}
+                maxLength={120}
+                placeholder="เช่น BonusShop หรือ OrmorCoins"
+                className={editInputCls}
+              />
+          </div>
+          <div>
+              <label className={editLabelCls}>
               <AtSign className="h-3.5 w-3.5 text-brand-green" />
-              Username
+              Username สำหรับเข้าสู่ระบบ
             </label>
               <input
                 value={username}

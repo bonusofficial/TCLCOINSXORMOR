@@ -258,6 +258,8 @@ export default function ProfilePage() {
     const id = toast.loading("กำลังบันทึก...");
     try {
       const nextUsername = username.trim();
+      // ชื่อผู้ใช้เดิม (ก่อนบันทึก) — ใช้ย้ายสิทธิ์ส่วนลดพิเศษไปชื่อใหม่หลังเปลี่ยนชื่อ
+      const previousUsername = (user?.username ?? user?.displayUsername ?? "").trim();
       if (nextUsername.length < 3) {
         toast.warning("ชื่อผู้ใช้สั้นเกินไป", {
           id,
@@ -312,6 +314,20 @@ export default function ProfilePage() {
         setSavingInfo(false);
         return;
       }
+      // เปลี่ยนชื่อผู้ใช้ → ย้ายสิทธิ์ส่วนลดพิเศษให้ตามชื่อใหม่อัตโนมัติ (ไม่บล็อกการบันทึกหลัก)
+      if (
+        previousUsername &&
+        previousUsername.toLowerCase() !== nextUsername.toLowerCase()
+      ) {
+        try {
+          await profileApi.api.v1.profile.unique["sync-discount"].post({
+            previousUsername,
+          });
+        } catch {
+          /* เงียบไว้ — สิทธิ์ส่วนลดยังแก้จากหลังบ้านได้ */
+        }
+      }
+
       toast.success("อัปเดตข้อมูลแล้ว", { id });
       setUsername(nextUsername);
       refetch();

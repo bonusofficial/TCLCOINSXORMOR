@@ -49,10 +49,22 @@ function shape(b: {
   createdAt: Date;
   updatedAt: Date;
 }) {
+  // หมายเหตุ: คืนค่าแบบ explicit (ไม่ spread ...b) เพื่อไม่ให้ฟิลด์ภายในอย่าง "cost" (ต้นทุน)
+  // หลุดออกไปยังฝั่งลูกค้าผ่าน API
   return {
-    ...b,
+    id: b.id,
+    bookingCode: b.bookingCode,
+    productId: b.productId,
+    productCode: b.productCode,
+    productName: b.productName,
+    userId: b.userId,
+    username: b.username,
+    phone: b.phone,
+    content: b.content,
     price: b.price.toString(),
+    status: b.status,
     bookingDate: b.bookingDate.toISOString(),
+    bookingTime: b.bookingTime,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
   };
