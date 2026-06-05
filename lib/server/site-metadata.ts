@@ -19,7 +19,7 @@ type SiteMetadataOptions = {
 const DEFAULT_TITLE = "TCLCOINSXORMOR";
 const DEFAULT_DESCRIPTION =
   "TCLCOINSXORMOR Top-up Coins เติมเหรียญไลน์รวดเร็ว ปลอดภัย เหรียญแท้ 100%";
-const DEFAULT_ICON = "/favicon.ico";
+const DEFAULT_ICON = "/logo.png";
 const DEFAULT_IMAGE = "/logo.png";
 
 function cleanText(value: string | null | undefined) {
@@ -97,7 +97,8 @@ export async function getSiteMetadata(
     options.defaultDescription ||
     DEFAULT_DESCRIPTION;
   const keywords = splitKeywords(config?.keywords);
-  const icon = resolvePublicUrl(config?.logo || DEFAULT_ICON, metadataBase);
+  // favicon ใช้ public/logo.png เสมอ (ตามที่กำหนด) — แยกจาก logo ใน config
+  const icon = resolvePublicUrl(DEFAULT_ICON, metadataBase);
   const image = resolvePublicUrl(
     config?.announceBanner || config?.logo || DEFAULT_IMAGE,
     metadataBase

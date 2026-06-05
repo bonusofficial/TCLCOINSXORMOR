@@ -155,6 +155,12 @@ function QueueContent() {
     return () => window.clearTimeout(id);
   }, [user?.phone, phone]);
 
+  // เข้าหน้าจองครั้งใด → ดึงสินค้าใหม่เสมอ กันค้างค่าเก่า (limit ต่อคน/วัน, สต็อก, รอบเวลาเปิดจอง)
+  useEffect(() => {
+    void refreshProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // re-render ตามเวลา เพื่อให้สถานะ/ฟิลเตอร์ เปิด-ปิด อัปเดตเองแบบ real-time
   const nowTick = useNowTick();
 
@@ -325,7 +331,8 @@ function QueueContent() {
       });
       return;
     }
-    if (showQuotaToast(p)) return;
+    // เตือนทันทีถ้าโควต้าเต็ม — แต่ยังเปิดฟอร์มให้เห็น banner ถาวร + ปุ่มถูกปิด (ไม่บล็อกการเลือก)
+    showQuotaToast(p);
 
     setSelectedProductId(p.id);
     // เลือกวันแรกที่ยังไม่ผ่าน (>= วันนี้) เป็นค่าเริ่มต้น — ไม่ดีฟอลต์เป็นวันที่หมดเวลาไปแล้ว
@@ -355,12 +362,18 @@ function QueueContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramProductId, products, selectedProductId]);
 
+  // โควต้าของ "สินค้าที่เลือกอยู่" ในฟอร์ม — ใช้โชว์ banner ถาวร + ปิดปุ่มเมื่อจองครบ
+  const selectedQuotaMessage = selectedProduct
+    ? getQuotaExceededMessage(selectedProduct, dailyBookingCounts[selectedProduct.id] ?? 0)
+    : null;
+
   const formValid =
     isLoggedIn &&
     selectedProduct !== null &&
     selectedDate !== "" &&
     selectedTime !== "" &&
-    phone.trim().length >= 6;
+    phone.trim().length >= 6 &&
+    !selectedQuotaMessage;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -888,10 +901,26 @@ function QueueContent() {
               </div>
             )}
 
+            {/* โควต้าเต็ม — banner ถาวร (โชว์ตลอดเมื่อเลือกสินค้าที่จองครบโควต้าวันนี้) */}
+            {selectedQuotaMessage && (
+              <div
+                role="alert"
+                className="rounded-2xl border border-amber-500/50 bg-amber-500/12 text-amber-100 px-4 py-3 flex items-start gap-3"
+              >
+                <AlertOctagon className="mt-0.5 h-5 w-5 flex-shrink-0 text-brand-gold" />
+                <div className="min-w-0">
+                  <p className="text-sm font-extrabold">โควต้าวันนี้เต็มแล้ว</p>
+                  <p className="mt-1 text-xs font-bold leading-relaxed text-brand-ink-soft">
+                    {selectedQuotaMessage}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Submit */}
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !!selectedQuotaMessage}
               onClick={(e) => {
                 if (!submitting && showFormGuardToast()) {
                   e.preventDefault();
@@ -903,6 +932,11 @@ function QueueContent() {
                 <>
                   <Loader2 className="h-4.5 w-4.5 animate-spin" />
                   กำลังจอง...
+                </>
+              ) : selectedQuotaMessage ? (
+                <>
+                  <AlertOctagon className="h-4.5 w-4.5" />
+                  โควต้าเต็มวันนี้
                 </>
               ) : !formValid ? (
                 <>
