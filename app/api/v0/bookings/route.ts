@@ -169,8 +169,12 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       const role = ((user as { role?: string | null }).role ?? "member").toLowerCase();
       const isAgent = role === "agent" || role === "admin";
       const base = isAgent ? Number(prod.agentPrice) : Number(prod.price);
-      const accountUsername = (user as { username?: string | null }).username ?? null;
-      const matchUsername = (accountUsername ?? body.username ?? "")
+      const accountLoginUsername = (user as { username?: string | null }).username ?? null;
+      const accountDisplayUsername =
+        (user as { displayUsername?: string | null }).displayUsername ?? null;
+      const bookingUsername =
+        accountDisplayUsername?.trim() || accountLoginUsername?.trim() || body.username;
+      const matchUsername = (accountLoginUsername ?? accountDisplayUsername ?? body.username ?? "")
         .toLowerCase()
         .trim();
       const discountUsers = toArr(prod.discountEligibleUsernames)
@@ -212,7 +216,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
             productCode: body.productCode ?? null,
             productName: prod.name, // ยึดชื่อจริงจากฐานข้อมูล
             userId: user.id,
-            username: accountUsername ?? body.username,
+            username: bookingUsername,
             phone: body.phone,
             content: body.content ?? null,
             price, // ราคาที่เซิร์ฟเวอร์คำนวณเอง

@@ -24,7 +24,6 @@ import { productsApi, usersApi } from "@/lib/eden";
 import { TimePicker } from "@/components/ui/TimePicker";
 import { DatePicker } from "@/components/ui/DatePicker";
 import {
-  PRODUCT_MAX_TIME_SLOTS,
   type ProductParsed,
   type TimeSlot,
 } from "@/lib/types/product";
@@ -226,9 +225,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
     setSaleDates(saleDates.filter((_, idx) => idx !== i));
 
   const addSlot = () => {
-    setTimeSlots((prev) =>
-      prev.length >= PRODUCT_MAX_TIME_SLOTS ? prev : [...prev, defaultTimeSlot()]
-    );
+    setTimeSlots((prev) => [...prev, defaultTimeSlot()]);
   };
   const setSlot = (i: number, field: keyof TimeSlot, v: string) =>
     setTimeSlots(
@@ -717,14 +714,13 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                     เวลาไทย · UTC+7
                   </span>
                   <span className="text-brand-ink-soft font-bold">
-                    (สูงสุด {PRODUCT_MAX_TIME_SLOTS} ช่วง)
+                    (ไม่จำกัดจำนวนช่วง)
                   </span>
                 </label>
                 <button
                   type="button"
                   onClick={addSlot}
-                  disabled={timeSlots.length >= PRODUCT_MAX_TIME_SLOTS}
-                  className="text-[11px] font-extrabold text-brand-green hover:text-brand-green-600 inline-flex items-center gap-1 disabled:opacity-40 cursor-pointer"
+                  className="text-[11px] font-extrabold text-brand-green hover:text-brand-green-600 inline-flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" /> เพิ่มเวลา
                 </button>

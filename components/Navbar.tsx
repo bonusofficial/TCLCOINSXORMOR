@@ -152,6 +152,7 @@ export default function Navbar({
         id?: string;
         memberNo?: number | null;
         username?: string | null;
+        displayUsername?: string | null;
         name?: string | null;
         email?: string | null;
         image?: string | null;
@@ -160,7 +161,11 @@ export default function Navbar({
 
   const { displayName, avatarSrc } = useMemo(() => {
     const identifier =
-      user?.username || user?.name || user?.email?.split("@")[0] || "บัญชีของฉัน";
+      user?.displayUsername ||
+      user?.username ||
+      user?.name ||
+      user?.email?.split("@")[0] ||
+      "บัญชีของฉัน";
     const src = user?.image || buildFallbackAvatar(identifier);
     return { displayName: identifier, avatarSrc: src };
   }, [user]);

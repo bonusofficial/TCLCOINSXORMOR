@@ -1,11 +1,7 @@
 /**
  * Type definitions for the `products` JSON fields
  * (Prisma เก็บเป็น Json — TS ต้อง cast เอง)
- *
- * Constraint: max 8 items per array (บังคับฝั่ง app)
  */
-
-export const PRODUCT_MAX_TIME_SLOTS = 8;
 
 /** วันที่เปิดขาย — ISO date string "YYYY-MM-DD" */
 export type SaleDate = string;
@@ -73,10 +69,6 @@ export function validateProductInput(input: ProductInput): string | null {
   if (input.agentPrice < 0) return "ราคา Agent ต้องไม่ติดลบ";
   if (input.stock < 0) return "จำนวนสต็อกต้องไม่ติดลบ";
   if (input.discountAmount < 0) return "ส่วนลดต้องไม่ติดลบ";
-
-  if (input.timeSlots.length > PRODUCT_MAX_TIME_SLOTS) {
-    return `เพิ่มช่วงเวลาได้สูงสุด ${PRODUCT_MAX_TIME_SLOTS} ช่วง`;
-  }
 
   // Validate time format + start < end
   const timeRe = /^\d{2}:\d{2}$/;

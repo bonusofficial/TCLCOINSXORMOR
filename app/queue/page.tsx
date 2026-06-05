@@ -53,6 +53,44 @@ function formatApiDate(value: unknown) {
   return String(value);
 }
 
+type BookingQuotaItem = {
+  productId: number | null;
+  status: string;
+  bookingDate: string;
+};
+
+type BookingNotice = {
+  type: "warning" | "error";
+  title: string;
+  description: string;
+} | null;
+
+function getQuotaExceededMessage(p: QueueProduct, bookedToday: number) {
+  if (p.maxPerUserPerDay <= 0 || bookedToday < p.maxPerUserPerDay) return null;
+
+  return `แพ็กเกจนี้จำกัดซื้อได้ไม่เกิน ${p.maxPerUserPerDay} แพ็ก/วัน/คน คุณจองครบโควต้าของวันนี้แล้ว`;
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  const value = (error as { value?: unknown } | null)?.value;
+
+  if (value && typeof value === "object") {
+    const message = (value as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+
+  if (typeof value === "string" && value.trim()) return value;
+
+  const message = (error as { message?: unknown } | null)?.message;
+  if (typeof message === "string" && message.trim()) return message;
+
+  return fallback;
+}
+
+function isQuotaErrorMessage(message: string) {
+  return message.includes("จำกัด") || message.includes("ไม่เกิน") || message.toLowerCase().includes("quota");
+}
+
 /* ─────────────────────────────────────────────
  * Page
  * ───────────────────────────────────────────── */
@@ -60,7 +98,7 @@ function formatApiDate(value: unknown) {
 function QueueContent() {
   const { data: session } = useSession();
   const user = session?.user as
-    | { id?: string; email?: string; username?: string; phone?: string; role?: string }
+    | { id?: string; email?: string; username?: string; displayUsername?: string; phone?: string; role?: string }
     | undefined;
   const isLoggedIn = !!user;
   const userRole: UserRole = (() => {
@@ -90,6 +128,11 @@ function QueueContent() {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [dailyBookingCountState, setDailyBookingCountState] = useState<{
+    userId: string;
+    counts: Record<number, number>;
+  } | null>(null);
+  const [bookingNotice, setBookingNotice] = useState<BookingNotice>(null);
 
   // Success result
   const [result, setResult] = useState<{
@@ -122,9 +165,10 @@ function QueueContent() {
       if (q && !p.name.toLowerCase().includes(q) && !p.description.toLowerCase().includes(q))
         return false;
 
-      // แสดงเฉพาะแพ็กที่เปิดจองอยู่จริง (อยู่ในวันขายและช่วงเวลา slot)
-      // ตัวที่ไม่อยู่ในช่วงเวลา / ปิดรับ / สินค้าหมด จะถูกซ่อนเพื่อไม่ให้ลูกค้าสับสน
-      if (getProductAvailability(p).status !== "open") return false;
+      // แสดงแพ็กที่เปิดจองแล้ว และแพ็กที่ยังไม่ถึงเวลาจอง
+      // สินค้าหมด / ปิดรับแล้ว / ไม่ระบุวันขาย ยังซ่อนเหมือนเดิม
+      const availability = getProductAvailability(p);
+      if (availability.status !== "open" && availability.status !== "soon") return false;
 
       return true;
     });
@@ -149,10 +193,121 @@ function QueueContent() {
   const effectivePrice = useMemo(
     () =>
       selectedProduct
-        ? getEffectivePrice(selectedProduct, userRole, user?.username ?? null)
+        ? getEffectivePrice(
+            selectedProduct,
+            userRole,
+            user?.displayUsername || user?.username || null
+          )
         : null,
-    [selectedProduct, userRole, user?.username]
+    [selectedProduct, userRole, user?.displayUsername, user?.username]
   );
+
+  const dailyBookingCounts =
+    dailyBookingCountState && dailyBookingCountState.userId === user?.id
+      ? dailyBookingCountState.counts
+      : {};
+
+  const showBookingNotice = (
+    notice: NonNullable<BookingNotice>,
+    replaceToastId?: string | number
+  ) => {
+    setBookingNotice(notice);
+    if (replaceToastId !== undefined) toast.dismiss(replaceToastId);
+
+    const options = {
+      description: notice.description,
+      duration: 6500,
+    };
+
+    if (notice.type === "warning") {
+      toast.warning(notice.title, options);
+      return;
+    }
+
+    toast.error(notice.title, options);
+  };
+
+  useEffect(() => {
+    if (!bookingNotice) return;
+
+    const id = window.setTimeout(() => {
+      setBookingNotice(null);
+    }, 6500);
+
+    return () => window.clearTimeout(id);
+  }, [bookingNotice]);
+
+  useEffect(() => {
+    const currentUserId = user?.id;
+    if (!isLoggedIn || !currentUserId) return;
+
+    let mounted = true;
+    publicApi.bookings.api.v0.bookings.get()
+      .then(({ data, error }) => {
+        if (!mounted || error || !data?.ok) return;
+
+        const today = todayISO();
+        const counts: Record<number, number> = {};
+        for (const booking of data.data as BookingQuotaItem[]) {
+          if (booking.productId == null || booking.status === "ยกเลิก") continue;
+          if (formatApiDate(booking.bookingDate).slice(0, 10) !== today) continue;
+
+          counts[booking.productId] = (counts[booking.productId] ?? 0) + 1;
+        }
+        setDailyBookingCountState({ userId: currentUserId, counts });
+      })
+      .catch(() => {
+        // ถ้าดึงยอดไม่ได้ ให้ API ตอน submit เป็นตัวกัน quota ขั้นสุดท้าย
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isLoggedIn, user?.id]);
+
+  const showQuotaToast = (p: QueueProduct) => {
+    const message = getQuotaExceededMessage(p, dailyBookingCounts[p.id] ?? 0);
+    if (!message) return false;
+
+    showBookingNotice({
+      type: "warning",
+      title: "ซื้อแพ็กเกจเกินโควต้า",
+      description: message,
+    });
+    return true;
+  };
+
+  const showFormGuardToast = () => {
+    if (!isLoggedIn) {
+      setAuthTab("login");
+      setAuthOpen(true);
+      toast.info("กรุณาเข้าสู่ระบบก่อน", { description: "เพื่อทำการจองคิว" });
+      return true;
+    }
+
+    if (!selectedProduct) {
+      toast.warning("เลือกแพ็กเกจก่อน", {
+        description: "กรุณาเลือกแพ็กเกจที่ต้องการจอง",
+      });
+      return true;
+    }
+
+    if (!selectedDate || !selectedTime) {
+      toast.warning("เลือกวันและเวลาก่อน", {
+        description: "กรุณาเลือกวันที่และช่วงเวลาที่ต้องการจอง",
+      });
+      return true;
+    }
+
+    if (phone.trim().length < 6) {
+      toast.warning("กรอกเบอร์โทรให้ถูกต้อง", {
+        description: "เบอร์โทรติดต่อกลับต้องมีอย่างน้อย 6 ตัวอักษร",
+      });
+      return true;
+    }
+
+    return showQuotaToast(selectedProduct);
+  };
 
   const handlePickProduct = (p: QueueProduct) => {
     if (!isLoggedIn) {
@@ -161,6 +316,17 @@ function QueueContent() {
       toast.info("กรุณาเข้าสู่ระบบก่อน", { description: "เพื่อทำการจองคิว" });
       return;
     }
+    const availability = getProductAvailability(p);
+    if (availability.status !== "open") {
+      showBookingNotice({
+        type: "warning",
+        title: availability.message ?? "ยังไม่ถึงเวลาจอง",
+        description: availability.label,
+      });
+      return;
+    }
+    if (showQuotaToast(p)) return;
+
     setSelectedProductId(p.id);
     // เลือกวันแรกที่ยังไม่ผ่าน (>= วันนี้) เป็นค่าเริ่มต้น — ไม่ดีฟอลต์เป็นวันที่หมดเวลาไปแล้ว
     const today = todayISO();
@@ -198,16 +364,23 @@ function QueueContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formValid || !selectedProduct || !effectivePrice) return;
+    if (showFormGuardToast() || !selectedProduct) return;
+    if (!effectivePrice) {
+      toast.error("ไม่พบราคาของแพ็กเกจ", {
+        description: "กรุณาเลือกแพ็กเกจใหม่อีกครั้ง",
+      });
+      return;
+    }
 
     setSubmitting(true);
+    setBookingNotice(null);
     const tId = toast.loading("กำลังจอง...");
     try {
       const { data, error } = await publicApi.bookings.api.v0.bookings.post({
         productId: selectedProduct.id,
         productCode: undefined,
         productName: selectedProduct.name,
-        username: user?.username ?? user?.email?.split("@")[0] ?? "user",
+        username: user?.displayUsername || user?.username || user?.email?.split("@")[0] || "user",
         phone: phone.trim(),
         content: notes.trim() || undefined,
         price: effectivePrice.amount,
@@ -215,12 +388,30 @@ function QueueContent() {
         bookingTime: selectedTime,
       });
       if (error) {
-        const v = error.value as { message?: string } | undefined;
-        toast.error("จองไม่สำเร็จ", { id: tId, description: v?.message });
-        setSubmitting(false);
+        const message = getApiErrorMessage(error, "กรุณาลองใหม่อีกครั้ง");
+        if (isQuotaErrorMessage(message)) {
+          showBookingNotice(
+            {
+              type: "warning",
+              title: "ซื้อแพ็กเกจเกินโควต้า",
+              description: message,
+            },
+            tId
+          );
+        } else {
+          showBookingNotice(
+            {
+              type: "error",
+              title: "จองไม่สำเร็จ",
+              description: message,
+            },
+            tId
+          );
+        }
         return;
       }
       const booking = data.data;
+      setBookingNotice(null);
       toast.success("จองคิวสำเร็จ! กำลังนำทางไปหน้าประวัติการจอง...", { id: tId });
       setResult({
         code: booking.bookingCode,
@@ -229,6 +420,18 @@ function QueueContent() {
         date: formatApiDate(booking.bookingDate),
         time: booking.bookingTime ?? "",
         bookedAt: formatApiDate(booking.createdAt),
+      });
+      setDailyBookingCountState((prev) => {
+        const currentUserId = user?.id ?? "";
+        const counts = prev?.userId === currentUserId ? prev.counts : {};
+
+        return {
+          userId: currentUserId,
+          counts: {
+            ...counts,
+            [selectedProduct.id]: (counts[selectedProduct.id] ?? 0) + 1,
+          },
+        };
       });
       // reset form
       setSelectedProductId(null);
@@ -240,7 +443,14 @@ function QueueContent() {
       }, 800);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาด";
-      toast.error("จองไม่สำเร็จ", { id: tId, description: msg });
+      showBookingNotice(
+        {
+          type: "error",
+          title: "จองไม่สำเร็จ",
+          description: msg,
+        },
+        tId
+      );
     } finally {
       setSubmitting(false);
     }
@@ -260,6 +470,39 @@ function QueueContent() {
           window.location.href = "/";
         }}
       />
+
+      {bookingNotice && (
+        <div className="fixed inset-x-4 top-4 z-[10000] pointer-events-none sm:left-auto sm:right-6 sm:w-[380px]">
+          <div
+            role="alert"
+            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-2xl shadow-black/50 ring-1 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 ${
+              bookingNotice.type === "warning"
+                ? "border-amber-500/60 bg-[#201A0D]/95 text-amber-100 ring-amber-500/20"
+                : "border-rose-500/60 bg-[#220F14]/95 text-rose-100 ring-rose-500/20"
+            }`}
+          >
+            <AlertOctagon
+              className={`mt-0.5 h-5 w-5 flex-shrink-0 ${
+                bookingNotice.type === "warning" ? "text-brand-gold" : "text-rose-400"
+              }`}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold leading-snug">{bookingNotice.title}</p>
+              <p className="mt-1 text-xs font-bold leading-relaxed text-brand-ink-soft">
+                {bookingNotice.description}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBookingNotice(null)}
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-brand-ink-soft hover:bg-white/10 hover:text-brand-ink"
+              aria-label="ปิดข้อความแจ้งเตือน"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Warning ticker — โหลดจาก config (admin ตั้งค่าได้ที่ /dashboard/settings) */}
       {warningMessage && (
@@ -359,7 +602,7 @@ function QueueContent() {
               สินค้า<span className="text-brand-green">ยอดนิยม</span>
             </h1>
             <p className="text-xs text-brand-ink-soft font-bold mt-1">
-              จัดอันดับจากยอดจองจริงของลูกค้า — เลือกแพ็กเกจที่คนซื้อเยอะที่สุด มั่นใจได้ในความคุ้มค่า
+              จัดอันดับจากยอดจองจริงของลูกค้า — แพ็กที่ยังไม่ถึงเวลาจองจะแสดงสถานะรอเวลาไว้ก่อน
             </p>
           </div>
 
@@ -385,10 +628,10 @@ function QueueContent() {
           <div className="bg-brand-surface border border-brand-green-100 rounded-3xl p-12 text-center">
             <Tag className="h-12 w-12 mx-auto text-brand-green mb-2" />
             <p className="font-display font-black text-base text-brand-ink mb-1">
-              ยังไม่มีแพ็กเกจที่เปิดจองตอนนี้
+              ยังไม่มีแพ็กเกจที่แสดงตอนนี้
             </p>
             <p className="text-xs text-brand-ink-soft font-bold">
-              ขณะนี้ไม่มีแพ็กเกจที่อยู่ในช่วงเวลาเปิดจอง ลองกลับมาใหม่ตามรอบการเปิดรับ
+              ขณะนี้ไม่มีแพ็กเกจที่เปิดจองหรือรอเวลาเปิดจอง สินค้าหมดและแพ็กที่ปิดรับแล้วจะไม่แสดง
             </p>
           </div>
         ) : (
@@ -399,7 +642,7 @@ function QueueContent() {
                 idx={i + 1}
                 product={p}
                 userRole={userRole}
-                username={user?.username ?? null}
+                username={user?.displayUsername || user?.username || null}
                 maxQueueCount={maxQueueCount}
                 onSelect={() => handlePickProduct(p)}
               />
@@ -553,7 +796,7 @@ function QueueContent() {
                       ))}
                   </select>
                   <p className="text-[10.5px] font-bold text-brand-ink-soft mt-1.5">
-                    แสดงเฉพาะแพ็กเกจที่<span className="text-brand-green">เปิดจองอยู่</span>เท่านั้น — สินค้าหมด / นอกวันขาย / นอกช่วงเวลา จะไม่แสดงในรายการนี้
+                    ช่องนี้แสดงเฉพาะแพ็กเกจที่<span className="text-brand-green">เปิดจองอยู่</span>เท่านั้น — แพ็กที่ยังไม่ถึงเวลาจองจะแสดงในการ์ดด้านบน
                   </p>
                 </div>
                 <div>
@@ -621,10 +864,38 @@ function QueueContent() {
               </div>
             </section>
 
+            {bookingNotice && (
+              <div
+                role="alert"
+                className={`rounded-2xl border px-4 py-3 flex items-start gap-3 ${
+                  bookingNotice.type === "warning"
+                    ? "border-amber-500/50 bg-amber-500/12 text-amber-100"
+                    : "border-rose-500/50 bg-rose-500/12 text-rose-100"
+                }`}
+              >
+                <AlertOctagon
+                  className={`mt-0.5 h-5 w-5 flex-shrink-0 ${
+                    bookingNotice.type === "warning" ? "text-brand-gold" : "text-rose-400"
+                  }`}
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-extrabold">{bookingNotice.title}</p>
+                  <p className="mt-1 text-xs font-bold leading-relaxed text-brand-ink-soft">
+                    {bookingNotice.description}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Submit */}
             <button
               type="submit"
-              disabled={!formValid || submitting}
+              disabled={submitting}
+              onClick={(e) => {
+                if (!submitting && showFormGuardToast()) {
+                  e.preventDefault();
+                }
+              }}
               className="w-full py-4 rounded-2xl font-extrabold text-base inline-flex items-center justify-center gap-2 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-brand-green-50 disabled:text-brand-green/60 bg-gradient-to-r from-brand-green to-brand-green-600 text-white shadow-lg shadow-brand-green/30 hover:shadow-xl hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:shadow-none"
             >
               {submitting ? (

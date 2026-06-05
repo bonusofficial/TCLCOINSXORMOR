@@ -129,7 +129,7 @@ export default function ProfilePage() {
 
     const id = window.setTimeout(() => {
       setPhone(user.phone ?? "");
-      setUsername(user.username ?? user.displayUsername ?? "");
+      setUsername(user.displayUsername?.trim() ? user.displayUsername : user.username ?? "");
       setShopName(user.shopName ?? "");
       setLineId(user.lineId ?? "");
     }, 0);
@@ -149,8 +149,8 @@ export default function ProfilePage() {
 
   const displayName = useMemo(
     () =>
-      user?.username ||
       user?.displayUsername ||
+      user?.username ||
       user?.name ||
       user?.email?.split("@")[0] ||
       "บัญชีของฉัน",

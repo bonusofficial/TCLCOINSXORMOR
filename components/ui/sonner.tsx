@@ -10,6 +10,7 @@ const Toaster = (props: ToasterProps) => {
       position="top-right"
       richColors={false}
       closeButton
+      className="z-[9999]"
       icons={{
         success: <CircleCheckIcon className="size-4 text-brand-green" strokeWidth={2.5} />,
         info: <InfoIcon className="size-4 text-sky-400" strokeWidth={2.5} />,
@@ -29,6 +30,7 @@ const Toaster = (props: ToasterProps) => {
           "--error-text": "var(--color-brand-ink)",
           "--error-border": "#f43f5e",
           "--border-radius": "16px",
+          zIndex: 9999,
         } as React.CSSProperties
       }
       toastOptions={{

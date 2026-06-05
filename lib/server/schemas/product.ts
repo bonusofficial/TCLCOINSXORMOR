@@ -1,5 +1,4 @@
 import { t } from "elysia";
-import { PRODUCT_MAX_TIME_SLOTS } from "@/lib/types/product";
 
 /**
  * Elysia schemas สำหรับ products endpoints
@@ -31,10 +30,7 @@ export const ProductBody = t.Object({
   maxPerUserPerDay: t.Optional(t.Integer({ minimum: 0, error: "จำกัดต่อคน/วันต้องไม่ติดลบ" })),
 
   saleDates: t.Array(SaleDate),
-  timeSlots: t.Array(TimeSlot, {
-    maxItems: PRODUCT_MAX_TIME_SLOTS,
-    error: `เพิ่มช่วงเวลาได้สูงสุด ${PRODUCT_MAX_TIME_SLOTS} ช่วง`,
-  }),
+  timeSlots: t.Array(TimeSlot),
 
   discountEligibleUsernames: t.Array(t.String()),
   discountAmount: t.Number({ minimum: 0 }),

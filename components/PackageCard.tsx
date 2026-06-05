@@ -1,7 +1,54 @@
-import { Coins, AlertOctagon, Trophy, Medal, Sparkles, Flame, Rocket, Calendar, Clock } from "lucide-react";
+import { Coins, TriangleAlert, Trophy, Medal, Sparkles, Flame, Rocket, Clock } from "lucide-react";
 import { PublicProduct as QueueProduct } from "@/lib/contexts/PublicDataContext";
 import { UserRole } from "@/lib/booking";
 import { getProductAvailability, getEffectivePrice, fmt, fmtThaiDate, padHHMM, useNowTick } from "@/lib/product-utils";
+
+const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+function formatSaleDateLabel(dates: string[]) {
+  if (!dates.length) return "ไม่ระบุวันขาย";
+
+  const sortedDates = [...dates].sort();
+  const parsed = sortedDates.map((date) => {
+    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+
+    return {
+      year: Number(match[1]),
+      month: Number(match[2]),
+      day: Number(match[3]),
+    };
+  });
+
+  if (parsed.some((date) => date === null)) {
+    return sortedDates.map(fmtThaiDate).join(" · ");
+  }
+
+  const dateParts = parsed as Array<{ year: number; month: number; day: number }>;
+  const first = dateParts[0];
+  const sameMonthAndYear = dateParts.every(
+    (date) => date.year === first.year && date.month === first.month
+  );
+
+  if (!sameMonthAndYear) {
+    return sortedDates.map(fmtThaiDate).join(" · ");
+  }
+
+  const days = [...new Set(dateParts.map((date) => date.day))].sort((a, b) => a - b);
+  const monthLabel = THAI_MONTHS[first.month - 1] ?? "";
+  const yearLabel = first.year + 543;
+
+  if (days.length === 1) {
+    return `${days[0]} ${monthLabel} ${yearLabel}`;
+  }
+
+  const consecutive = days.every((day, index) => index === 0 || day === days[index - 1] + 1);
+  if (consecutive) {
+    return `${days[0]} - ${days[days.length - 1]} ${monthLabel} ${yearLabel}`;
+  }
+
+  return `${days.join(", ")} ${monthLabel} ${yearLabel}`;
+}
 
 export function PackageCard({
   idx,
@@ -54,17 +101,10 @@ export function PackageCard({
       : 0;
 
   // วันที่ + ช่วงเวลาเปิดรับ (จาก saleDates / timeSlots)
-  const dateLabel = p.saleDates.length
-    ? p.saleDates.map(fmtThaiDate).join(" · ")
-    : "ไม่ระบุวันขาย";
+  const dateLabel = formatSaleDateLabel(p.saleDates);
   const timeLabel = p.timeSlots.length
     ? p.timeSlots.map((s) => `${padHHMM(s.start)}-${padHHMM(s.end)}`).join(", ")
     : "";
-
-  // คำการันตีแบบสลับสับเปลี่ยนเพื่อความพรีเมียม
-  const guaranteeText = p.id % 2 === 0
-    ? "รับประกันเหรียญแท้ภายใน 24 ชม."
-    : "มีเงินเติมส่งตรงเข้าคิวใน 24 ชม.";
 
   const BadgeIcon = idx === 1 
     ? Trophy 
@@ -74,7 +114,22 @@ export function PackageCard({
     
   const badgeLabel = idx <= 3 ? `ยอดนิยมอันดับ ${idx}` : `แพ็กเกจอันดับ ${idx}`;
 
-  const buttonDisabled = false;
+  const isOpen = avail.status === "open";
+  const isSoon = avail.status === "soon";
+  const productDescription = p.description.trim();
+  const noteText = p.note?.trim();
+  const buttonDisabled = !isOpen;
+  const statusTitle = isOpen
+    ? "เปิดรับจองอยู่"
+    : isSoon
+      ? "ยังไม่ถึงเวลาจอง"
+      : avail.label;
+  const statusDetail = [dateLabel, timeLabel && `เวลา ${timeLabel}`].filter(Boolean).join(" · ");
+  const buttonLabel = isSoon
+    ? "ยังไม่ถึงเวลาจอง"
+    : idx === 1
+      ? "จองเลย – แพ็กเกจที่คนซื้อเยอะที่สุด"
+      : "จองสินค้าเลย!";
 
   return (
     <article className={`relative bg-[#0d0f12]/45 backdrop-blur-md border-2 rounded-3xl p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col ${
@@ -112,6 +167,11 @@ export function PackageCard({
           <h3 className="font-display font-black text-xl text-white tracking-tight leading-tight truncate">
             {p.name}
           </h3>
+          {productDescription && (
+            <p className="mt-1.5 text-[11.5px] font-bold text-brand-ink-soft leading-relaxed line-clamp-2">
+              {productDescription}
+            </p>
+          )}
         </div>
       </div>
 
@@ -169,38 +229,45 @@ export function PackageCard({
 
       {/* Status + booking window — สถานะ + วันที่/ช่วงเวลาเปิดรับ */}
       <div className="mb-3 rounded-xl border border-brand-green-100/30 bg-brand-surface/40 p-2.5 space-y-1.5">
-        <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-brand-green/15 text-brand-green border border-brand-green/30">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-green animate-pulse" />
-          {avail.status === "open" ? "เปิดรับจองอยู่" : avail.label}
+        <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border ${
+          isOpen
+            ? "bg-brand-green/15 text-brand-green border-brand-green/30"
+            : "bg-amber-500/15 text-amber-300 border-amber-500/40"
+        }`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${isOpen ? "bg-brand-green animate-pulse" : "bg-brand-gold"}`} />
+          {statusTitle}
         </span>
+        {statusDetail && (
+          <p className="text-[10.5px] font-bold text-brand-ink-soft leading-relaxed">
+            {statusDetail}
+          </p>
+        )}
       </div>
-
-      {/* Note — หมายเหตุจาก admin (เด่นขึ้นกว่าเดิม) */}
-      {p.note && (
-        <div className="bg-amber-500/15 border border-amber-500/50 rounded-lg p-2.5 mb-3 text-[11px] font-bold text-amber-300 leading-relaxed line-clamp-4 flex items-start gap-1.5 ring-1 ring-amber-500/20">
-          <AlertOctagon className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-400" />
-          <span>{p.note}</span>
-        </div>
-      )}
 
       {/* Footer */}
       <div className="mt-auto pt-2 border-t border-brand-green-100/20">
-        <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-brand-ink-soft mb-3.5 select-none">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-green animate-pulse" />
-          {guaranteeText}
-        </div>
+        {noteText && (
+          <div className="w-full py-3 px-3 rounded-xl font-extrabold text-sm transition cursor-pointer flex items-center justify-center gap-2 bg-amber-500/12 text-amber-300 border border-amber-500/40 cursor-not-allowed shadow-none mb-3 text-center leading-relaxed">
+            <TriangleAlert className="h-4 w-4 flex-shrink-0" />
+            <span className="line-clamp-3">หมายเหตุเพิ่มเติม: {noteText}</span>
+          </div>
+        )}
         <button
           type="button"
           onClick={onSelect}
           disabled={buttonDisabled}
           className={`w-full py-3 rounded-xl font-extrabold text-sm transition cursor-pointer flex items-center justify-center gap-2 ${
             buttonDisabled
-              ? "bg-brand-paper/50 text-brand-ink-soft/40 border border-brand-green-100/30 cursor-not-allowed"
+              ? "bg-amber-500/12 text-amber-300 border border-amber-500/40 cursor-not-allowed shadow-none"
               : "bg-gradient-to-r from-brand-green to-brand-green-600 hover:from-brand-green-600 hover:to-brand-green-700 text-white shadow-md shadow-brand-green/20 hover:shadow-lg hover:-translate-y-0.5"
           }`}
         >
-          {idx === 1 && <Rocket className="h-4 w-4 animate-bounce" />}
-          <span>{idx === 1 ? "จองเลย – แพ็กเกจที่คนซื้อเยอะที่สุด" : "จองสินค้าเลย!"}</span>
+          {isSoon ? (
+            <Clock className="h-4 w-4" />
+          ) : (
+            idx === 1 && <Rocket className="h-4 w-4 animate-bounce" />
+          )}
+          <span>{buttonLabel}</span>
         </button>
       </div>
     </article>
