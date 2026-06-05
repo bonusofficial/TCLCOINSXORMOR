@@ -63,6 +63,7 @@ export default function AuthModal({
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [registerError, setRegisterError] = useState<string | null>(null);
 
   // Sync activeTab when modal re-opens with a different initialTab
   // (useState initializer only runs once; component stays mounted between opens)
@@ -74,6 +75,7 @@ export default function AuthModal({
       setSuccess(false);
       setShowPassword(false);
       setLoginError(null);
+      setRegisterError(null);
     }, 0);
 
     return () => window.clearTimeout(id);
@@ -128,6 +130,7 @@ export default function AuthModal({
     setSuccess(false);
     setShowPassword(false);
     setLoginError(null);
+    setRegisterError(null);
     if (tab === "forgot" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.username.trim())) {
       setFormData((prev) => ({ ...prev, email: prev.username.trim() }));
     }
@@ -136,6 +139,7 @@ export default function AuthModal({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (activeTab === "login") setLoginError(null);
+    if (activeTab === "register") setRegisterError(null);
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -291,42 +295,51 @@ export default function AuthModal({
     }
   };
 
+  // แจ้ง error ของการสมัครสมาชิก — โชว์ทั้ง inline alert (ค้างในฟอร์ม) + toast
+  const showRegisterError = (
+    title: string,
+    description: string,
+    type: "warning" | "error" = "error"
+  ) => {
+    setRegisterError(description);
+    if (type === "warning") toast.warning(title, { description, duration: 5000 });
+    else toast.error(title, { description, duration: 6000 });
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
+    setRegisterError(null);
 
     const username = formData.username.trim();
     const email = formData.email.trim();
     if (!username || !email || !formData.password) {
-      toast.warning("กรอกข้อมูลให้ครบ", {
-        description: "กรุณาระบุชื่อผู้ใช้, อีเมล และรหัสผ่าน",
-      });
+      showRegisterError("กรอกข้อมูลให้ครบ", "กรุณาระบุชื่อผู้ใช้, อีเมล และรหัสผ่าน", "warning");
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.warning("อีเมลไม่ถูกต้อง", {
-        description: "กรุณาระบุอีเมลที่ถูกต้อง",
-      });
+      showRegisterError("อีเมลไม่ถูกต้อง", "กรุณาระบุอีเมลที่ถูกต้อง", "warning");
       return;
     }
-    // เช็ค "รหัสผ่านยืนยัน" ก่อนเสมอ — ให้ขึ้น toast ทันทีถ้ายังไม่กรอก/ไม่ตรงกัน
+    // เช็ค "รหัสผ่านยืนยัน" ก่อนเสมอ — ให้ขึ้น alert ทันทีถ้ายังไม่กรอก/ไม่ตรงกัน
     if (!formData.confirmPassword) {
-      toast.warning("กรุณายืนยันรหัสผ่าน", {
-        description: "กรอกรหัสผ่านอีกครั้งในช่อง “ยืนยันรหัสผ่าน”",
-      });
+      showRegisterError("กรุณายืนยันรหัสผ่าน", "กรอกรหัสผ่านอีกครั้งในช่อง “ยืนยันรหัสผ่าน”", "warning");
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      toast.error("รหัสผ่านไม่ตรงกัน", {
-        description: "รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง",
-      });
+      showRegisterError(
+        "รหัสผ่านไม่ตรงกัน",
+        "รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง"
+      );
       return;
     }
     const failed = PASSWORD_RULES.filter((r) => !r.test(formData.password));
     if (failed.length > 0) {
-      toast.warning("รหัสผ่านไม่ปลอดภัยพอ", {
-        description: `ขาด: ${failed.map((r) => r.label).join(" · ")}`,
-      });
+      showRegisterError(
+        "รหัสผ่านไม่ปลอดภัยพอ",
+        `ขาด: ${failed.map((r) => r.label).join(" · ")}`,
+        "warning"
+      );
       return;
     }
 
@@ -352,11 +365,10 @@ export default function AuthModal({
       });
 
       if (res.error) {
-        toast.error("สมัครสมาชิกไม่สำเร็จ", {
-          id,
-          description:
-            res.error.message ?? "อาจมีบัญชีนี้แล้ว กรุณาลองชื่อผู้ใช้/อีเมลอื่น",
-        });
+        const desc =
+          res.error.message ?? "อาจมีบัญชีนี้แล้ว กรุณาลองชื่อผู้ใช้/อีเมลอื่น";
+        setRegisterError(desc);
+        toast.error("สมัครสมาชิกไม่สำเร็จ", { id, description: desc, duration: 6000 });
         setLoading(false);
         return;
       }
@@ -374,7 +386,8 @@ export default function AuthModal({
       finishSuccess(role);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในระบบ";
-      toast.error("สมัครสมาชิกไม่สำเร็จ", { id, description: msg });
+      setRegisterError(msg);
+      toast.error("สมัครสมาชิกไม่สำเร็จ", { id, description: msg, duration: 6000 });
       setLoading(false);
     }
   };
@@ -736,6 +749,17 @@ export default function AuthModal({
                     >
                       ลืมรหัสผ่าน?
                     </button>
+                  </div>
+                )}
+
+                {/* Inline alert ตอนสมัครสมาชิก — แสดงค้างในฟอร์มเมื่อมี error */}
+                {activeTab === "register" && registerError && (
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-[12px] font-bold leading-relaxed text-rose-300"
+                  >
+                    <TriangleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <span>{registerError}</span>
                   </div>
                 )}
 
