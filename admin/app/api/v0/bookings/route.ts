@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { BookingCreateBody, BookingParams } from "@/lib/server/schemas/booking";
 import { generateBookingCode } from "@/lib/booking";
@@ -8,7 +9,7 @@ import {
   loggerPlugin,
 } from "@/lib/server/middleware";
 import { logAudit } from "@/lib/server/audit";
-import { adjustProductStock, tryReserveStock } from "@/lib/server/stock";
+import { adjustProductStock } from "@/lib/server/stock";
 import {
   bangkokToday,
   bangkokHHMM,
@@ -55,6 +56,49 @@ function shape(b: {
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
   };
+}
+
+type BookingErrorStatus = 400 | 404 | 409 | 429;
+
+class BookingHttpError extends Error {
+  constructor(
+    public readonly statusCode: BookingErrorStatus,
+    public readonly payload: { ok: false; message: string }
+  ) {
+    super(payload.message);
+  }
+}
+
+function bookingLockKey(userId: string, productId: number, date: string): string {
+  return `booking:${userId}:${productId}:${date}`;
+}
+
+async function acquireBookingLock(
+  tx: Prisma.TransactionClient,
+  lockKey: string
+): Promise<void> {
+  const rows = await tx.$queryRaw<Array<{ got: number | bigint | null }>>`
+    SELECT GET_LOCK(${lockKey}, 5) AS got
+  `;
+  if (Number(rows[0]?.got ?? 0) !== 1) {
+    throw new BookingHttpError(429, {
+      ok: false,
+      message: "มีคำขอจองซ้ำในเวลาใกล้กัน กรุณารอสักครู่แล้วลองใหม่",
+    });
+  }
+}
+
+async function releaseBookingLock(
+  tx: Prisma.TransactionClient,
+  lockKey: string
+): Promise<void> {
+  try {
+    await tx.$queryRaw<Array<{ released: number | bigint | null }>>`
+      SELECT RELEASE_LOCK(${lockKey}) AS released
+    `;
+  } catch {
+    // Connection-bound advisory locks are also released when the DB connection closes.
+  }
 }
 
 /**
@@ -144,26 +188,8 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         ? `${padHHMM(activeSlot.start)} - ${padHHMM(activeSlot.end)}`
         : body.bookingTime?.trim() || null;
 
-      // ── เช็คโควตาการจองต่อวัน ── (นับช่วง "วันไทย" ของเซิร์ฟเวอร์)
+      // ── เตรียมช่วงวันไทยสำหรับเช็คโควตาการจองต่อวัน ──
       const { start: startOfDay, end: endOfDay } = bangkokDayRangeUTC(today);
-
-      // ลิมิตเฉพาะสินค้านี้ต่อคน/วัน (product.maxPerUserPerDay) — 0 = ไม่จำกัด
-      if (prod.maxPerUserPerDay > 0) {
-        const prodCount = await prisma.bookings.count({
-          where: {
-            userId: user.id,
-            productId: body.productId,
-            bookingDate: { gte: startOfDay, lte: endOfDay },
-            status: { not: "ยกเลิก" },
-          },
-        });
-        if (prodCount >= prod.maxPerUserPerDay) {
-          return code(400, {
-            ok: false,
-            message: `ขออภัย สินค้านี้จำกัดจองได้ไม่เกิน ${prod.maxPerUserPerDay} แพ็ก/วัน/คน`,
-          });
-        }
-      }
 
       // ── ราคา คำนวณใหม่ฝั่งเซิร์ฟเวอร์เสมอ (ไม่เชื่อราคาที่ client ส่งมา) ──
       const role = ((user as { role?: string | null }).role ?? "member").toLowerCase();
@@ -183,47 +209,94 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         discountUsers.includes(matchUsername);
       const price = hasVipDiscount ? Math.max(0, base - discountAmt) : base;
 
-      // ── ตัดสต็อกแบบ atomic (กัน oversell เมื่อคนกดพร้อมกัน) ──
-      const reserve = await tryReserveStock(prod.id);
-      if (reserve === "out") {
-        return code(409, {
-          ok: false,
-          message: "สินค้าหมดสต็อก ไม่สามารถจองได้",
-        });
-      }
-
-      // Generate code ที่ unique (retry กันชน)
-      let bookingCode = generateBookingCode(user.role as string | null);
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const exists = await prisma.bookings.findUnique({
-          where: { bookingCode },
-          select: { id: true },
-        });
-        if (!exists) break;
-        bookingCode = generateBookingCode(user.role as string | null);
-      }
-
+      let stockDelta = 0;
       let saved;
       try {
-        saved = await prisma.bookings.create({
-          data: {
-            bookingCode,
-            productId: prod.id,
-            productCode: body.productCode ?? null,
-            productName: prod.name, // ยึดชื่อจริงจากฐานข้อมูล
-            userId: user.id,
-            username: accountUsername ?? body.username,
-            phone: body.phone,
-            content: body.content ?? null,
-            price, // ราคาที่เซิร์ฟเวอร์คำนวณเอง
-            bookingDate: bookingDateUTC, // วันไทยของเซิร์ฟเวอร์
-            bookingTime,
-            status: "รอตรวจสอบ",
-          },
+        saved = await prisma.$transaction(async (tx) => {
+          const lockKey = bookingLockKey(user.id, prod.id, today);
+          await acquireBookingLock(tx, lockKey);
+
+          try {
+            // ลิมิตเฉพาะสินค้านี้ต่อคน/วัน (product.maxPerUserPerDay) — 0 = ไม่จำกัด
+            // อยู่ใต้ advisory lock เพื่อกันยิงหลาย request พร้อมกันแล้วหลุด quota
+            if (prod.maxPerUserPerDay > 0) {
+              const prodCount = await tx.bookings.count({
+                where: {
+                  userId: user.id,
+                  productId: prod.id,
+                  bookingDate: { gte: startOfDay, lte: endOfDay },
+                  status: { not: "ยกเลิก" },
+                },
+              });
+              if (prodCount >= prod.maxPerUserPerDay) {
+                throw new BookingHttpError(400, {
+                  ok: false,
+                  message: `ขออภัย สินค้านี้จำกัดจองได้ไม่เกิน ${prod.maxPerUserPerDay} แพ็ก/วัน/คน`,
+                });
+              }
+            }
+
+            const stockState = await tx.products.findUnique({
+              where: { id: prod.id },
+              select: { stockEnabled: true },
+            });
+            if (!stockState) {
+              throw new BookingHttpError(404, {
+                ok: false,
+                message: "ไม่พบสินค้าที่ต้องการจอง",
+              });
+            }
+
+            // ตัดสต็อกแบบ atomic ใน transaction เดียวกับการสร้าง booking
+            if (stockState.stockEnabled) {
+              const reserved = await tx.products.updateMany({
+                where: { id: prod.id, stockEnabled: true, stock: { gt: 0 } },
+                data: { stock: { decrement: 1 } },
+              });
+              if (reserved.count === 0) {
+                throw new BookingHttpError(409, {
+                  ok: false,
+                  message: "สินค้าหมดสต็อก ไม่สามารถจองได้",
+                });
+              }
+              stockDelta = -1;
+            }
+
+            // Generate code ที่ unique (retry กันชน)
+            let bookingCode = generateBookingCode(user.role as string | null);
+            for (let attempt = 0; attempt < 5; attempt++) {
+              const exists = await tx.bookings.findUnique({
+                where: { bookingCode },
+                select: { id: true },
+              });
+              if (!exists) break;
+              bookingCode = generateBookingCode(user.role as string | null);
+            }
+
+            return tx.bookings.create({
+              data: {
+                bookingCode,
+                productId: prod.id,
+                productCode: body.productCode ?? null,
+                productName: prod.name, // ยึดชื่อจริงจากฐานข้อมูล
+                userId: user.id,
+                username: accountUsername ?? body.username,
+                phone: body.phone,
+                content: body.content ?? null,
+                price, // ราคาที่เซิร์ฟเวอร์คำนวณเอง
+                bookingDate: bookingDateUTC, // วันไทยของเซิร์ฟเวอร์
+                bookingTime,
+                status: "รอตรวจสอบ",
+              },
+            });
+          } finally {
+            await releaseBookingLock(tx, lockKey);
+          }
         });
       } catch (err) {
-        // create ล้มเหลว → คืนสต็อกที่จองไว้ก่อนหน้า
-        if (reserve === "ok") await adjustProductStock(prod.id, +1);
+        if (err instanceof BookingHttpError) {
+          return code(err.statusCode, err.payload);
+        }
         throw err;
       }
 
@@ -232,10 +305,10 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         entityType: "product",
         entityId: saved.id,
         details: {
-          bookingCode,
+          bookingCode: saved.bookingCode,
           productName: prod.name,
           price,
-          stockDelta: reserve === "ok" ? -1 : 0,
+          stockDelta,
         },
         user,
         request,

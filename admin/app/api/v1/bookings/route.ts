@@ -54,7 +54,7 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
     { requireRole: "admin" }
   )
 
-  /** POST — สร้างการจอง (ลูกค้าทุก role login แล้วทำได้) */
+  /** POST — สร้างการจองจากหลังบ้านเท่านั้น (หน้า queue ใช้ /api/v0/bookings) */
   .post(
     "/",
     async ({ body, user, request, status: httpStatus }) => {
@@ -118,7 +118,7 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
         data: shape(saved),
       };
     },
-    { body: BookingCreateBody, requireAuth: true }
+    { body: BookingCreateBody, requireRole: "admin" }
   );
 
 export type BookingsApp = typeof app;

@@ -445,6 +445,7 @@ export function useConfig() {
 export function useProducts() {
   const ctx = useCtx();
   const ensureProducts = ctx.ensure.products;
+  const refreshProducts = ctx.refresh.products;
 
   useEffect(() => {
     if (ctx.loaded.products) return;
@@ -454,10 +455,30 @@ export function useProducts() {
     return () => window.clearTimeout(id);
   }, [ctx.loaded.products, ensureProducts]);
 
+  useEffect(() => {
+    if (!ctx.loaded.products) return;
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshProducts();
+      }
+    };
+
+    const id = window.setInterval(refreshWhenVisible, 15000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [ctx.loaded.products, refreshProducts]);
+
   return {
     products: ctx.products,
     loading: ctx.loading.products || !ctx.loaded.products,
-    refresh: ctx.refresh.products,
+    refresh: refreshProducts,
   };
 }
 

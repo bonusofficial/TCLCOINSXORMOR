@@ -12,7 +12,7 @@ const app = new Elysia({ prefix: "/api/v0/products" })
 
   /** GET — list สินค้าทั้งหมด พร้อมจำนวนคิวจริง (booking ที่ไม่ถูกยกเลิก) */
   .get("/", async ({ set }) => {
-    set.headers["Cache-Control"] = "private, max-age=15, stale-while-revalidate=45";
+    set.headers["Cache-Control"] = "private, no-store";
 
     const items = await prisma.products.findMany({
       orderBy: { createdAt: "desc" },

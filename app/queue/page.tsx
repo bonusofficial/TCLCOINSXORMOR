@@ -112,7 +112,7 @@ function QueueContent() {
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
 
   // Products + config มาจาก context (โหลดครั้งเดียวที่ root)
-  const { products, loading } = useProducts();
+  const { products, loading, refresh: refreshProducts } = useProducts();
   const { config } = useConfig();
   const warningMessage = config.warningMessage;
 
@@ -433,6 +433,7 @@ function QueueContent() {
           },
         };
       });
+      void refreshProducts();
       // reset form
       setSelectedProductId(null);
       setNotes("");
