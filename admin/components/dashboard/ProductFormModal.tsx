@@ -81,6 +81,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   const [agentPrice, setAgentPrice] = useState("0");
   const [stockEnabled, setStockEnabled] = useState(false);
   const [stock, setStock] = useState("0");
+  const [stockDirty, setStockDirty] = useState(false);
   const [maxPerUserPerDay, setMaxPerUserPerDay] = useState("0"); // 0 = ไม่จำกัด
   const [saleDates, setSaleDates] = useState<string[]>([todayPlus(0)]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>(() => [defaultTimeSlot()]);
@@ -122,6 +123,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       setAgentPrice(String(initial.agentPrice));
       setStockEnabled(initial.stockEnabled);
       setStock(String(initial.stock));
+      setStockDirty(false);
       setMaxPerUserPerDay(String(initial.maxPerUserPerDay ?? 0));
 
       const toArray = (v: unknown): unknown[] => {
@@ -177,6 +179,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       setAgentPrice("0");
       setStockEnabled(false);
       setStock("0");
+      setStockDirty(false);
       setMaxPerUserPerDay("0");
       setSaleDates([todayPlus(0)]);
       setTimeSlots([defaultTimeSlot()]);
@@ -244,26 +247,55 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       return;
     }
 
-    const payload = {
-      image,
-      name: name.trim(),
-      description,
-      price: Number(price) || 0,
-      cost: Number(cost) || 0,
-      agentPrice: Number(agentPrice) || 0,
-      stockEnabled,
-      stock: Number(stock) || 0,
-      maxPerUserPerDay: Math.max(0, Number(maxPerUserPerDay) || 0),
-      saleDates,
-      timeSlots,
-      discountEligibleUsernames: selectedUsernames,
-      discountAmount: Number(discountAmount) || 0,
-      note: note.trim() || null,
-    };
-
     setSaving(true);
     const id = toast.loading(initial ? "กำลังบันทึก..." : "กำลังเพิ่มสินค้า...");
     try {
+      let payloadStockEnabled = stockEnabled;
+      let payloadStock = Number(stock) || 0;
+
+      if (initial && !stockDirty) {
+        const latest = await productsApi.item.api.v1
+          .products({ id: String(initial.id) })
+          .get();
+
+        if (latest.error || !latest.data?.ok) {
+          const value = latest.error?.value as { message?: string } | undefined;
+          toast.error("บันทึกไม่สำเร็จ", {
+            id,
+            description: value?.message ?? "โหลดสต็อกล่าสุดไม่สำเร็จ กรุณาลองใหม่",
+          });
+          setSaving(false);
+          return;
+        }
+
+        const latestProduct = latest.data.data as { stock?: unknown; stockEnabled?: unknown };
+        payloadStockEnabled =
+          typeof latestProduct.stockEnabled === "boolean"
+            ? latestProduct.stockEnabled
+            : stockEnabled;
+        payloadStock =
+          typeof latestProduct.stock === "number"
+            ? latestProduct.stock
+            : payloadStock;
+      }
+
+      const payload = {
+        image,
+        name: name.trim(),
+        description,
+        price: Number(price) || 0,
+        cost: Number(cost) || 0,
+        agentPrice: Number(agentPrice) || 0,
+        stockEnabled: payloadStockEnabled,
+        stock: payloadStock,
+        maxPerUserPerDay: Math.max(0, Number(maxPerUserPerDay) || 0),
+        saleDates,
+        timeSlots,
+        discountEligibleUsernames: selectedUsernames,
+        discountAmount: Number(discountAmount) || 0,
+        note: note.trim() || null,
+      };
+
       const res = initial
         ? await productsApi.item.api.v1
             .products({ id: String(initial.id) })
@@ -504,7 +536,10 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                   <div className="grid grid-cols-2 p-1 bg-brand-surface border border-brand-green-100/60 rounded-xl select-none">
                     <button
                       type="button"
-                      onClick={() => setStockEnabled(false)}
+                      onClick={() => {
+                        setStockDirty(true);
+                        setStockEnabled(false);
+                      }}
                       className={`py-2 px-3 rounded-lg text-xs font-black text-center transition-all cursor-pointer ${
                         !stockEnabled
                           ? "bg-gradient-to-r from-brand-green to-brand-green-600 text-white shadow-sm"
@@ -516,6 +551,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                     <button
                       type="button"
                       onClick={() => {
+                        setStockDirty(true);
                         setStockEnabled(true);
                         if (stock === "0") {
                           setStock("10"); // default to 10 stock to avoid 0 stock auto-close
@@ -539,7 +575,10 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setStock(Math.max(0, Number(stock) - 1).toString())}
+                      onClick={() => {
+                        setStockDirty(true);
+                        setStock(Math.max(0, Number(stock) - 1).toString());
+                      }}
                       className="w-9 h-9 rounded-lg bg-brand-green-50 text-brand-green border border-brand-green-100 hover:bg-brand-green-100 flex items-center justify-center font-black text-base transition cursor-pointer active:scale-95 flex-shrink-0"
                     >
                       -
@@ -548,12 +587,18 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                       type="number"
                       min={0}
                       value={stock}
-                      onChange={(e) => setStock(Math.max(0, parseInt(e.target.value) || 0).toString())}
+                      onChange={(e) => {
+                        setStockDirty(true);
+                        setStock(Math.max(0, parseInt(e.target.value) || 0).toString());
+                      }}
                       className="w-20 rounded-lg border border-brand-green-100 bg-brand-paper py-1.5 px-2.5 text-center font-bold text-sm outline-none text-brand-ink"
                     />
                     <button
                       type="button"
-                      onClick={() => setStock((Number(stock) + 1).toString())}
+                      onClick={() => {
+                        setStockDirty(true);
+                        setStock((Number(stock) + 1).toString());
+                      }}
                       className="w-9 h-9 rounded-lg bg-brand-green-50 text-brand-green border border-brand-green-100 hover:bg-brand-green-100 flex items-center justify-center font-black text-base transition cursor-pointer active:scale-95 flex-shrink-0"
                     >
                       +

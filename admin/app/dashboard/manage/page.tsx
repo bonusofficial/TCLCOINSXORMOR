@@ -108,6 +108,7 @@ export default function ManagePage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ProductParsed | null>(null);
+  const [editLoadingId, setEditLoadingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Pagination state
@@ -158,6 +159,25 @@ export default function ManagePage() {
     }
     toast.success(data.message ?? "ลบแล้ว", { id });
     setItems((prev) => prev.filter((x) => x.id !== p.id));
+  };
+
+  const handleEdit = async (p: ProductParsed) => {
+    setEditLoadingId(p.id);
+    const { data, error } = await productsApi.item.api.v1
+      .products({ id: String(p.id) })
+      .get();
+    setEditLoadingId(null);
+
+    if (error || !data?.ok) {
+      const value = error?.value as { message?: string } | undefined;
+      toast.error("โหลดข้อมูลสินค้าล่าสุดไม่สำเร็จ", {
+        description: value?.message ?? "กรุณารีเฟรชแล้วลองใหม่",
+      });
+      return;
+    }
+
+    setEditing(parseProduct(data.data as Record<string, unknown>));
+    setModalOpen(true);
   };
 
   /* ─── filter + sort ─── */
@@ -427,14 +447,16 @@ export default function ManagePage() {
                     <TableCell className="py-3 px-4 text-right whitespace-nowrap">
                       <div className="inline-flex gap-1">
                         <button
-                          onClick={() => {
-                            setEditing(p);
-                            setModalOpen(true);
-                          }}
-                          className="w-8 h-8 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:border-brand-green hover:bg-brand-green-50 hover:text-brand-green flex items-center justify-center transition cursor-pointer"
+                          onClick={() => handleEdit(p)}
+                          disabled={editLoadingId === p.id}
+                          className="w-8 h-8 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:border-brand-green hover:bg-brand-green-50 hover:text-brand-green flex items-center justify-center transition cursor-pointer disabled:opacity-50"
                           aria-label="แก้ไข"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          {editLoadingId === p.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Pencil className="h-3.5 w-3.5" />
+                          )}
                         </button>
                         <button
                           onClick={() => handleDelete(p)}
@@ -526,14 +548,16 @@ export default function ManagePage() {
                   {/* Actions */}
                   <div className="flex gap-1.5 mt-2.5">
                     <button
-                      onClick={() => {
-                        setEditing(p);
-                        setModalOpen(true);
-                      }}
-                      className="flex-1 inline-flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-extrabold bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:bg-brand-green-50 hover:text-brand-green transition cursor-pointer"
+                      onClick={() => handleEdit(p)}
+                      disabled={editLoadingId === p.id}
+                      className="flex-1 inline-flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-extrabold bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:bg-brand-green-50 hover:text-brand-green transition cursor-pointer disabled:opacity-50"
                     >
-                      <Pencil className="h-3 w-3" />
-                      แก้ไข
+                      {editLoadingId === p.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Pencil className="h-3 w-3" />
+                      )}
+                      {editLoadingId === p.id ? "กำลังโหลด" : "แก้ไข"}
                     </button>
                     <button
                       onClick={() => handleDelete(p)}
