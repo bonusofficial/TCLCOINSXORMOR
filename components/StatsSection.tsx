@@ -69,7 +69,7 @@ export default function StatsSection() {
   const { config } = useConfig();
   
   const stats = config?.stats;
-  const totalCompleted = stats?.totalCompleted ?? 10000;
+  const totalBookings = stats?.totalBookings ?? stats?.totalCompleted ?? 0;
   const activeQueues = stats?.activeQueues ?? 0;
   const totalStock = stats?.totalStock ?? 0;
   const totalUsers = stats?.totalUsers ?? 100;
@@ -102,10 +102,10 @@ export default function StatsSection() {
               <CheckSquare className="h-5.5 w-5.5" />
             </div>
             <div className="font-display font-black text-[46px] leading-none text-brand-green tracking-tight">
-              <CountUp to={totalCompleted} />
+              <CountUp to={totalBookings} />
             </div>
             <p className="mt-3 text-xs.5 leading-relaxed font-bold text-brand-ink-soft">
-              รายการทั้งหมดที่ดำเนินการสำเร็จบนแพลตฟอร์ม
+              รายการจองทั้งหมดบนแพลตฟอร์ม
             </p>
           </div>
 

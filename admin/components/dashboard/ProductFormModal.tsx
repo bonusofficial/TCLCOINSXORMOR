@@ -87,6 +87,55 @@ function displayUserLabel(
   );
 }
 
+function normalizeIdentity(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function discountUserKeys(user: DiscountUserOption) {
+  return [user.username, user.displayUsername, user.name]
+    .map(normalizeIdentity)
+    .filter(Boolean);
+}
+
+function findCurrentDiscountUser(
+  users: DiscountUserOption[],
+  storedUsername: string
+) {
+  const key = normalizeIdentity(storedUsername);
+  if (!key) return undefined;
+
+  return users.find((user) => discountUserKeys(user).includes(key));
+}
+
+function canonicalDiscountUsername(
+  storedUsername: string,
+  users: DiscountUserOption[]
+) {
+  return findCurrentDiscountUser(users, storedUsername)?.username?.trim() || storedUsername.trim();
+}
+
+function normalizeDiscountUsernames(
+  usernames: string[],
+  users: DiscountUserOption[]
+) {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const username of usernames) {
+    const currentUsername = canonicalDiscountUsername(username, users);
+    const key = normalizeIdentity(currentUsername);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    normalized.push(currentUsername);
+  }
+
+  return normalized;
+}
+
+function sameStringList(a: string[], b: string[]) {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
 export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -131,7 +180,6 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   }, []);
 
   // Reset / prefill เมื่อเปิด modal
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return;
     if (initial) {
@@ -208,7 +256,15 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       setNote("");
     }
   }, [open, initial]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    if (!open || allUsers.length === 0) return;
+
+    setSelectedUsernames((prev) => {
+      const next = normalizeDiscountUsernames(prev, allUsers);
+      return sameStringList(prev, next) ? prev : next;
+    });
+  }, [open, allUsers]);
 
   if (!open) return null;
 
@@ -311,7 +367,10 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
         maxPerUserPerDay: Math.max(0, Number(maxPerUserPerDay) || 0),
         saleDates,
         timeSlots,
-        discountEligibleUsernames: selectedUsernames,
+        discountEligibleUsernames: normalizeDiscountUsernames(
+          selectedUsernames,
+          allUsers
+        ),
         discountAmount: Number(discountAmount) || 0,
         note: note.trim() || null,
       };
@@ -854,18 +913,19 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
               {/* แสดงแท็กคนที่เลือกไว้ */}
               <div className="flex flex-wrap gap-2 mb-3">
                 {selectedUsernames.map((uname) => {
-                  const selectedUser = allUsers.find((u) => u.username === uname);
-                  const label = displayUserLabel(selectedUser, uname);
+                  const selectedUser = findCurrentDiscountUser(allUsers, uname);
+                  const currentUsername = selectedUser?.username?.trim() || uname;
+                  const label = displayUserLabel(selectedUser, currentUsername);
 
                   return (
                     <span
-                      key={uname}
+                      key={currentUsername}
                       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-brand-green-50 text-brand-green border border-brand-green-100 shadow-sm"
                     >
                       <span>{label}</span>
-                      {label !== uname && (
+                      {label !== currentUsername && (
                         <span className="text-[10px] font-black text-brand-green/70">
-                          @{uname}
+                          @{currentUsername}
                         </span>
                       )}
                       <button
@@ -904,13 +964,18 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                     {allUsers.filter((u) => {
                       if (!u.username) return false;
                       const q = userSearch.toLowerCase().trim();
-                      if (!q) return !selectedUsernames.includes(u.username);
+                      const isSelected = selectedUsernames.some(
+                        (selected) =>
+                          normalizeIdentity(canonicalDiscountUsername(selected, allUsers)) ===
+                          normalizeIdentity(u.username)
+                      );
+                      if (!q) return !isSelected;
                       return (
                         (u.username.toLowerCase().includes(q) ||
                          (u.displayUsername ?? "").toLowerCase().includes(q) ||
                          u.name.toLowerCase().includes(q) ||
                          u.email.toLowerCase().includes(q)) &&
-                        !selectedUsernames.includes(u.username)
+                        !isSelected
                       );
                     }).length === 0 ? (
                       <div className="p-3 text-center text-xs text-brand-ink-soft font-bold select-none">
@@ -921,13 +986,18 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                         .filter((u) => {
                           if (!u.username) return false;
                           const q = userSearch.toLowerCase().trim();
-                          if (!q) return !selectedUsernames.includes(u.username);
+                          const isSelected = selectedUsernames.some(
+                            (selected) =>
+                              normalizeIdentity(canonicalDiscountUsername(selected, allUsers)) ===
+                              normalizeIdentity(u.username)
+                          );
+                          if (!q) return !isSelected;
                           return (
                             (u.username.toLowerCase().includes(q) ||
                              (u.displayUsername ?? "").toLowerCase().includes(q) ||
                              u.name.toLowerCase().includes(q) ||
                              u.email.toLowerCase().includes(q)) &&
-                            !selectedUsernames.includes(u.username)
+                            !isSelected
                           );
                         })
                         .map((u) => {

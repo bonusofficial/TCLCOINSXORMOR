@@ -51,6 +51,7 @@ export interface PublicConfig {
   footerCopyright: string;
   stats?: {
     activeQueues: number;
+    totalBookings: number;
     totalCompleted: number;
     totalStock: number;
     totalUsers: number;
@@ -160,6 +161,7 @@ const DEFAULT_CONFIG: PublicConfig = {
   footerCopyright: "",
   stats: {
     activeQueues: 0,
+    totalBookings: 0,
     totalCompleted: 0,
     totalStock: 0,
     totalUsers: 0,

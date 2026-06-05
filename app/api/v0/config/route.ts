@@ -7,40 +7,43 @@ import { errorPlugin, loggerPlugin } from "@/lib/server/middleware";
  * ใช้ที่ /queue, hero, footer ฯลฯ
  * Read-only, ไม่ต้อง auth
  */
+const COMPLETED_BOOKING_STATUSES = ["สำเร็จ", "ชำระแล้ว"];
+const BOOKING_STATS_LIMIT = 200;
+
 const app = new Elysia({ prefix: "/api/v0/config" })
   .use(loggerPlugin)
   .use(errorPlugin)
 
   /** GET — โหลด config ทั่วไป พร้อมสถานะระบบ Real-time */
   .get("/", async ({ set }) => {
-    set.headers["Cache-Control"] = "private, max-age=15, stale-while-revalidate=45";
+    set.headers["Cache-Control"] = "private, no-store";
 
-    const [config, activeQueues, totalCompleted, cancelledCount, totalUsers, stockAgg] = await Promise.all([
+    const [config, bookingStatsRows, totalUsers, stockAgg] = await Promise.all([
       prisma.config.findFirst({ orderBy: { id: "desc" } }),
-      // "ยอดคิวปัจจุบันที่กำลังดำเนินการ" → นับเฉพาะที่ระบบกำลังดำเนินการอยู่จริง
-      // (ไม่รวม "รอตรวจสอบ" ที่ยังไม่เริ่มทำ) ให้ตรงกับป้ายในหน้าแรก
-      prisma.bookings.count({
-        where: {
-          status: "กำลังดำเนินการ",
-        },
-      }),
-      prisma.bookings.count({
-        where: {
-          status: "สำเร็จ",
-        },
-      }),
-      prisma.bookings.count({
-        where: {
-          status: "ยกเลิก",
+      // อิงชุดเดียวกับหน้าหลังบ้าน /dashboard/manage/bookings ที่แสดงล่าสุด 200 รายการ
+      prisma.bookings.findMany({
+        orderBy: { id: "desc" },
+        take: BOOKING_STATS_LIMIT,
+        select: {
+          status: true,
         },
       }),
       prisma.user.count(),
       prisma.products.aggregate({
+        where: {
+          stockEnabled: true,
+        },
         _sum: {
           stock: true,
         },
       }),
     ]);
+    const activeQueues = bookingStatsRows.filter((b) => b.status === "กำลังดำเนินการ").length;
+    const totalBookings = bookingStatsRows.length;
+    const totalCompleted = bookingStatsRows.filter((b) =>
+      COMPLETED_BOOKING_STATUSES.includes(b.status)
+    ).length;
+    const cancelledCount = bookingStatsRows.filter((b) => b.status === "ยกเลิก").length;
 
     // เสถียรภาพ = อัตราออเดอร์สำเร็จจากที่จบแล้วทั้งหมด (สำเร็จ + ยกเลิก) — ข้อมูลจริง
     const resolved = totalCompleted + cancelledCount;
@@ -49,6 +52,7 @@ const app = new Elysia({ prefix: "/api/v0/config" })
 
     const stats = {
       activeQueues,
+      totalBookings,
       totalCompleted, // จำนวนออเดอร์สำเร็จจริง (เอา +10000 ที่ปลอมออก)
       totalUsers,
       totalStock: stockAgg._sum.stock ?? 0,

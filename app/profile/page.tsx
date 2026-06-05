@@ -37,8 +37,8 @@ import { copyToClipboard } from "@/lib/utils";
 
 type UserRole = "member" | "agent" | "admin";
 
-type CopyFeedback = {
-  type: "success" | "error";
+type PageFeedback = {
+  type: "success" | "error" | "warning" | "info";
   title: string;
   description: string;
 };
@@ -121,7 +121,8 @@ export default function ProfilePage() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
-  const [copyFeedback, setCopyFeedback] = useState<CopyFeedback | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<PageFeedback | null>(null);
+  const [profileFeedback, setProfileFeedback] = useState<PageFeedback | null>(null);
 
   // Initialize editable account fields from user
   useEffect(() => {
@@ -147,6 +148,16 @@ export default function ProfilePage() {
     return () => window.clearTimeout(id);
   }, [copyFeedback]);
 
+  useEffect(() => {
+    if (!profileFeedback) return;
+
+    const id = window.setTimeout(() => {
+      setProfileFeedback(null);
+    }, 3600);
+
+    return () => window.clearTimeout(id);
+  }, [profileFeedback]);
+
   const displayName = useMemo(
     () =>
       user?.displayUsername ||
@@ -160,6 +171,7 @@ export default function ProfilePage() {
     avatarPreview ?? user?.image ?? buildFallbackAvatar(displayName);
   const role = ROLE_META[userRole];
   const RoleIcon = role.icon;
+  const floatingFeedback = profileFeedback ?? copyFeedback;
 
   const handlePickAvatar = () => fileInputRef.current?.click();
 
@@ -255,12 +267,22 @@ export default function ProfilePage() {
   const handleSaveInfo = async () => {
     if (savingInfo) return;
     setSavingInfo(true);
+    setProfileFeedback({
+      type: "info",
+      title: "กำลังบันทึกข้อมูล",
+      description: "ระบบกำลังอัปเดตโปรไฟล์ของคุณ",
+    });
     const id = toast.loading("กำลังบันทึก...");
     try {
       const nextUsername = username.trim();
       // ชื่อผู้ใช้เดิม (ก่อนบันทึก) — ใช้ย้ายสิทธิ์ส่วนลดพิเศษไปชื่อใหม่หลังเปลี่ยนชื่อ
       const previousUsername = (user?.username ?? user?.displayUsername ?? "").trim();
       if (nextUsername.length < 3) {
+        setProfileFeedback({
+          type: "warning",
+          title: "บันทึกโปรไฟล์ไม่สำเร็จ",
+          description: "ชื่อผู้ใช้ต้องมีอย่างน้อย 3 ตัวอักษร",
+        });
         toast.warning("ชื่อผู้ใช้สั้นเกินไป", {
           id,
           description: "ต้องมีอย่างน้อย 3 ตัวอักษร",
@@ -269,6 +291,11 @@ export default function ProfilePage() {
         return;
       }
       if (nextUsername.length > 30) {
+        setProfileFeedback({
+          type: "warning",
+          title: "บันทึกโปรไฟล์ไม่สำเร็จ",
+          description: "ชื่อผู้ใช้ต้องไม่เกิน 30 ตัวอักษร",
+        });
         toast.warning("ชื่อผู้ใช้ยาวเกินไป", {
           id,
           description: "ต้องไม่เกิน 30 ตัวอักษร",
@@ -288,11 +315,17 @@ export default function ProfilePage() {
         if (check.data?.usernameTaken) taken.push("ชื่อผู้ใช้นี้");
         if (check.data?.shopNameTaken) taken.push("ชื่อร้านนี้");
         if (check.data?.lineIdTaken) taken.push("ไอดีไลน์นี้");
+        const description = taken.length
+          ? `${taken.join(" และ ")}ถูกใช้ไปแล้ว กรุณาเปลี่ยนเป็นค่าอื่น`
+          : "ไม่สามารถตรวจสอบความซ้ำได้ กรุณาลองใหม่";
+        setProfileFeedback({
+          type: "error",
+          title: "ข้อมูลซ้ำกับผู้ใช้อื่น",
+          description,
+        });
         toast.error("ข้อมูลซ้ำกับผู้ใช้อื่น", {
           id,
-          description: taken.length
-            ? `${taken.join(" และ ")}ถูกใช้ไปแล้ว กรุณาเปลี่ยนเป็นค่าอื่น`
-            : "ไม่สามารถตรวจสอบความซ้ำได้ กรุณาลองใหม่",
+          description,
         });
         setSavingInfo(false);
         return;
@@ -307,6 +340,11 @@ export default function ProfilePage() {
         lineId,
       } as Parameters<typeof authClient.updateUser>[0]);
       if (res.error) {
+        setProfileFeedback({
+          type: "error",
+          title: "บันทึกโปรไฟล์ไม่สำเร็จ",
+          description: res.error.message ?? "เกิดข้อผิดพลาด",
+        });
         toast.error("บันทึกไม่สำเร็จ", {
           id,
           description: res.error.message ?? "เกิดข้อผิดพลาด",
@@ -328,11 +366,21 @@ export default function ProfilePage() {
         }
       }
 
+      setProfileFeedback({
+        type: "success",
+        title: "บันทึกโปรไฟล์สำเร็จ",
+        description: "ข้อมูลบัญชีของคุณถูกอัปเดตแล้ว",
+      });
       toast.success("อัปเดตข้อมูลแล้ว", { id });
       setUsername(nextUsername);
       refetch();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในระบบ";
+      setProfileFeedback({
+        type: "error",
+        title: "บันทึกโปรไฟล์ไม่สำเร็จ",
+        description: msg,
+      });
       toast.error("บันทึกไม่สำเร็จ", { id, description: msg });
     } finally {
       setSavingInfo(false);
@@ -440,34 +488,42 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col">
-      {copyFeedback && (
+      {floatingFeedback && (
         <div className="fixed inset-x-4 top-4 z-[9999] pointer-events-none sm:left-auto sm:right-6 sm:top-6 sm:w-[340px]">
           <div
-            role={copyFeedback.type === "error" ? "alert" : "status"}
+            role={floatingFeedback.type === "error" || floatingFeedback.type === "warning" ? "alert" : "status"}
             aria-live="polite"
             className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-2xl ring-1 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 ${
-              copyFeedback.type === "success"
+              floatingFeedback.type === "success"
                 ? "border-brand-green bg-brand-surface-soft/95 text-brand-ink shadow-brand-green/25 ring-brand-green/25"
+                : floatingFeedback.type === "warning"
+                  ? "border-amber-400 bg-brand-surface-soft/95 text-brand-ink shadow-amber-500/20 ring-amber-400/20"
+                  : floatingFeedback.type === "info"
+                    ? "border-sky-400 bg-brand-surface-soft/95 text-brand-ink shadow-sky-500/20 ring-sky-400/20"
                 : "border-rose-400 bg-brand-surface-soft/95 text-brand-ink shadow-rose-500/20 ring-rose-400/20"
             }`}
           >
             <span
               className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                copyFeedback.type === "success"
+                floatingFeedback.type === "success"
                   ? "bg-brand-green/15 text-brand-green"
+                  : floatingFeedback.type === "warning"
+                    ? "bg-amber-500/15 text-amber-400"
+                    : floatingFeedback.type === "info"
+                      ? "bg-sky-500/15 text-sky-400"
                   : "bg-rose-500/15 text-rose-400"
               }`}
             >
-              {copyFeedback.type === "success" ? (
+              {floatingFeedback.type === "success" ? (
                 <CheckCircle className="h-4.5 w-4.5" />
               ) : (
                 <AlertCircle className="h-4.5 w-4.5" />
               )}
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-black leading-5">{copyFeedback.title}</p>
+              <p className="text-sm font-black leading-5">{floatingFeedback.title}</p>
               <p className="mt-0.5 truncate text-xs font-bold text-brand-ink-soft">
-                {copyFeedback.description}
+                {floatingFeedback.description}
               </p>
             </div>
           </div>

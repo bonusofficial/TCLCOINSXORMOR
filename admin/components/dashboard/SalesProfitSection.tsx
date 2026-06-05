@@ -47,29 +47,18 @@ interface SalesRow {
   bookingTime: string | null;
 }
 
-interface SalesSummary {
-  todayProfit: string;
-  todaySales: string;
-  todayCount: number;
-  totalProfit: string;
-  totalSales: string;
-  totalCost: string;
-  count: number;
-}
-
 const fmt = (v: string | number) =>
   Number(v).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 
-const fmtDateTime = (s: string) =>
-  new Date(s).toLocaleString("th-TH", {
+// วันที่ล้วน (ใช้กับ bookingDate ที่เป็นเที่ยงคืน — ไม่โชว์เวลาเพื่อกันเพี้ยน tz)
+const fmtDateOnly = (s: string) =>
+  new Date(s).toLocaleDateString("th-TH", {
     day: "numeric",
     month: "short",
     year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 
 const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -84,7 +73,6 @@ const monthLabel = (ym: string) => {
 
 export default function SalesProfitSection() {
   const [rows, setRows] = useState<SalesRow[]>([]);
-  const [summary, setSummary] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -103,7 +91,6 @@ export default function SalesProfitSection() {
     }
     if (data.ok) {
       setRows(data.data);
-      setSummary(data.summary);
     }
     setLoading(false);
   }, []);
@@ -116,7 +103,7 @@ export default function SalesProfitSection() {
     setCurrentPage(1);
   }, [dateFilter, selectedSpecificDate, selectedMonth, sortOrder]);
 
-  // กรองตามช่วงเวลา (ใช้ completedAt = วันที่ปิดการขาย)
+  // กรองตามช่วงเวลา (ใช้ bookingDate = วันคิวที่จอง — เสถียร ไม่เพี้ยนตาม updatedAt)
   const filtered = useMemo(() => {
     if (dateFilter === "all") return rows;
     const now = new Date();
@@ -126,11 +113,12 @@ export default function SalesProfitSection() {
     startOfWeek.setDate(startOfToday.getDate() + (dow === 0 ? -6 : 1 - dow));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     return rows.filter((r) => {
-      const d = new Date(r.completedAt);
+      // ใช้ "วันคิวที่จอง" (bookingDate) เป็นเกณฑ์ — เสถียร ไม่โดน bump เหมือน updatedAt
+      const d = new Date(r.bookingDate);
       if (dateFilter === "today" && d < startOfToday) return false;
       if (dateFilter === "this_week" && d < startOfWeek) return false;
       if (dateFilter === "this_month" && d < startOfMonth) return false;
-      if (dateFilter === "month" && selectedMonth && monthKey(r.completedAt) !== selectedMonth) return false;
+      if (dateFilter === "month" && selectedMonth && monthKey(r.bookingDate) !== selectedMonth) return false;
       if (dateFilter === "custom" && selectedSpecificDate) {
         const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         if (ds !== selectedSpecificDate) return false;
@@ -141,8 +129,8 @@ export default function SalesProfitSection() {
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const ta = new Date(a.completedAt).getTime();
-      const tb = new Date(b.completedAt).getTime();
+      const ta = new Date(a.bookingDate).getTime();
+      const tb = new Date(b.bookingDate).getTime();
       return sortOrder === "newest" ? tb - ta : ta - tb;
     });
   }, [filtered, sortOrder]);
@@ -155,7 +143,7 @@ export default function SalesProfitSection() {
   // เดือนที่มีข้อมูล (สำหรับ dropdown)
   const monthOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const r of rows) set.add(monthKey(r.completedAt));
+    for (const r of rows) set.add(monthKey(r.bookingDate));
     return Array.from(set).sort().reverse();
   }, [rows]);
 
@@ -174,7 +162,7 @@ export default function SalesProfitSection() {
   const monthlyBreakdown = useMemo(() => {
     const map = new Map<string, { sales: number; cost: number; profit: number }>();
     for (const r of filtered) {
-      const k = monthKey(r.completedAt);
+      const k = monthKey(r.bookingDate);
       const e = map.get(k) ?? { sales: 0, cost: 0, profit: 0 };
       e.sales += Number(r.salePrice) || 0;
       e.cost += Number(r.cost) || 0;
@@ -194,6 +182,14 @@ export default function SalesProfitSection() {
     : dateFilter === "month" && selectedMonth ? monthLabel(selectedMonth)
     : dateFilter === "custom" && selectedSpecificDate ? selectedSpecificDate
     : "ทั้งหมด";
+
+  // ป้ายการ์ดกำไรเด่น — เปลี่ยนตามช่วงที่เลือก (เลือกวันนี้ = "กำไรวันนี้")
+  const profitCardLabel =
+    dateFilter === "all" ? "กำไรทั้งหมด"
+    : dateFilter === "today" ? "กำไรวันนี้"
+    : dateFilter === "this_week" ? "กำไรสัปดาห์นี้"
+    : dateFilter === "this_month" ? "กำไรเดือนนี้"
+    : `กำไร · ${periodLabel}`;
 
   const handleExport = () => {
     const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
@@ -215,9 +211,9 @@ export default function SalesProfitSection() {
 
     // รายการทั้งหมด
     out.push(["รายการทั้งหมด"].map(q).join(","));
-    out.push(["วันที่", "สินค้า", "ราคาขาย", "ต้นทุน", "กำไร", "ลูกค้า", "รหัสจอง"].map(q).join(","));
+    out.push(["วันที่จอง", "ช่วงเวลา", "สินค้า", "ราคาขาย", "ต้นทุน", "กำไร", "ลูกค้า", "รหัสจอง"].map(q).join(","));
     for (const r of sorted) {
-      out.push([fmtDateTime(r.completedAt), r.productName, r.salePrice, r.cost, r.profit, r.username, r.bookingCode].map(q).join(","));
+      out.push([fmtDateOnly(r.bookingDate), r.bookingTime ?? "—", r.productName, r.salePrice, r.cost, r.profit, r.username, r.bookingCode].map(q).join(","));
     }
     const csv = "﻿" + out.join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -283,16 +279,16 @@ export default function SalesProfitSection() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        {/* กำไรวันนี้ — เด่นสุด */}
+        {/* กำไรของช่วงที่เลือก — เด่นสุด (เปลี่ยนตามตัวกรอง) */}
         <div className="bg-gradient-to-br from-brand-green to-brand-green-700 rounded-2xl p-4 text-white shadow-lg shadow-brand-green/20">
           <p className="text-[10.5px] font-extrabold uppercase opacity-90 inline-flex items-center gap-1">
-            <CalendarDays className="h-3.5 w-3.5" /> กำไรวันนี้
+            <CalendarDays className="h-3.5 w-3.5" /> {profitCardLabel}
           </p>
           <p className="font-display font-black text-xl leading-tight mt-1">
-            ฿{fmt(summary?.todayProfit ?? 0)}
+            ฿{fmt(filteredSummary.profit)}
           </p>
           <p className="text-[10.5px] font-bold opacity-90 mt-0.5">
-            {summary?.todayCount ?? 0} ออเดอร์ · ยอดขาย ฿{fmt(summary?.todaySales ?? 0)}
+            {filtered.length} ออเดอร์ · ยอดขาย ฿{fmt(filteredSummary.sales)}
           </p>
         </div>
 
@@ -330,7 +326,7 @@ export default function SalesProfitSection() {
             }}
             className="w-full sm:w-auto inline-flex items-center justify-between gap-2 pl-9 pr-8 py-2.5 rounded-xl border border-brand-green-100 bg-brand-surface text-xs font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer outline-none appearance-none"
           >
-            <option value="all">ทั้งหมด (วันที่)</option>
+            <option value="all">ทั้งหมด</option>
             <option value="today">วันนี้</option>
             <option value="this_week">สัปดาห์นี้</option>
             <option value="this_month">เดือนนี้</option>
@@ -422,8 +418,13 @@ export default function SalesProfitSection() {
                       <TableCell className="py-3 px-4 whitespace-nowrap text-[12px] font-bold text-brand-ink-soft">
                         <span className="inline-flex items-center gap-1.5">
                           <CalendarDays className="h-3 w-3" />
-                          {fmtDateTime(r.completedAt)}
+                          {fmtDateOnly(r.bookingDate)}
                         </span>
+                        {r.bookingTime && (
+                          <span className="block text-[10.5px] font-semibold text-brand-ink-soft/70 mt-0.5">
+                            {r.bookingTime}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="py-3 px-3 font-bold text-brand-ink">
                         <span className="line-clamp-1">{r.productName}</span>
