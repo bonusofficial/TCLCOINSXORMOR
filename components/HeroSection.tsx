@@ -73,15 +73,15 @@ export default function HeroSection({
   const handleAuthOpen = (tab: "login" | "register") => {
     if (authOpening) return;
     setAuthOpening(tab);
-    onOpenAuth?.(tab);
     
     if (authOpeningTimerRef.current) {
       window.clearTimeout(authOpeningTimerRef.current);
     }
     authOpeningTimerRef.current = window.setTimeout(() => {
+      onOpenAuth?.(tab);
       setAuthOpening(null);
       authOpeningTimerRef.current = null;
-    }, 700);
+    }, 5000);
   };
 
   useEffect(() => {

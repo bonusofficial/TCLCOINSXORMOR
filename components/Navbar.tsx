@@ -208,15 +208,15 @@ export default function Navbar({
 
     setAuthOpening(tab);
     setMobileMenuOpen(false);
-    onOpenAuth(tab);
 
     if (authOpeningTimerRef.current) {
       window.clearTimeout(authOpeningTimerRef.current);
     }
     authOpeningTimerRef.current = window.setTimeout(() => {
+      onOpenAuth(tab);
       setAuthOpening(null);
       authOpeningTimerRef.current = null;
-    }, 700);
+    }, 5000);
   };
 
   const role = ROLE_CONFIG[userRole];
