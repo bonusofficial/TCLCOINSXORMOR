@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   authClient,
   requestPasswordReset,
@@ -50,6 +50,140 @@ const PASSWORD_RULES: Array<{ id: string; label: string; test: (p: string) => bo
 
 type AuthTab = "login" | "register" | "forgot";
 
+type TurnstileApi = {
+  render: (
+    container: HTMLElement,
+    options: {
+      sitekey: string;
+      theme?: "light" | "dark" | "auto";
+      size?: "normal" | "compact" | "flexible";
+      callback?: (token: string) => void;
+      "expired-callback"?: () => void;
+      "error-callback"?: () => void;
+      "timeout-callback"?: () => void;
+    }
+  ) => string;
+  remove?: (widgetId: string) => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
+
+const TURNSTILE_SCRIPT_ID = "cloudflare-turnstile-script";
+const TURNSTILE_SITE_KEY =
+  process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY?.trim() ||
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ||
+  "";
+let turnstileScriptPromise: Promise<void> | null = null;
+
+function loadTurnstileScript() {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.turnstile) return Promise.resolve();
+  if (turnstileScriptPromise) return turnstileScriptPromise;
+
+  turnstileScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.getElementById(TURNSTILE_SCRIPT_ID) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("โหลด Turnstile ไม่สำเร็จ")), {
+        once: true,
+      });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = TURNSTILE_SCRIPT_ID;
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("โหลด Turnstile ไม่สำเร็จ"));
+    document.head.appendChild(script);
+  });
+
+  return turnstileScriptPromise;
+}
+
+function TurnstileWidget({
+  siteKey,
+  resetKey,
+  error,
+  onVerify,
+  onExpire,
+  onError,
+}: {
+  siteKey: string;
+  resetKey: string;
+  error: string | null;
+  onVerify: (token: string) => void;
+  onExpire: () => void;
+  onError: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+  const [scriptError, setScriptError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!siteKey) return;
+
+    let cancelled = false;
+
+    loadTurnstileScript()
+      .then(() => {
+        if (cancelled || !containerRef.current || !window.turnstile) return;
+        if (widgetIdRef.current && window.turnstile.remove) {
+          window.turnstile.remove(widgetIdRef.current);
+          widgetIdRef.current = null;
+        }
+
+        containerRef.current.innerHTML = "";
+        widgetIdRef.current = window.turnstile.render(containerRef.current, {
+          sitekey: siteKey,
+          theme: "dark",
+          size: "flexible",
+          callback: onVerify,
+          "expired-callback": onExpire,
+          "timeout-callback": onExpire,
+          "error-callback": onError,
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setScriptError("ไม่สามารถโหลดระบบยืนยันความปลอดภัยได้ กรุณารีเฟรชหน้าอีกครั้ง");
+        onError();
+      });
+
+    return () => {
+      cancelled = true;
+      if (widgetIdRef.current && window.turnstile?.remove) {
+        window.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+    };
+  }, [siteKey, resetKey, onVerify, onExpire, onError]);
+
+  const message = scriptError ?? error;
+
+  return (
+    <div className="rounded-2xl border border-brand-green-100 bg-brand-paper/70 p-3">
+      <div className="mb-2 flex items-center gap-2 text-[11px] font-extrabold text-brand-ink-soft">
+        <ShieldCheck className="h-3.5 w-3.5 text-brand-green" />
+        ยืนยันความปลอดภัยด้วย Cloudflare
+      </div>
+      <div ref={containerRef} className="min-h-[65px] w-full overflow-hidden rounded-xl" />
+      {message && (
+        <p className="mt-2 flex items-start gap-1.5 text-[11px] font-bold leading-relaxed text-amber-300">
+          <TriangleAlert className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+          <span>{message}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function AuthModal({
   isOpen,
   onClose,
@@ -64,6 +198,9 @@ export default function AuthModal({
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileError, setTurnstileError] = useState<string | null>(null);
+  const [turnstileResetCounter, setTurnstileResetCounter] = useState(0);
 
   // Sync activeTab when modal re-opens with a different initialTab
   // (useState initializer only runs once; component stays mounted between opens)
@@ -76,6 +213,9 @@ export default function AuthModal({
       setShowPassword(false);
       setLoginError(null);
       setRegisterError(null);
+      setTurnstileToken("");
+      setTurnstileError(null);
+      setTurnstileResetCounter((value) => value + 1);
     }, 0);
 
     return () => window.clearTimeout(id);
@@ -123,7 +263,51 @@ export default function AuthModal({
       ? "from-brand-green to-brand-green-600"
       : "from-brand-lime to-brand-green";
 
+  const resetTurnstileChallenge = useCallback(() => {
+    setTurnstileToken("");
+    setTurnstileError(null);
+    setTurnstileResetCounter((value) => value + 1);
+  }, []);
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+    setTurnstileError(null);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken("");
+    setTurnstileError("การยืนยันหมดอายุ กรุณายืนยันอีกครั้ง");
+  }, []);
+
+  const handleTurnstileError = useCallback(() => {
+    setTurnstileToken("");
+    setTurnstileError("ตรวจสอบความปลอดภัยไม่สำเร็จ กรุณาลองอีกครั้ง");
+  }, []);
+
   if (!isOpen) return null;
+
+  const turnstileEnabled = activeTab !== "forgot" && TURNSTILE_SITE_KEY !== "";
+
+  const getCaptchaFetchOptions = () =>
+    turnstileEnabled && turnstileToken
+      ? {
+          headers: {
+            "x-captcha-response": turnstileToken,
+          },
+        }
+      : undefined;
+
+  const requireTurnstile = (target: "login" | "register") => {
+    if (!turnstileEnabled) return true;
+    if (turnstileToken) return true;
+
+    const description =
+      turnstileError ?? "กรุณายืนยันความปลอดภัย Cloudflare ก่อนดำเนินการต่อ";
+    if (target === "login") setLoginError(description);
+    else setRegisterError(description);
+    toast.warning("ยืนยันความปลอดภัยก่อน", { description, duration: 5000 });
+    return false;
+  };
 
   const handleTabChange = (tab: AuthTab) => {
     setActiveTab(tab);
@@ -131,6 +315,7 @@ export default function AuthModal({
     setShowPassword(false);
     setLoginError(null);
     setRegisterError(null);
+    resetTurnstileChallenge();
     if (tab === "forgot" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.username.trim())) {
       setFormData((prev) => ({ ...prev, email: prev.username.trim() }));
     }
@@ -148,11 +333,26 @@ export default function AuthModal({
     toast.warning(title, { description, duration: 5000 });
   };
 
+  const getFriendlyAuthError = (message?: string | null) => {
+    const raw = message?.trim();
+    const lower = raw?.toLowerCase() ?? "";
+    if (
+      lower.includes("captcha") ||
+      lower.includes("verification") ||
+      lower.includes("turnstile") ||
+      lower.includes("missing response")
+    ) {
+      return "ยืนยันความปลอดภัยไม่สำเร็จ กรุณาลองยืนยัน Cloudflare อีกครั้ง";
+    }
+
+    return raw;
+  };
+
   const showLoginFailure = (
     toastId: string | number,
     message?: string | null
   ) => {
-    const raw = message?.trim();
+    const raw = getFriendlyAuthError(message);
     const lower = raw?.toLowerCase() ?? "";
     const description =
       !raw ||
@@ -217,6 +417,7 @@ export default function AuthModal({
       showLoginWarning("กรุณากรอกรหัสผ่าน", "กรุณากรอกรหัสผ่านก่อนเข้าสู่ระบบ");
       return;
     }
+    if (!requireTurnstile("login")) return;
 
     setLoading(true);
     const id = toast.loading("กำลังเข้าสู่ระบบ...");
@@ -224,47 +425,33 @@ export default function AuthModal({
     // Strict email format check — anything looking like "x@y.z" is treated as email
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
     const credentials = { password: formData.password, rememberMe };
+    const captchaFetchOptions = getCaptchaFetchOptions();
 
     try {
-      // Try primary method based on detection
-      let res = isEmail
-        ? await signIn.email({ email: input, ...credentials })
-        : await signIn.username({ username: input, ...credentials });
-
-      // Fallback: if primary fails AND input is ambiguous (contains @ but maybe not
-      // strict email), try the other method silently before showing error
-      if (res.error && !isEmail && input.includes("@")) {
-        const fallback = await signIn.email({ email: input, ...credentials });
-        if (!fallback.error) res = fallback;
-      } else if (res.error && isEmail) {
-        // Edge case: some users register with email-shaped usernames
-        const fallback = await signIn.username({ username: input, ...credentials });
-        if (!fallback.error) res = fallback;
+      let resolvedUsername: string | null = null;
+      try {
+        const resolved =
+          await publicApi.authResolve.api.v0.auth.resolve.post({
+            identifier: input,
+          });
+        resolvedUsername =
+          resolved?.data?.ok && resolved.data.username
+            ? resolved.data.username
+            : null;
+      } catch {
+        // ถ้า resolve ล้มเหลว ให้ใช้ method ตาม input เดิม
       }
 
-      // Fallback สุดท้าย: ลองค้นด้วย "ชื่อร้าน" หรือ "ไอดีไลน์" → resolve เป็น username แล้วเข้าสู่ระบบ
-      if (res.error) {
-        try {
-          const resolved =
-            await publicApi.authResolve.api.v0.auth.resolve.post({
-              identifier: input,
-            });
-          const resolvedUsername =
-            resolved?.data?.ok ? resolved.data.username : null;
-          if (resolvedUsername && resolvedUsername !== input) {
-            const r = await signIn.username({
-              username: resolvedUsername,
-              ...credentials,
-            });
-            if (!r.error) res = r;
-          }
-        } catch {
-          // ถ้า resolve ล้มเหลว ปล่อยให้แสดง error เดิม
-        }
-      }
+      // Turnstile token ตรวจได้ครั้งเดียว จึงต้องยิง auth endpoint เพียงครั้งเดียวต่อ submit
+      const res = resolvedUsername
+        ? await signIn.username({ username: resolvedUsername, ...credentials }, captchaFetchOptions)
+        : isEmail
+          ? await signIn.email({ email: input, ...credentials }, captchaFetchOptions)
+          : await signIn.username({ username: input, ...credentials }, captchaFetchOptions);
 
       if (res.error) {
         showLoginFailure(id, res.error.message);
+        resetTurnstileChallenge();
         setLoading(false);
         return;
       }
@@ -274,6 +461,7 @@ export default function AuthModal({
       const user = sessionRes?.data?.user;
       if (!user) {
         showLoginFailure(id, "ไม่สามารถยืนยันการเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง");
+        resetTurnstileChallenge();
         setLoading(false);
         return;
       }
@@ -291,6 +479,7 @@ export default function AuthModal({
     } catch (err) {
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในระบบ";
       showLoginFailure(id, msg);
+      resetTurnstileChallenge();
       setLoading(false);
     }
   };
@@ -342,6 +531,7 @@ export default function AuthModal({
       );
       return;
     }
+    if (!requireTurnstile("register")) return;
 
     setLoading(true);
     const id = toast.loading("กำลังสมัครสมาชิก...");
@@ -349,26 +539,32 @@ export default function AuthModal({
       const phone = formData.phone.trim();
       const shopName = formData.shopName.trim();
       const lineId = formData.lineId.trim();
-      const res = await signUp.email({
-        email,
-        password: formData.password,
-        name: username,
-        username,
-        phone,
-        shopName,
-        lineId,
-      } as Parameters<typeof signUp.email>[0] & {
-        username: string;
-        phone: string;
-        shopName: string;
-        lineId: string;
-      });
+      const captchaFetchOptions = getCaptchaFetchOptions();
+      const res = await signUp.email(
+        {
+          email,
+          password: formData.password,
+          name: username,
+          username,
+          phone,
+          shopName,
+          lineId,
+        } as Parameters<typeof signUp.email>[0] & {
+          username: string;
+          phone: string;
+          shopName: string;
+          lineId: string;
+        },
+        captchaFetchOptions
+      );
 
       if (res.error) {
         const desc =
-          res.error.message ?? "อาจมีบัญชีนี้แล้ว กรุณาลองชื่อผู้ใช้/อีเมลอื่น";
+          getFriendlyAuthError(res.error.message) ??
+          "อาจมีบัญชีนี้แล้ว กรุณาลองชื่อผู้ใช้/อีเมลอื่น";
         setRegisterError(desc);
         toast.error("สมัครสมาชิกไม่สำเร็จ", { id, description: desc, duration: 6000 });
+        resetTurnstileChallenge();
         setLoading(false);
         return;
       }
@@ -385,9 +581,10 @@ export default function AuthModal({
       setLoading(false);
       finishSuccess(role);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในระบบ";
+      const msg = getFriendlyAuthError(err instanceof Error ? err.message : null) ?? "เกิดข้อผิดพลาดในระบบ";
       setRegisterError(msg);
       toast.error("สมัครสมาชิกไม่สำเร็จ", { id, description: msg, duration: 6000 });
+      resetTurnstileChallenge();
       setLoading(false);
     }
   };
@@ -425,6 +622,7 @@ export default function AuthModal({
           "หากอีเมลนี้มีบัญชีอยู่ในระบบ คุณจะได้รับลิงก์สำหรับตั้งรหัสผ่านใหม่",
       });
       setActiveTab("login");
+      resetTurnstileChallenge();
       setFormData((prev) => ({ ...prev, password: "", confirmPassword: "" }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในระบบ";
@@ -726,6 +924,18 @@ export default function AuthModal({
                       className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-4 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
                     />
                   </div>
+                )}
+
+                {turnstileEnabled && (
+                  <TurnstileWidget
+                    key={`${activeTab}-${turnstileResetCounter}`}
+                    siteKey={TURNSTILE_SITE_KEY}
+                    resetKey={`${activeTab}-${turnstileResetCounter}`}
+                    error={turnstileError}
+                    onVerify={handleTurnstileVerify}
+                    onExpire={handleTurnstileExpire}
+                    onError={handleTurnstileError}
+                  />
                 )}
 
                 {/* Options panel */}

@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "@/lib/prisma";
 import { nextCookies } from "better-auth/next-js";
-import { username } from "better-auth/plugins";
+import { captcha, username } from "better-auth/plugins";
 import bcrypt from "bcryptjs";
 import { verifyPassword as verifyScrypt } from "@better-auth/utils/password";
 import {
@@ -13,6 +13,10 @@ import {
 
 const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 15;
 const authSecret = process.env.BETTER_AUTH_SECRET?.trim() || undefined;
+const turnstileSecretKey =
+  process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY?.trim() ||
+  process.env.TURNSTILE_SECRET_KEY?.trim() ||
+  undefined;
 
 export const auth = betterAuth({
   secret: authSecret,
@@ -134,6 +138,19 @@ export const auth = betterAuth({
         return val.length >= 3;
       },
     }),
+    ...(turnstileSecretKey
+      ? [
+          captcha({
+            provider: "cloudflare-turnstile",
+            secretKey: turnstileSecretKey,
+            endpoints: [
+              "/sign-in/email",
+              "/sign-in/username",
+              "/sign-up/email",
+            ],
+          }),
+        ]
+      : []),
     nextCookies(),
   ],
 });
