@@ -69,7 +69,8 @@ export default function StatsSection() {
   const { config } = useConfig();
   
   const stats = config?.stats;
-  const totalBookings = stats?.totalBookings ?? stats?.totalCompleted ?? 0;
+  // นับเฉพาะออเดอร์ที่ "สำเร็จ" จริง (ตรงจาก DB ไม่ติดเพดาน 200)
+  const totalCompleted = stats?.totalCompleted ?? 0;
   const activeQueues = stats?.activeQueues ?? 0;
   const totalStock = stats?.totalStock ?? 0;
   const totalUsers = stats?.totalUsers ?? 100;
@@ -102,10 +103,10 @@ export default function StatsSection() {
               <CheckSquare className="h-5.5 w-5.5" />
             </div>
             <div className="font-display font-black text-[46px] leading-none text-brand-green tracking-tight">
-              <CountUp to={totalBookings} />
+              <CountUp to={totalCompleted} />
             </div>
             <p className="mt-3 text-xs.5 leading-relaxed font-bold text-brand-ink-soft">
-              รายการจองทั้งหมดบนแพลตฟอร์ม
+              รายการที่ทำรายการสำเร็จทั้งหมดบนแพลตฟอร์ม
             </p>
           </div>
 

@@ -47,9 +47,9 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
   .get(
     "/",
     async () => {
+      // โหลดทั้งหมด (ไม่ติดเพดาน 200) — หน้าแอดมินแบ่งหน้าเองฝั่ง client
       const items = await prisma.bookings.findMany({
         orderBy: { id: "desc" },
-        take: 200,
       });
       return { ok: true as const, data: items.map(shape) };
     },

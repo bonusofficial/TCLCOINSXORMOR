@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Clock,
   Phone,
+  StickyNote,
   X,
   Download,
   ChevronDown,
@@ -465,7 +466,7 @@ export default function BookingsPage() {
 
   // Handle Export to Excel (CSV with UTF-8 BOM for Thai character compatibility)
   const handleExport = () => {
-    const headers = ["รหัสการจอง", "ชื่อลูกค้า", "เบอร์โทรศัพท์", "ชื่อสินค้า/บริการ", "ราคา", "สถานะ", "วันที่จอง", "เวลาจอง", "วันที่สั่งซื้อ"];
+    const headers = ["รหัสการจอง", "ชื่อลูกค้า", "เบอร์โทรศัพท์", "ชื่อสินค้า/บริการ", "ราคา", "สถานะ", "วันที่จอง", "เวลาจอง", "หมายเหตุลูกค้า", "วันที่สั่งซื้อ"];
     const rows = filtered.map(b => [
       b.bookingCode,
       b.username,
@@ -475,6 +476,7 @@ export default function BookingsPage() {
       b.status,
       b.bookingDate,
       b.bookingTime || "—",
+      b.content?.trim() || "—",
       formatBookingDateTime(b.createdAt)
     ]);
     
@@ -776,6 +778,17 @@ export default function BookingsPage() {
                           <div className="text-[11px] text-brand-ink-soft font-bold inline-flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {b.bookingTime}
+                          </div>
+                        )}
+                        {b.content?.trim() && (
+                          <div
+                            title={b.content.trim()}
+                            className="mt-1 flex items-start gap-1 text-[11px] font-bold text-brand-gold-deep max-w-[240px]"
+                          >
+                            <StickyNote className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                            <span className="line-clamp-2 leading-snug">
+                              หมายเหตุ: {b.content.trim()}
+                            </span>
                           </div>
                         )}
                       </TableCell>

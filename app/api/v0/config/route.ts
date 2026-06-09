@@ -7,9 +7,6 @@ import { errorPlugin, loggerPlugin } from "@/lib/server/middleware";
  * ใช้ที่ /queue, hero, footer ฯลฯ
  * Read-only, ไม่ต้อง auth
  */
-const COMPLETED_BOOKING_STATUSES = ["สำเร็จ", "ชำระแล้ว"];
-const BOOKING_STATS_LIMIT = 200;
-
 const app = new Elysia({ prefix: "/api/v0/config" })
   .use(loggerPlugin)
   .use(errorPlugin)
@@ -18,32 +15,20 @@ const app = new Elysia({ prefix: "/api/v0/config" })
   .get("/", async ({ set }) => {
     set.headers["Cache-Control"] = "private, no-store";
 
-    const [config, bookingStatsRows, totalUsers, stockAgg] = await Promise.all([
-      prisma.config.findFirst({ orderBy: { id: "desc" } }),
-      // อิงชุดเดียวกับหน้าหลังบ้าน /dashboard/manage/bookings ที่แสดงล่าสุด 200 รายการ
-      prisma.bookings.findMany({
-        orderBy: { id: "desc" },
-        take: BOOKING_STATS_LIMIT,
-        select: {
-          status: true,
-        },
-      }),
-      prisma.user.count(),
-      prisma.products.aggregate({
-        where: {
-          stockEnabled: true,
-        },
-        _sum: {
-          stock: true,
-        },
-      }),
-    ]);
-    const activeQueues = bookingStatsRows.filter((b) => b.status === "กำลังดำเนินการ").length;
-    const totalBookings = bookingStatsRows.length;
-    const totalCompleted = bookingStatsRows.filter((b) =>
-      COMPLETED_BOOKING_STATUSES.includes(b.status)
-    ).length;
-    const cancelledCount = bookingStatsRows.filter((b) => b.status === "ยกเลิก").length;
+    // นับตรงจาก DB ด้วย count() — แม่นยำ ไม่ติดเพดาน (กันกรณีออเดอร์เกิน 200)
+    const [config, activeQueues, totalCompleted, cancelledCount, totalBookings, totalUsers, stockAgg] =
+      await Promise.all([
+        prisma.config.findFirst({ orderBy: { id: "desc" } }),
+        prisma.bookings.count({ where: { status: "กำลังดำเนินการ" } }),
+        prisma.bookings.count({ where: { status: "สำเร็จ" } }),
+        prisma.bookings.count({ where: { status: "ยกเลิก" } }),
+        prisma.bookings.count(),
+        prisma.user.count(),
+        prisma.products.aggregate({
+          where: { stockEnabled: true },
+          _sum: { stock: true },
+        }),
+      ]);
 
     // เสถียรภาพ = อัตราออเดอร์สำเร็จจากที่จบแล้วทั้งหมด (สำเร็จ + ยกเลิก) — ข้อมูลจริง
     const resolved = totalCompleted + cancelledCount;
