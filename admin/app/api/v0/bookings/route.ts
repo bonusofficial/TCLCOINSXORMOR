@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { withElysiaAudit } from "@/lib/server/audit-route";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { BookingCreateBody, BookingParams } from "@/lib/server/schemas/booking";
@@ -307,8 +308,8 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       };
 
       await logAudit({
-        action: "PRODUCT_CREATE",
-        entityType: "product",
+        action: "BOOKING_CREATE",
+        entityType: "booking",
         entityId: saved.id,
         details: {
           bookingCode: saved.bookingCode,
@@ -360,8 +361,8 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       };
 
       await logAudit({
-        action: "PRODUCT_UPDATE",
-        entityType: "product",
+        action: "BOOKING_UPDATE",
+        entityType: "booking",
         entityId: saved.id,
         details: {
           bookingCode: saved.bookingCode,
@@ -381,6 +382,6 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
 
 export type BookingsPublicApp = typeof app;
 
-export const GET = app.handle;
-export const POST = app.handle;
-export const PATCH = app.handle;
+export const GET = withElysiaAudit(app.handle);
+export const POST = withElysiaAudit(app.handle);
+export const PATCH = withElysiaAudit(app.handle);

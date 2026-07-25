@@ -17,10 +17,22 @@ export const ACTION_LABEL: Record<string, string> = {
   REVIEW_CREATE: "เพิ่มรีวิว",
   REVIEW_UPDATE: "แก้ไขรีวิว",
   REVIEW_DELETE: "ลบรีวิว",
+  BOOKING_CREATE: "เพิ่มการจอง",
+  BOOKING_UPDATE: "แก้ไขการจอง",
+  BOOKING_DELETE: "ลบการจอง",
+  ACCOUNT_CREATE: "เพิ่มรายการบัญชี",
+  ACCOUNT_UPDATE: "แก้ไขรายการบัญชี",
+  ACCOUNT_DELETE: "ลบรายการบัญชี",
+  UPLOAD_CREATE: "อัปโหลดไฟล์",
   CONFIG_UPDATE: "แก้ไขการตั้งค่า",
   API_MUTATION: "แก้ไขผ่าน API",
   LOGIN: "เข้าสู่ระบบ",
+  LOGIN_FAILED: "เข้าสู่ระบบไม่สำเร็จ",
   LOGOUT: "ออกจากระบบ",
+  AUTH_ERROR: "Auth ล้มเหลว",
+  API_RESPONSE: "API Response",
+  API_ACTION: "API Action",
+  API_ERROR: "API Error",
 };
 
 export const ENTITY_LABEL: Record<string, string> = {
@@ -30,6 +42,13 @@ export const ENTITY_LABEL: Record<string, string> = {
   review: "รีวิว",
   config: "การตั้งค่า",
   session: "เซสชัน",
+  booking: "การจอง",
+  account: "บัญชี",
+  upload: "อัปโหลด",
+  dashboard: "แดชบอร์ด",
+  api: "API",
+  auth: "Authentication",
+  audit: "Audit Log",
 };
 
 /** สี indicator ตาม action category */
@@ -56,11 +75,31 @@ export function actionColor(action: string): {
       text: "text-amber-600",
       ring: "ring-amber-500/20",
     };
-  if (action === "LOGIN" || action === "LOGOUT")
+  if (
+    action === "LOGIN" ||
+    action === "LOGOUT" ||
+    action === "API_RESPONSE"
+  )
     return {
       bg: "bg-sky-50",
       text: "text-sky-600",
       ring: "ring-sky-500/20",
+    };
+  if (
+    action === "LOGIN_FAILED" ||
+    action === "AUTH_ERROR" ||
+    action === "API_ERROR"
+  )
+    return {
+      bg: "bg-rose-500/10",
+      text: "text-rose-400",
+      ring: "ring-rose-500/20",
+    };
+  if (action === "API_ACTION")
+    return {
+      bg: "bg-violet-500/10",
+      text: "text-violet-500",
+      ring: "ring-violet-500/20",
     };
   return {
     bg: "bg-brand-paper",

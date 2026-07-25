@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { withElysiaAudit } from "@/lib/server/audit-route";
 import { prisma } from "@/lib/prisma";
 import { BookingCreateBody } from "@/lib/server/schemas/booking";
 import { generateBookingCode } from "@/lib/booking";
@@ -107,8 +108,8 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       };
 
       await logAudit({
-        action: "PRODUCT_CREATE", // booking-related — เก็บใน entity booking
-        entityType: "product",
+        action: "BOOKING_CREATE",
+        entityType: "booking",
         entityId: saved.id,
         details: {
           bookingCode: code,
@@ -129,5 +130,5 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
 
 export type BookingsApp = typeof app;
 
-export const GET = app.handle;
-export const POST = app.handle;
+export const GET = withElysiaAudit(app.handle);
+export const POST = withElysiaAudit(app.handle);

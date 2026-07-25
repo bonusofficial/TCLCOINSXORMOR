@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { withElysiaAudit } from "@/lib/server/audit-route";
 import { prisma } from "@/lib/prisma";
 import {
   authMacros,
@@ -31,4 +32,4 @@ const app = new Elysia({ prefix: "/api/v1/setting/banner" })
 
 export type BannerItemApp = typeof app;
 
-export const DELETE = app.handle;
+export const DELETE = withElysiaAudit(app.handle);

@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { withElysiaAudit } from "@/lib/server/audit-route";
 import { prisma } from "@/lib/prisma";
 import { BookingParams, BookingStatusBody } from "@/lib/server/schemas/booking";
 import {
@@ -107,8 +108,8 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       };
 
       await logAudit({
-        action: "PRODUCT_UPDATE",
-        entityType: "product",
+        action: "BOOKING_UPDATE",
+        entityType: "booking",
         entityId: saved.id,
         details: {
           bookingCode: saved.bookingCode,
@@ -151,8 +152,8 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       };
 
       await logAudit({
-        action: "PRODUCT_DELETE",
-        entityType: "product",
+        action: "BOOKING_DELETE",
+        entityType: "booking",
         entityId: before.id,
         details: {
           bookingCode: before.bookingCode,
@@ -172,5 +173,5 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
 
 export type BookingsItemApp = typeof app;
 
-export const PATCH = app.handle;
-export const DELETE = app.handle;
+export const PATCH = withElysiaAudit(app.handle);
+export const DELETE = withElysiaAudit(app.handle);

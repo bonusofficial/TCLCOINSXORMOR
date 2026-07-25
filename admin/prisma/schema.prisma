@@ -192,8 +192,11 @@ model accounts {
 /// Audit Log — บันทึกการกระทำของผู้ใช้/ระบบ
 /// ─────────────────────────────────────────────────────────────
 ///  - action      : USER_CREATE, USER_UPDATE, USER_DELETE, USER_ROLE_CHANGE,
-///                  PRODUCT_*, BANNER_*, REVIEW_*, CONFIG_UPDATE, LOGIN, LOGOUT
-///  - entityType  : user | product | banner | review | config | session
+///                  PRODUCT_*, BANNER_*, REVIEW_*, BOOKING_*, ACCOUNT_*,
+///                  UPLOAD_CREATE, CONFIG_UPDATE, LOGIN,
+///                  LOGIN_FAILED, LOGOUT, AUTH_ERROR, API_*
+///  - entityType  : user | product | banner | review | config | session |
+///                  booking | account | upload | dashboard | api | auth | audit
 ///  - userEmail   : snapshot — เก็บไว้แสดงแม้ user ถูกลบไปแล้ว
 model audit_logs {
   id         Int      @id @default(autoincrement())

@@ -1,11 +1,23 @@
 import { Elysia } from "elysia";
 import { headers as nextHeaders } from "next/headers";
 import { auth } from "@/lib/auth";
-import {
-  logAudit,
-  type AuditAction,
-  type AuditEntityType,
-} from "@/lib/server/audit";
+import { type AuditUserSnapshot } from "@/lib/server/audit";
+
+type AuditedRequest = Request & {
+  _auditStartedAt?: number;
+  _auditRequestId?: string;
+  _auditUser?: AuditUserSnapshot | null;
+  _domainAuditLogged?: boolean;
+};
+
+function numericStatus(status: number | string | undefined): number {
+  if (typeof status === "number") return status;
+  if (typeof status === "string") {
+    const parsed = Number.parseInt(status, 10);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 200;
+}
 
 export const authPlugin = new Elysia({ name: "auth" })
   .derive({ as: "global" }, async ({ request }) => {
@@ -24,12 +36,14 @@ export const authPlugin = new Elysia({ name: "auth" })
     const session = await auth.api.getSession({
       headers: requestHeaders,
     });
+    (request as AuditedRequest)._auditUser = session?.user ?? null;
 
     return {
       session: session?.session ?? null,
       user: session?.user ?? null,
     };
   });
+
 export const authMacros = new Elysia({ name: "auth-macros" })
   .use(authPlugin)
   .macro({
@@ -47,7 +61,9 @@ export const authMacros = new Elysia({ name: "auth-macros" })
           return status(401, { ok: false, message: "กรุณาเข้าสู่ระบบ" });
         }
         const allowed = Array.isArray(role) ? role : [role];
-        const userRole = ((user as { role?: string }).role ?? "member").toLowerCase();
+        const userRole = (
+          (user as { role?: string }).role ?? "member"
+        ).toLowerCase();
         if (!allowed.includes(userRole as "admin" | "agent")) {
           return status(403, {
             ok: false,
@@ -63,130 +79,34 @@ export const authMacros = new Elysia({ name: "auth-macros" })
  * 3) LOGGER PLUGIN — log ทุก request พร้อม duration
  * ───────────────────────────────────────────── */
 
-const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const READ_ONLY_POST_PATHS = new Set([
-  "/api/v0/auth/resolve",
-  "/api/v1/profile/unique",
-]);
-
-function classifyMutation(
-  method: string,
-  path: string
-): { action: AuditAction; entityType: AuditEntityType } {
-  const operation =
-    method === "POST" ? "CREATE" : method === "DELETE" ? "DELETE" : "UPDATE";
-
-  if (/\/products(?:\/|$)/.test(path)) {
-    return {
-      action: `PRODUCT_${operation}` as AuditAction,
-      entityType: "product",
-    };
-  }
-  if (/\/users(?:\/|$)/.test(path)) {
-    return {
-      action: `USER_${operation}` as AuditAction,
-      entityType: "user",
-    };
-  }
-  if (/\/(?:setting\/)?banners?(?:\/|$)/.test(path)) {
-    return {
-      action: `BANNER_${operation}` as AuditAction,
-      entityType: "banner",
-    };
-  }
-  if (/\/(?:setting\/)?reviews?(?:\/|$)/.test(path)) {
-    return {
-      action: `REVIEW_${operation}` as AuditAction,
-      entityType: "review",
-    };
-  }
-  if (/\/setting\/normal(?:\/|$)|\/config(?:\/|$)/.test(path)) {
-    return { action: "CONFIG_UPDATE", entityType: "config" };
-  }
-  return { action: "API_MUTATION", entityType: "api" };
-}
-
-function firstRouteParam(params: unknown): string | number | null {
-  if (!params || typeof params !== "object") return null;
-  for (const value of Object.values(params as Record<string, unknown>)) {
-    if (typeof value === "string" || typeof value === "number") return value;
-  }
-  return null;
-}
-
 export const loggerPlugin = new Elysia({ name: "logger" })
   .onRequest(({ request }) => {
-    (request as Request & { _t?: number })._t = Date.now();
+    const auditedRequest = request as AuditedRequest;
+    auditedRequest._auditStartedAt = Date.now();
+    auditedRequest._auditRequestId =
+      request.headers.get("x-request-id") || crypto.randomUUID();
   })
-  .onAfterResponse(async (context) => {
-    const {
-      request,
-      set,
-      body,
-      params,
-      query,
-      responseValue,
-    } = context;
-    const start = (request as Request & { _t?: number })._t ?? Date.now();
+  .onAfterResponse(({ request, set }) => {
+    const auditedRequest = request as AuditedRequest;
+    const start = auditedRequest._auditStartedAt ?? Date.now();
     const ms = Date.now() - start;
-    const path = new URL(request.url).pathname;
-    const status = typeof set.status === "number" ? set.status : 200;
+    const url = new URL(request.url);
+    const status = numericStatus(set.status);
+
     console.log(
-      `[${new Date().toISOString()}] ${request.method} ${path} → ${status} (${ms}ms)`
+      `[${new Date().toISOString()}] ${request.method} ${url.pathname} → ${status} (${ms}ms)`
     );
-
-    const trackedRequest = request as Request & { _auditLogged?: boolean };
-    if (
-      !MUTATION_METHODS.has(request.method) ||
-      trackedRequest._auditLogged ||
-      READ_ONLY_POST_PATHS.has(path) ||
-      path.startsWith("/api/v1/audit")
-    ) {
-      return;
-    }
-
-    const { action, entityType } = classifyMutation(request.method, path);
-    const actor = (
-      context as typeof context & {
-        user?: {
-          id?: string | null;
-          email?: string | null;
-          name?: string | null;
-          username?: string | null;
-        } | null;
-      }
-    ).user;
-    const entityId = firstRouteParam(params);
-
-    await logAudit({
-      action,
-      entityType,
-      entityId,
-      details: {
-        source: "automatic-api-audit",
-        success: status < 400,
-        durationMs: ms,
-      },
-      payload: { params, query, body },
-      response: responseValue,
-      responseStatus: status,
-      user: actor ?? null,
-      request,
-    });
-  })
-  .as("global");
+  });
 
 export const errorPlugin = new Elysia({ name: "error" })
   .onError(({ code, error, set }) => {
-    // Validation error จาก Elysia t.Object
     if (code === "VALIDATION") {
       set.status = 422;
       return {
         ok: false,
         code: "VALIDATION",
         message: "ข้อมูลที่ส่งมาไม่ถูกต้อง",
-        issues:
-          (error as unknown as { all?: unknown[] }).all ?? [],
+        issues: (error as unknown as { all?: unknown[] }).all ?? [],
       };
     }
     if (code === "NOT_FOUND") {

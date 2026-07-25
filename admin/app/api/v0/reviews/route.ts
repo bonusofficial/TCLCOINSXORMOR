@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { withElysiaAudit } from "@/lib/server/audit-route";
 import { prisma } from "@/lib/prisma";
 import {
   authMacros,
@@ -79,5 +80,5 @@ const app = new Elysia({ prefix: "/api/v0/reviews" })
 
 export type ReviewsPublicApp = typeof app;
 
-export const GET = app.handle;
-export const POST = app.handle;
+export const GET = withElysiaAudit(app.handle);
+export const POST = withElysiaAudit(app.handle);

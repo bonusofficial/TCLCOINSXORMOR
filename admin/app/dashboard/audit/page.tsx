@@ -3,6 +3,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+  Activity,
+  CheckCircle2,
+  CircleX,
+  Clock3,
   Loader2,
   RefreshCw,
   ScrollText,
@@ -31,14 +35,49 @@ interface AuditLog {
   createdAt: string;
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
+interface HttpAuditDetails {
+  requestId?: string;
+  durationMs?: number;
+  occurredAt?: string;
+  authRoute?: string;
+  summary?: unknown;
+  request?: {
+    method?: string;
+    path?: string;
+    query?: unknown;
+    body?: unknown;
+    payload?: unknown;
+    headers?: unknown;
+  };
+  response?: {
+    status?: number;
+    outcome?: string;
+    body?: unknown;
+    error?: unknown;
+  };
 }
 
-function formatJson(value: unknown): string {
-  return JSON.stringify(value, null, 2) ?? String(value);
+function getHttpDetails(details: unknown): HttpAuditDetails | null {
+  if (!details || typeof details !== "object" || Array.isArray(details)) {
+    return null;
+  }
+  const value = details as HttpAuditDetails;
+  return value.request || value.response || value.requestId ? value : null;
+}
+
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString("th-TH", {
+    dateStyle: "medium",
+    timeStyle: "medium",
+  });
+}
+
+function DetailJson({ value }: { value: unknown }) {
+  return (
+    <pre className="text-[10.5px] bg-brand-surface-soft text-brand-ink-soft p-3 rounded-lg overflow-x-auto font-mono border border-brand-green-100 max-h-80">
+      {JSON.stringify(value, null, 2)}
+    </pre>
+  );
 }
 
 export default function AuditPage() {
@@ -113,7 +152,7 @@ export default function AuditPage() {
             บันทึกระบบ (Audit Logs)
           </h1>
           <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
-            ติดตามการกระทำของ admin และระบบ — เรียงใหม่สุดก่อน
+            ติดตามทุก API response, action, error และการเข้าสู่ระบบ — เรียงใหม่สุดก่อน
           </p>
         </div>
         <button
@@ -191,24 +230,13 @@ export default function AuditPage() {
             const isExpanded = expandedId === log.id;
             const actionLabel = ACTION_LABEL[log.action] ?? log.action;
             const entityLabel = ENTITY_LABEL[log.entityType] ?? log.entityType;
-            const details = asRecord(log.details);
-            const requestDetails = asRecord(details?.request);
-            const responseDetails = asRecord(details?.response);
-            const isStructured =
-              requestDetails !== null || responseDetails !== null;
-            const summary = isStructured ? details?.summary : log.details;
-            const method =
-              typeof requestDetails?.method === "string"
-                ? requestDetails.method
-                : null;
-            const path =
-              typeof requestDetails?.path === "string"
-                ? requestDetails.path
-                : null;
-            const responseStatus =
-              typeof responseDetails?.status === "number"
-                ? responseDetails.status
-                : null;
+            const http = getHttpDetails(log.details);
+            const method = http?.request?.method;
+            const path = http?.request?.path ?? http?.authRoute;
+            const status = http?.response?.status;
+            const isError =
+              http?.response?.outcome === "error" ||
+              (typeof status === "number" && status >= 400);
             return (
               <div
                 key={log.id}
@@ -236,8 +264,47 @@ export default function AuditPage() {
                         {log.entityId && ` #${log.entityId}`}
                       </span>
                     </div>
+                    {(method || path || status !== undefined) && (
+                      <div className="flex items-center gap-1.5 flex-wrap my-1">
+                        {method && (
+                          <span className="rounded bg-brand-paper px-1.5 py-0.5 font-mono text-[10px] font-black text-brand-green ring-1 ring-brand-green-100">
+                            {method}
+                          </span>
+                        )}
+                        {path && (
+                          <span className="max-w-full truncate font-mono text-[10.5px] font-bold text-brand-ink-soft">
+                            {path}
+                          </span>
+                        )}
+                        {status !== undefined && (
+                          <span
+                            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-black ${
+                              isError
+                                ? "bg-rose-500/10 text-rose-500"
+                                : "bg-emerald-500/10 text-emerald-600"
+                            }`}
+                          >
+                            {isError ? (
+                              <CircleX className="h-3 w-3" />
+                            ) : (
+                              <CheckCircle2 className="h-3 w-3" />
+                            )}
+                            {status}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="text-[11px] text-brand-ink-soft/70 font-bold inline-flex items-center gap-2">
                       <span>{timeAgo(log.createdAt)}</span>
+                      {http?.durationMs !== undefined && (
+                        <>
+                          <span>·</span>
+                          <span className="inline-flex items-center gap-1">
+                            <Clock3 className="h-3 w-3" />
+                            {http.durationMs} ms
+                          </span>
+                        </>
+                      )}
                       {log.ipAddress && (
                         <>
                           <span>·</span>
@@ -254,100 +321,106 @@ export default function AuditPage() {
                 </button>
                 {isExpanded && (
                   <div className="px-3 sm:px-4 pb-3 sm:pb-4 border-t border-brand-green-100/60 pt-3 bg-brand-paper/40">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-[11px]">
+                      <div>
+                        <div className="text-brand-ink-soft/70 font-bold">วันเวลา</div>
+                        <div className="text-brand-ink font-extrabold">
+                          {formatDateTime(log.createdAt)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-brand-ink-soft/70 font-bold">Log ID</div>
+                        <div className="text-brand-ink font-mono font-extrabold">
+                          #{log.id}
+                        </div>
+                      </div>
                       {log.userEmail && (
                         <div>
                           <div className="text-brand-ink-soft/70 font-bold">Email</div>
                           <div className="text-brand-ink font-extrabold">{log.userEmail}</div>
                         </div>
                       )}
+                      {log.userId && (
+                        <div>
+                          <div className="text-brand-ink-soft/70 font-bold">User ID</div>
+                          <div className="text-brand-ink font-mono font-extrabold break-all">
+                            {log.userId}
+                          </div>
+                        </div>
+                      )}
+                      {log.ipAddress && (
+                        <div>
+                          <div className="text-brand-ink-soft/70 font-bold">IP Address</div>
+                          <div className="text-brand-ink font-mono font-extrabold">
+                            {log.ipAddress}
+                          </div>
+                        </div>
+                      )}
+                      {http?.requestId && (
+                        <div>
+                          <div className="text-brand-ink-soft/70 font-bold">Request ID</div>
+                          <div className="text-brand-ink font-mono font-extrabold break-all">
+                            {http.requestId}
+                          </div>
+                        </div>
+                      )}
+                      {http?.durationMs !== undefined && (
+                        <div>
+                          <div className="text-brand-ink-soft/70 font-bold">ระยะเวลา</div>
+                          <div className="text-brand-ink font-extrabold">
+                            {http.durationMs} ms
+                          </div>
+                        </div>
+                      )}
                       {log.userAgent && (
-                        <div className="sm:col-span-2">
+                        <div className="sm:col-span-2 lg:col-span-3">
                           <div className="text-brand-ink-soft/70 font-bold">User Agent</div>
-                          <div className="text-brand-ink font-medium line-clamp-1">{log.userAgent}</div>
+                          <div className="text-brand-ink font-medium break-words">{log.userAgent}</div>
                         </div>
                       )}
                     </div>
-                    {isStructured && (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
-                        <section className="min-w-0 rounded-xl border border-sky-200 bg-sky-50/50 overflow-hidden">
-                          <div className="flex items-center gap-2 px-3 py-2 border-b border-sky-200 bg-sky-100/50">
-                            <span className="text-[11px] font-black text-sky-700">
-                              Request Payload
-                            </span>
-                            {method && (
-                              <span className="text-[9px] font-black font-mono rounded bg-sky-600 text-white px-1.5 py-0.5">
-                                {method}
-                              </span>
-                            )}
-                            {path && (
-                              <span className="text-[10px] font-mono text-sky-700 truncate">
-                                {path}
-                              </span>
-                            )}
+                    {http ? (
+                      <>
+                        <div className="mt-3 grid grid-cols-1 xl:grid-cols-2 gap-3">
+                          <div>
+                            <div className="mb-1 inline-flex items-center gap-1.5 text-[11px] text-brand-ink-soft/70 font-bold">
+                              <Activity className="h-3.5 w-3.5" />
+                              Request
+                            </div>
+                            <DetailJson value={http.request ?? null} />
                           </div>
-                          <div className="p-3 space-y-3">
-                            {requestDetails?.query !== undefined &&
-                              Object.keys(
-                                asRecord(requestDetails.query) ?? {}
-                              ).length > 0 && (
-                                <div>
-                                  <div className="text-[10px] font-extrabold text-sky-700/70 mb-1">
-                                    Query
-                                  </div>
-                                  <pre className="text-[10.5px] bg-brand-surface text-brand-ink p-2.5 rounded-lg overflow-x-auto font-mono border border-sky-100">
-                                    {formatJson(requestDetails.query)}
-                                  </pre>
-                                </div>
+                          <div>
+                            <div className="mb-1 inline-flex items-center gap-1.5 text-[11px] text-brand-ink-soft/70 font-bold">
+                              {isError ? (
+                                <CircleX className="h-3.5 w-3.5 text-rose-500" />
+                              ) : (
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                               )}
-                            <div>
-                              <div className="text-[10px] font-extrabold text-sky-700/70 mb-1">
-                                Body / Params
-                              </div>
-                              <pre className="text-[10.5px] bg-brand-surface text-brand-ink p-2.5 rounded-lg overflow-x-auto font-mono border border-sky-100">
-                                {formatJson(requestDetails?.payload ?? null)}
-                              </pre>
-                            </div>
-                          </div>
-                        </section>
-
-                        <section className="min-w-0 rounded-xl border border-emerald-200 bg-emerald-50/50 overflow-hidden">
-                          <div className="flex items-center gap-2 px-3 py-2 border-b border-emerald-200 bg-emerald-100/50">
-                            <span className="text-[11px] font-black text-emerald-700">
                               Response
-                            </span>
-                            {responseStatus !== null && (
-                              <span
-                                className={`text-[9px] font-black font-mono rounded px-1.5 py-0.5 ${
-                                  responseStatus >= 400
-                                    ? "bg-rose-600 text-white"
-                                    : "bg-emerald-600 text-white"
-                                }`}
-                              >
-                                HTTP {responseStatus}
-                              </span>
-                            )}
-                          </div>
-                          <div className="p-3">
-                            <div className="text-[10px] font-extrabold text-emerald-700/70 mb-1">
-                              Response Body
                             </div>
-                            <pre className="text-[10.5px] bg-brand-surface text-brand-ink p-2.5 rounded-lg overflow-x-auto font-mono border border-emerald-100">
-                              {formatJson(responseDetails?.body ?? null)}
-                            </pre>
+                            <DetailJson value={http.response ?? null} />
                           </div>
-                        </section>
-                      </div>
-                    )}
-                    {summary !== null && summary !== undefined && (
-                      <div className="mt-3">
-                        <div className="text-[11px] text-brand-ink-soft/70 font-bold mb-1">
-                          {isStructured ? "Operation Summary" : "Details"}
                         </div>
-                        <pre className="text-[10.5px] bg-brand-surface-soft text-brand-ink-soft p-3 rounded-lg overflow-x-auto font-mono border border-brand-green-100">
-                          {formatJson(summary)}
-                        </pre>
-                      </div>
+                        {http.summary !== null &&
+                          http.summary !== undefined && (
+                            <div className="mt-3">
+                              <div className="text-[11px] text-brand-ink-soft/70 font-bold mb-1">
+                                Operation Summary
+                              </div>
+                              <DetailJson value={http.summary} />
+                            </div>
+                          )}
+                      </>
+                    ) : (
+                      log.details !== null &&
+                      log.details !== undefined && (
+                        <div className="mt-3">
+                          <div className="text-[11px] text-brand-ink-soft/70 font-bold mb-1">
+                            Details
+                          </div>
+                          <DetailJson value={log.details} />
+                        </div>
+                      )
                     )}
                   </div>
                 )}

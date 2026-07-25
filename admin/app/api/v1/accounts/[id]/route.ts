@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { withElysiaAudit } from "@/lib/server/audit-route";
 import { prisma } from "@/lib/prisma";
 import { AccountBody, AccountParams } from "@/lib/server/schemas/booking";
 import {
@@ -71,5 +72,5 @@ const app = new Elysia({ prefix: "/api/v1/accounts" })
 
 export type AccountsItemApp = typeof app;
 
-export const PATCH = app.handle;
-export const DELETE = app.handle;
+export const PATCH = withElysiaAudit(app.handle);
+export const DELETE = withElysiaAudit(app.handle);

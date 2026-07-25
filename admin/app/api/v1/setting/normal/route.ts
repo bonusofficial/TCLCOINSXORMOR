@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { withElysiaAudit } from "@/lib/server/audit-route";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import {
@@ -171,5 +172,5 @@ const app = new Elysia({ prefix: "/api/v1/setting/normal" })
 
 export type SettingNormalApp = typeof app;
 
-export const GET = app.handle;
-export const PUT = app.handle;
+export const GET = withElysiaAudit(app.handle);
+export const PUT = withElysiaAudit(app.handle);

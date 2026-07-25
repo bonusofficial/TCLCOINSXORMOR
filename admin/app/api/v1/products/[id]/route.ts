@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { withElysiaAudit } from "@/lib/server/audit-route";
 import { prisma } from "@/lib/prisma";
 import { ProductBody } from "@/lib/server/schemas/product";
 import {
@@ -96,6 +97,6 @@ const app = new Elysia({ prefix: "/api/v1/products" })
 
 export type ProductsItemApp = typeof app;
 
-export const GET = app.handle;
-export const PATCH = app.handle;
-export const DELETE = app.handle;
+export const GET = withElysiaAudit(app.handle);
+export const PATCH = withElysiaAudit(app.handle);
+export const DELETE = withElysiaAudit(app.handle);

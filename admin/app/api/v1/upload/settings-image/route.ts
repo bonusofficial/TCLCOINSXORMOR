@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
-import { auth } from "@/lib/auth";
+import { withApiAudit } from "@/lib/server/audit-route";
 import { getUploadFileTarget } from "@/lib/server/upload-storage";
 
 export const runtime = "nodejs";
@@ -77,10 +77,10 @@ function detectImage(buffer: Buffer): DetectedImage | null {
   return null;
 }
 
-export async function POST(request: Request) {
-  const session = await auth.api.getSession({ headers: request.headers });
-  const user = session?.user as { role?: string } | undefined;
-
+async function handlePost(
+  request: Request,
+  user: { role?: string | null } | null
+): Promise<Response> {
   if (!user) {
     return json(
       { ok: false, message: "กรุณาเข้าสู่ระบบก่อนอัปโหลดไฟล์" },
@@ -180,5 +180,18 @@ export async function POST(request: Request) {
       contentType: detected.mime,
     },
     { status: 201 }
+  );
+}
+
+export function POST(request: Request): Promise<Response> {
+  return withApiAudit(
+    request,
+    {
+      entityType: "upload",
+      entityId: "settings",
+      captureRequestBody: true,
+      successAction: "UPLOAD_CREATE",
+    },
+    (auditedRequest, { user }) => handlePost(auditedRequest, user)
   );
 }
