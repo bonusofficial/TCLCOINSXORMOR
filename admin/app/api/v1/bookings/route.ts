@@ -100,7 +100,13 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       // ตัดสต็อก -1
       await adjustProductStock(body.productId ?? null, -1);
 
-      logAudit({
+      const responsePayload = {
+        ok: true as const,
+        message: "จองสำเร็จ",
+        data: shape(saved),
+      };
+
+      await logAudit({
         action: "PRODUCT_CREATE", // booking-related — เก็บใน entity booking
         entityType: "product",
         entityId: saved.id,
@@ -110,15 +116,13 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
           price: body.price,
           stockDelta: -1,
         },
+        payload: body,
+        response: responsePayload,
         user,
         request,
       });
 
-      return {
-        ok: true as const,
-        message: "จองสำเร็จ",
-        data: shape(saved),
-      };
+      return responsePayload;
     },
     { body: BookingCreateBody, requireRole: "admin" }
   );

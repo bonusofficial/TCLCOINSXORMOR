@@ -100,7 +100,13 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
         await adjustProductStock(saved.productId, delta);
       }
 
-      logAudit({
+      const responsePayload = {
+        ok: true as const,
+        message: `อัปเดตสถานะเป็น "${body.status}"`,
+        data: shape(saved),
+      };
+
+      await logAudit({
         action: "PRODUCT_UPDATE",
         entityType: "product",
         entityId: saved.id,
@@ -110,15 +116,13 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
           after: { status: saved.status },
           stockDelta: delta,
         },
+        payload: { params, body },
+        response: responsePayload,
         user,
         request,
       });
 
-      return {
-        ok: true as const,
-        message: `อัปเดตสถานะเป็น "${body.status}"`,
-        data: shape(saved),
-      };
+      return responsePayload;
     },
     { params: BookingParams, body: BookingStatusBody, requireRole: "admin" }
   )
@@ -141,7 +145,12 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
         await adjustProductStock(before.productId, +1);
       }
 
-      logAudit({
+      const responsePayload = {
+        ok: true as const,
+        message: "ลบการจองแล้ว",
+      };
+
+      await logAudit({
         action: "PRODUCT_DELETE",
         entityType: "product",
         entityId: before.id,
@@ -150,11 +159,13 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
           productName: before.productName,
           stockDelta: wasActive ? +1 : 0,
         },
+        payload: { params },
+        response: responsePayload,
         user,
         request,
       });
 
-      return { ok: true as const, message: "ลบการจองแล้ว" };
+      return responsePayload;
     },
     { params: BookingParams, requireRole: "admin" }
   );
