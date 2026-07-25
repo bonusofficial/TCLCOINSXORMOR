@@ -66,7 +66,13 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       // คืนสต็อก +1
       await adjustProductStock(before.productId, +1);
 
-      logAudit({
+      const responsePayload = {
+        ok: true as const,
+        message: "ยกเลิกการจองคิวสำเร็จ",
+        data: shape(saved),
+      };
+
+      await logAudit({
         action: "PRODUCT_UPDATE",
         entityType: "product",
         entityId: saved.id,
@@ -75,15 +81,13 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
           action: "USER_CANCEL",
           stockDelta: +1,
         },
+        payload: { params },
+        response: responsePayload,
         user,
         request,
       });
 
-      return {
-        ok: true as const,
-        message: "ยกเลิกการจองคิวสำเร็จ",
-        data: shape(saved),
-      };
+      return responsePayload;
     },
     { params: BookingParams, requireAuth: true }
   );

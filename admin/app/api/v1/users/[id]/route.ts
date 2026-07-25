@@ -196,7 +196,13 @@ const app = new Elysia({ prefix: "/api/v1/users" })
 
       // determine action type
       const isRoleChange = body.role !== undefined && body.role !== before.role;
-      logAudit({
+      const responsePayload = {
+        ok: true as const,
+        message: "อัปเดตผู้ใช้แล้ว",
+        data: shape(saved),
+      };
+
+      await logAudit({
         action: isRoleChange ? "USER_ROLE_CHANGE" : "USER_UPDATE",
         entityType: "user",
         entityId: saved.id,
@@ -228,15 +234,13 @@ const app = new Elysia({ prefix: "/api/v1/users" })
             lineId: saved.lineId,
           },
         },
+        payload: { params, body },
+        response: responsePayload,
         user: actor,
         request,
       });
 
-      return {
-        ok: true as const,
-        message: "อัปเดตผู้ใช้แล้ว",
-        data: shape(saved),
-      };
+      return responsePayload;
     },
     { params: Params, body: UserUpdateBody, requireRole: "admin" }
   )
@@ -256,7 +260,12 @@ const app = new Elysia({ prefix: "/api/v1/users" })
 
       await prisma.user.delete({ where: { id: params.id } });
 
-      logAudit({
+      const responsePayload = {
+        ok: true as const,
+        message: "ลบผู้ใช้แล้ว",
+      };
+
+      await logAudit({
         action: "USER_DELETE",
         entityType: "user",
         entityId: before.id,
@@ -267,11 +276,13 @@ const app = new Elysia({ prefix: "/api/v1/users" })
             role: before.role,
           },
         },
+        payload: { params },
+        response: responsePayload,
         user: actor,
         request,
       });
 
-      return { ok: true as const, message: "ลบผู้ใช้แล้ว" };
+      return responsePayload;
     },
     { params: Params, requireRole: "admin" }
   );

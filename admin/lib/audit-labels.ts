@@ -12,11 +12,13 @@ export const ACTION_LABEL: Record<string, string> = {
   PRODUCT_UPDATE: "แก้ไขสินค้า",
   PRODUCT_DELETE: "ลบสินค้า",
   BANNER_CREATE: "เพิ่ม banner",
+  BANNER_UPDATE: "แก้ไข banner",
   BANNER_DELETE: "ลบ banner",
   REVIEW_CREATE: "เพิ่มรีวิว",
   REVIEW_UPDATE: "แก้ไขรีวิว",
   REVIEW_DELETE: "ลบรีวิว",
   CONFIG_UPDATE: "แก้ไขการตั้งค่า",
+  API_MUTATION: "แก้ไขผ่าน API",
   LOGIN: "เข้าสู่ระบบ",
   LOGOUT: "ออกจากระบบ",
 };

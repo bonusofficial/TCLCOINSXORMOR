@@ -31,6 +31,16 @@ interface AuditLog {
   createdAt: string;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function formatJson(value: unknown): string {
+  return JSON.stringify(value, null, 2) ?? String(value);
+}
+
 export default function AuditPage() {
   const [items, setItems] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,6 +191,24 @@ export default function AuditPage() {
             const isExpanded = expandedId === log.id;
             const actionLabel = ACTION_LABEL[log.action] ?? log.action;
             const entityLabel = ENTITY_LABEL[log.entityType] ?? log.entityType;
+            const details = asRecord(log.details);
+            const requestDetails = asRecord(details?.request);
+            const responseDetails = asRecord(details?.response);
+            const isStructured =
+              requestDetails !== null || responseDetails !== null;
+            const summary = isStructured ? details?.summary : log.details;
+            const method =
+              typeof requestDetails?.method === "string"
+                ? requestDetails.method
+                : null;
+            const path =
+              typeof requestDetails?.path === "string"
+                ? requestDetails.path
+                : null;
+            const responseStatus =
+              typeof responseDetails?.status === "number"
+                ? responseDetails.status
+                : null;
             return (
               <div
                 key={log.id}
@@ -240,11 +268,84 @@ export default function AuditPage() {
                         </div>
                       )}
                     </div>
-                    {log.details !== null && log.details !== undefined && (
+                    {isStructured && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+                        <section className="min-w-0 rounded-xl border border-sky-200 bg-sky-50/50 overflow-hidden">
+                          <div className="flex items-center gap-2 px-3 py-2 border-b border-sky-200 bg-sky-100/50">
+                            <span className="text-[11px] font-black text-sky-700">
+                              Request Payload
+                            </span>
+                            {method && (
+                              <span className="text-[9px] font-black font-mono rounded bg-sky-600 text-white px-1.5 py-0.5">
+                                {method}
+                              </span>
+                            )}
+                            {path && (
+                              <span className="text-[10px] font-mono text-sky-700 truncate">
+                                {path}
+                              </span>
+                            )}
+                          </div>
+                          <div className="p-3 space-y-3">
+                            {requestDetails?.query !== undefined &&
+                              Object.keys(
+                                asRecord(requestDetails.query) ?? {}
+                              ).length > 0 && (
+                                <div>
+                                  <div className="text-[10px] font-extrabold text-sky-700/70 mb-1">
+                                    Query
+                                  </div>
+                                  <pre className="text-[10.5px] bg-brand-surface text-brand-ink p-2.5 rounded-lg overflow-x-auto font-mono border border-sky-100">
+                                    {formatJson(requestDetails.query)}
+                                  </pre>
+                                </div>
+                              )}
+                            <div>
+                              <div className="text-[10px] font-extrabold text-sky-700/70 mb-1">
+                                Body / Params
+                              </div>
+                              <pre className="text-[10.5px] bg-brand-surface text-brand-ink p-2.5 rounded-lg overflow-x-auto font-mono border border-sky-100">
+                                {formatJson(requestDetails?.payload ?? null)}
+                              </pre>
+                            </div>
+                          </div>
+                        </section>
+
+                        <section className="min-w-0 rounded-xl border border-emerald-200 bg-emerald-50/50 overflow-hidden">
+                          <div className="flex items-center gap-2 px-3 py-2 border-b border-emerald-200 bg-emerald-100/50">
+                            <span className="text-[11px] font-black text-emerald-700">
+                              Response
+                            </span>
+                            {responseStatus !== null && (
+                              <span
+                                className={`text-[9px] font-black font-mono rounded px-1.5 py-0.5 ${
+                                  responseStatus >= 400
+                                    ? "bg-rose-600 text-white"
+                                    : "bg-emerald-600 text-white"
+                                }`}
+                              >
+                                HTTP {responseStatus}
+                              </span>
+                            )}
+                          </div>
+                          <div className="p-3">
+                            <div className="text-[10px] font-extrabold text-emerald-700/70 mb-1">
+                              Response Body
+                            </div>
+                            <pre className="text-[10.5px] bg-brand-surface text-brand-ink p-2.5 rounded-lg overflow-x-auto font-mono border border-emerald-100">
+                              {formatJson(responseDetails?.body ?? null)}
+                            </pre>
+                          </div>
+                        </section>
+                      </div>
+                    )}
+                    {summary !== null && summary !== undefined && (
                       <div className="mt-3">
-                        <div className="text-[11px] text-brand-ink-soft/70 font-bold mb-1">Details</div>
+                        <div className="text-[11px] text-brand-ink-soft/70 font-bold mb-1">
+                          {isStructured ? "Operation Summary" : "Details"}
+                        </div>
                         <pre className="text-[10.5px] bg-brand-surface-soft text-brand-ink-soft p-3 rounded-lg overflow-x-auto font-mono border border-brand-green-100">
-                          {JSON.stringify(log.details, null, 2)}
+                          {formatJson(summary)}
                         </pre>
                       </div>
                     )}
