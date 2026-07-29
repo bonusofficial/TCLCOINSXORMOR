@@ -42,6 +42,13 @@ function shape(b: {
   userId: string | null;
   username: string;
   phone: string;
+  recipientFirstName: string | null;
+  recipientLastName: string | null;
+  addressLine: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
   content: string | null;
   price: { toString(): string };
   status: string;
@@ -134,6 +141,30 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
     async ({ body, user, request, status: code }) => {
       if (body.productId == null) {
         return code(400, { ok: false, message: "ต้องระบุสินค้าที่ต้องการจอง" });
+      }
+
+      const delivery = {
+        recipientFirstName: body.recipientFirstName?.trim() ?? "",
+        recipientLastName: body.recipientLastName?.trim() ?? "",
+        addressLine: body.addressLine?.trim() ?? "",
+        subdistrict: body.subdistrict?.trim() ?? "",
+        district: body.district?.trim() ?? "",
+        province: body.province?.trim() ?? "",
+        postalCode: body.postalCode?.trim() ?? "",
+      };
+      if (
+        !delivery.recipientFirstName ||
+        !delivery.recipientLastName ||
+        !delivery.addressLine ||
+        !delivery.subdistrict ||
+        !delivery.district ||
+        !delivery.province ||
+        !/^\d{5}$/.test(delivery.postalCode)
+      ) {
+        return code(400, {
+          ok: false,
+          message: "กรุณากรอกชื่อผู้รับและที่อยู่จัดส่งให้ครบถ้วน",
+        });
       }
 
       // โหลดสินค้าเพื่อตรวจสอบความถูกต้องของข้อมูล
@@ -283,6 +314,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
                 userId: user.id,
                 username: accountUsername ?? body.username,
                 phone: body.phone,
+                ...delivery,
                 content: body.content ?? null,
                 price, // ราคาที่เซิร์ฟเวอร์คำนวณเอง
                 bookingDate: bookingDateUTC, // วันไทยของเซิร์ฟเวอร์

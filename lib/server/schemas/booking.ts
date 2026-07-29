@@ -5,7 +5,15 @@ export const BookingCreateBody = t.Object({
   productCode: t.Optional(t.String()),
   productName: t.String({ minLength: 1, error: "ต้องระบุชื่อสินค้า" }),
   username: t.String({ minLength: 1, error: "ต้องระบุชื่อผู้ใช้" }),
-  phone: t.String({ minLength: 6, maxLength: 30, error: "เบอร์โทรไม่ถูกต้อง" }),
+  phone: t.String({ pattern: "^\\d{10}$", error: "เบอร์โทรต้องเป็นตัวเลข 10 หลัก" }),
+  recipientFirstName: t.Optional(t.String({ minLength: 1, maxLength: 120 })),
+  recipientLastName: t.Optional(t.String({ minLength: 1, maxLength: 120 })),
+  addressLine: t.Optional(t.String({ minLength: 3, maxLength: 1000 })),
+  subdistrict: t.Optional(t.String({ minLength: 1, maxLength: 120 })),
+  district: t.Optional(t.String({ minLength: 1, maxLength: 120 })),
+  province: t.Optional(t.String({ minLength: 1, maxLength: 120 })),
+  postalCode: t.Optional(t.String({ pattern: "^\\d{5}$" })),
+  topupRoundCode: t.Optional(t.String({ minLength: 1, maxLength: 80 })),
   content: t.Optional(t.String()),
   price: t.Number({ minimum: 0 }),
   bookingDate: t.String({ pattern: "^\\d{4}-\\d{2}-\\d{2}$" }),
@@ -19,6 +27,28 @@ export const BookingStatusBody = t.Object({
     t.Literal("สำเร็จ"),
     t.Literal("ยกเลิก"),
   ]),
+});
+
+export const BookingAdminUpdateBody = t.Object({
+  status: t.Optional(
+    t.Union([
+      t.Literal("รอตรวจสอบ"),
+      t.Literal("กำลังดำเนินการ"),
+      t.Literal("สำเร็จ"),
+      t.Literal("ยกเลิก"),
+    ])
+  ),
+  phone: t.Optional(t.String({ pattern: "^\\d{10}$" })),
+  recipientFirstName: t.Optional(t.String({ minLength: 1, maxLength: 120 })),
+  recipientLastName: t.Optional(t.String({ minLength: 1, maxLength: 120 })),
+  addressLine: t.Optional(t.String({ minLength: 3, maxLength: 1000 })),
+  subdistrict: t.Optional(t.String({ minLength: 1, maxLength: 120 })),
+  district: t.Optional(t.String({ minLength: 1, maxLength: 120 })),
+  province: t.Optional(t.String({ minLength: 1, maxLength: 120 })),
+  postalCode: t.Optional(t.String({ pattern: "^\\d{5}$" })),
+  content: t.Optional(t.Union([t.String({ maxLength: 500 }), t.Null()])),
+  price: t.Optional(t.Number({ minimum: 0 })),
+  cost: t.Optional(t.Number({ minimum: 0 })),
 });
 
 export const BookingParams = t.Object({

@@ -12,6 +12,23 @@ export interface TimeSlot {
   end: string;   // "18:08"
 }
 
+export interface TopupRound {
+  code: string;
+  name: string;
+  start: string;
+  end: string;
+  capacity: number;
+  enabled: boolean;
+  sortOrder: number;
+}
+
+export interface SaleSchedule {
+  date: string;
+  bookingStart: string;
+  bookingEnd: string;
+  rounds: TopupRound[];
+}
+
 /** Username ของผู้ได้รับส่วนลดพิเศษ */
 export type DiscountUsername = string;
 
@@ -32,6 +49,7 @@ export interface ProductParsed {
   maxPerUserPerDay: number;
   saleDates: SaleDate[];
   timeSlots: TimeSlot[];
+  saleSchedules: SaleSchedule[];
   discountEligibleUsernames: DiscountUsername[];
   discountAmount: string;
   note: string | null;
@@ -54,6 +72,7 @@ export interface ProductInput {
   maxPerUserPerDay?: number;
   saleDates: SaleDate[];
   timeSlots: TimeSlot[];
+  saleSchedules?: SaleSchedule[];
   discountEligibleUsernames: DiscountUsername[];
   discountAmount: number;
   note?: string | null;
@@ -85,6 +104,43 @@ export function validateProductInput(input: ProductInput): string | null {
   const dateRe = /^\d{4}-\d{2}-\d{2}$/;
   for (const d of input.saleDates) {
     if (!dateRe.test(d)) return `รูปแบบวันที่ต้องเป็น YYYY-MM-DD (พบ: ${d})`;
+  }
+
+  const scheduleDates = new Set<string>();
+  for (const schedule of input.saleSchedules ?? []) {
+    if (!dateRe.test(schedule.date)) {
+      return `รูปแบบวันที่ตารางขายไม่ถูกต้อง: ${schedule.date}`;
+    }
+    if (scheduleDates.has(schedule.date)) {
+      return `วันที่ ${schedule.date} ถูกตั้งค่าซ้ำ`;
+    }
+    scheduleDates.add(schedule.date);
+    if (
+      !timeRe.test(schedule.bookingStart) ||
+      !timeRe.test(schedule.bookingEnd) ||
+      schedule.bookingStart >= schedule.bookingEnd
+    ) {
+      return `ช่วงเวลาเปิดรับจองวันที่ ${schedule.date} ไม่ถูกต้อง`;
+    }
+    const roundCodes = new Set<string>();
+    for (const round of schedule.rounds) {
+      const code = round.code.trim();
+      if (!code || !round.name.trim()) return "รหัสรอบและชื่อรอบห้ามว่าง";
+      if (roundCodes.has(code)) {
+        return `รหัสรอบ ${code} ซ้ำในวันที่ ${schedule.date}`;
+      }
+      roundCodes.add(code);
+      if (
+        !timeRe.test(round.start) ||
+        !timeRe.test(round.end) ||
+        round.start >= round.end
+      ) {
+        return `เวลาของ ${round.name} วันที่ ${schedule.date} ไม่ถูกต้อง`;
+      }
+      if (!Number.isInteger(round.capacity) || round.capacity < 1) {
+        return `จำนวนที่รับของ ${round.name} ต้องอย่างน้อย 1`;
+      }
+    }
   }
 
   return null; // ผ่านหมด

@@ -2,8 +2,8 @@
  * Booking helpers — shared client/server
  */
 
-export type BookingPrefix = "MB" | "AG" | "ADM";
-export type UserRole = "member" | "agent" | "admin";
+export type BookingPrefix = "MB" | "VIP" | "AG" | "ADM";
+export type UserRole = "member" | "vip" | "agent" | "admin";
 
 export const BOOKING_STATUSES = [
   "รอตรวจสอบ",
@@ -18,6 +18,7 @@ export function bookingPrefix(role: UserRole | string | null | undefined): Booki
   const r = (role ?? "").toLowerCase().trim();
   if (r === "admin") return "ADM";
   if (r === "agent") return "AG";
+  if (r === "vip") return "VIP";
   return "MB";
 }
 
@@ -35,6 +36,7 @@ function random4(): string {
 /**
  * Generate booking code — รูปแบบใหม่:
  *   MB-DDMMYYYY-XXXX  (ลูกค้าทั่วไป)
+ *   VIP-DDMMYYYY-XXXX (สมาชิก VIP)
  *   AG-DDMMYYYY-XXXX  (ตัวแทน)
  *   ADM-DDMMYYYY-XXXX (แอดมิน)
  */

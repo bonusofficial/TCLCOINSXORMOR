@@ -22,7 +22,7 @@ import { publicApi } from "@/lib/eden";
 interface HeroSectionProps {
   onOpenAuth?: (tab: "login" | "register") => void;
   isLoggedIn?: boolean;
-  userRole?: "member" | "agent" | "admin";
+  userRole?: "member" | "vip" | "agent" | "admin";
 }
 
 interface Banner {

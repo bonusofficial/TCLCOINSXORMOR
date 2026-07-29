@@ -55,6 +55,9 @@ interface BookingItem {
   username: string;
   price: string;
   status: string;
+  topupRoundName: string | null;
+  topupRoundStart: string | null;
+  topupRoundEnd: string | null;
   createdAt: string;
 }
 
@@ -562,6 +565,14 @@ export default function DashboardPage() {
                             <Coins className="h-3 w-3 text-brand-gold-deep flex-shrink-0" />
                             {b.productName} · ฿{fmtMoney(Number(b.price))}
                           </div>
+                          {b.topupRoundName && (
+                            <div className="mt-0.5 truncate text-[10px] font-black text-brand-green">
+                              รอบเติม: {b.topupRoundName}
+                              {b.topupRoundStart && b.topupRoundEnd
+                                ? ` ${b.topupRoundStart}–${b.topupRoundEnd} น.`
+                                : ""}
+                            </div>
+                          )}
                         </div>
                         <div className="text-right flex-shrink-0">
                           <span

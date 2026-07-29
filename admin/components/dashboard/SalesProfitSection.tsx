@@ -21,6 +21,12 @@ import {
   Receipt,
   ChevronDown,
   ArrowUpDown,
+  Clock3,
+  Crown,
+  Phone,
+  Shield,
+  Store,
+  UserRound,
 } from "lucide-react";
 import { accountsApi } from "@/lib/eden";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -34,18 +40,60 @@ import {
 } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 
+type CustomerRole = "member" | "vip" | "agent" | "admin";
+
 interface SalesRow {
   id: number;
   bookingCode: string;
   productName: string;
   username: string;
+  recipientFirstName: string | null;
+  recipientLastName: string | null;
+  phone: string;
+  customerRole: CustomerRole;
   salePrice: string;
   cost: string;
   profit: string;
   completedAt: string;
+  bookedAt: string;
   bookingDate: string;
   bookingTime: string | null;
+  bookingWindowStart: string | null;
+  bookingWindowEnd: string | null;
+  topupRoundName: string | null;
+  topupRoundStart: string | null;
+  topupRoundEnd: string | null;
 }
+
+const ROLE_META = {
+  member: {
+    label: "สมาชิก",
+    icon: UserRound,
+    classes: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600",
+  },
+  vip: {
+    label: "VIP",
+    icon: Crown,
+    classes: "border-amber-500/30 bg-amber-500/10 text-amber-600",
+  },
+  agent: {
+    label: "ตัวแทน",
+    icon: Store,
+    classes: "border-teal-500/30 bg-teal-500/10 text-teal-600",
+  },
+  admin: {
+    label: "ผู้ดูแลระบบ",
+    icon: Shield,
+    classes: "border-sky-500/30 bg-sky-500/10 text-sky-600",
+  },
+} satisfies Record<
+  CustomerRole,
+  {
+    label: string;
+    icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+    classes: string;
+  }
+>;
 
 const fmt = (v: string | number) =>
   Number(v).toLocaleString("en-US", {
@@ -60,6 +108,22 @@ const fmtDateOnly = (s: string) =>
     month: "short",
     year: "2-digit",
   });
+
+const fmtDateTime = (s: string) =>
+  new Date(s).toLocaleString("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+const fullName = (row: SalesRow) =>
+  [row.recipientFirstName, row.recipientLastName]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(" ") || "ไม่ระบุชื่อจริง";
 
 const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 const monthKey = (s: string) => {
@@ -103,7 +167,8 @@ export default function SalesProfitSection() {
     setCurrentPage(1);
   }, [dateFilter, selectedSpecificDate, selectedMonth, sortOrder]);
 
-  // กรองตามช่วงเวลา (ใช้ bookingDate = วันคิวที่จอง — เสถียร ไม่เพี้ยนตาม updatedAt)
+  // หน้าบัญชียึดวันที่ปิดงานจริง เพื่อให้ออเดอร์ที่เพิ่งกด "สำเร็จ"
+  // แสดงในรายรับของวันนั้น แม้วันที่คิวจะเป็นคนละวัน
   const filtered = useMemo(() => {
     if (dateFilter === "all") return rows;
     const now = new Date();
@@ -113,12 +178,11 @@ export default function SalesProfitSection() {
     startOfWeek.setDate(startOfToday.getDate() + (dow === 0 ? -6 : 1 - dow));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     return rows.filter((r) => {
-      // ใช้ "วันคิวที่จอง" (bookingDate) เป็นเกณฑ์ — เสถียร ไม่โดน bump เหมือน updatedAt
-      const d = new Date(r.bookingDate);
+      const d = new Date(r.completedAt);
       if (dateFilter === "today" && d < startOfToday) return false;
       if (dateFilter === "this_week" && d < startOfWeek) return false;
       if (dateFilter === "this_month" && d < startOfMonth) return false;
-      if (dateFilter === "month" && selectedMonth && monthKey(r.bookingDate) !== selectedMonth) return false;
+      if (dateFilter === "month" && selectedMonth && monthKey(r.completedAt) !== selectedMonth) return false;
       if (dateFilter === "custom" && selectedSpecificDate) {
         const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         if (ds !== selectedSpecificDate) return false;
@@ -129,8 +193,8 @@ export default function SalesProfitSection() {
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const ta = new Date(a.bookingDate).getTime();
-      const tb = new Date(b.bookingDate).getTime();
+      const ta = new Date(a.completedAt).getTime();
+      const tb = new Date(b.completedAt).getTime();
       return sortOrder === "newest" ? tb - ta : ta - tb;
     });
   }, [filtered, sortOrder]);
@@ -143,7 +207,7 @@ export default function SalesProfitSection() {
   // เดือนที่มีข้อมูล (สำหรับ dropdown)
   const monthOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const r of rows) set.add(monthKey(r.bookingDate));
+    for (const r of rows) set.add(monthKey(r.completedAt));
     return Array.from(set).sort().reverse();
   }, [rows]);
 
@@ -162,7 +226,7 @@ export default function SalesProfitSection() {
   const monthlyBreakdown = useMemo(() => {
     const map = new Map<string, { sales: number; cost: number; profit: number }>();
     for (const r of filtered) {
-      const k = monthKey(r.bookingDate);
+      const k = monthKey(r.completedAt);
       const e = map.get(k) ?? { sales: 0, cost: 0, profit: 0 };
       e.sales += Number(r.salePrice) || 0;
       e.cost += Number(r.cost) || 0;
@@ -211,9 +275,45 @@ export default function SalesProfitSection() {
 
     // รายการทั้งหมด
     out.push(["รายการทั้งหมด"].map(q).join(","));
-    out.push(["วันที่จอง", "ช่วงเวลา", "สินค้า", "ราคาขาย", "ต้นทุน", "กำไร", "ลูกค้า", "รหัสจอง"].map(q).join(","));
+    out.push([
+      "วันที่และเวลาทำรายการจอง",
+      "วันที่และเวลาปิดงานสำเร็จ",
+      "วันที่เปิดรับจอง",
+      "ช่วงเวลาเปิดรับจอง",
+      "ชื่อรอบเติม",
+      "เวลารอบเติม",
+      "สินค้า",
+      "ราคาขาย",
+      "ต้นทุน",
+      "กำไร",
+      "ชื่อ–นามสกุลจริง",
+      "Username",
+      "เบอร์โทรศัพท์",
+      "ยศลูกค้า",
+      "รหัสจอง",
+    ].map(q).join(","));
     for (const r of sorted) {
-      out.push([fmtDateOnly(r.bookingDate), r.bookingTime ?? "—", r.productName, r.salePrice, r.cost, r.profit, r.username, r.bookingCode].map(q).join(","));
+      out.push([
+        fmtDateTime(r.bookedAt),
+        fmtDateTime(r.completedAt),
+        fmtDateOnly(r.bookingDate),
+        r.bookingWindowStart && r.bookingWindowEnd
+          ? `${r.bookingWindowStart}–${r.bookingWindowEnd}`
+          : r.bookingTime ?? "—",
+        r.topupRoundName ?? "—",
+        r.topupRoundStart && r.topupRoundEnd
+          ? `${r.topupRoundStart}–${r.topupRoundEnd}`
+          : "—",
+        r.productName,
+        r.salePrice,
+        r.cost,
+        r.profit,
+        fullName(r),
+        r.username,
+        r.phone,
+        ROLE_META[r.customerRole].label,
+        r.bookingCode,
+      ].map(q).join(","));
     }
     const csv = "﻿" + out.join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -393,36 +493,61 @@ export default function SalesProfitSection() {
           <p className="text-xs text-brand-ink-soft font-bold">
             {rows.length === 0
               ? "เมื่อกดสำเร็จในหน้าจองคิว ออเดอร์จะถูกดึงมาคำนวณกำไรที่นี่อัตโนมัติ"
-              : "ลองเปลี่ยนช่วงเวลาหรือเดือนที่เลือก"}
+              : `มีออเดอร์สำเร็จทั้งหมด ${rows.length} รายการ แต่ไม่มีรายการที่ปิดงานในช่วงนี้`}
           </p>
+          {rows.length > 0 && dateFilter !== "all" && (
+            <button
+              type="button"
+              onClick={() => {
+                setDateFilter("all");
+                setSelectedSpecificDate("");
+                setSelectedMonth("");
+              }}
+              className="mt-4 rounded-xl bg-brand-green px-4 py-2.5 text-sm font-black text-white shadow-md shadow-brand-green/20 hover:bg-brand-green-600"
+            >
+              แสดงทั้งหมด {rows.length} รายการ
+            </button>
+          )}
         </div>
       ) : (
         <>
-          <div className="bg-brand-surface border border-brand-green-100 rounded-2xl overflow-hidden shadow-xs">
-            <Table>
+          <div className="bg-brand-surface border border-brand-green-100 rounded-2xl overflow-x-auto shadow-xs">
+            <Table className="min-w-[1180px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="py-3 px-4 whitespace-nowrap">วันที่</TableHead>
+                  <TableHead className="py-3 px-4 whitespace-nowrap">วันที่–เวลาจอง</TableHead>
                   <TableHead className="py-3 px-3">สินค้า</TableHead>
+                  <TableHead className="py-3 px-3 whitespace-nowrap">รอบเติมที่เลือก</TableHead>
                   <TableHead className="py-3 px-3 text-right whitespace-nowrap">ราคาขาย</TableHead>
                   <TableHead className="py-3 px-3 text-right whitespace-nowrap">ต้นทุน</TableHead>
                   <TableHead className="py-3 px-3 text-right whitespace-nowrap">กำไร</TableHead>
-                  <TableHead className="py-3 px-4 whitespace-nowrap">ลูกค้า</TableHead>
+                  <TableHead className="py-3 px-4 whitespace-nowrap">ข้อมูลผู้จอง</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginated.map((r) => {
                   const profitNum = Number(r.profit);
+                  const role = ROLE_META[r.customerRole];
+                  const RoleIcon = role.icon;
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="py-3 px-4 whitespace-nowrap text-[12px] font-bold text-brand-ink-soft">
-                        <span className="inline-flex items-center gap-1.5">
-                          <CalendarDays className="h-3 w-3" />
-                          {fmtDateOnly(r.bookingDate)}
+                        <span className="inline-flex items-center gap-1.5 text-brand-ink">
+                          <Clock3 className="h-3 w-3 text-brand-green" />
+                          {fmtDateTime(r.bookedAt)} น.
                         </span>
-                        {r.bookingTime && (
+                        <span className="mt-1 block text-[10.5px] font-semibold text-brand-ink-soft/70">
+                          วันที่เปิดรับ: {fmtDateOnly(r.bookingDate)}
+                        </span>
+                        <span className="mt-0.5 block text-[10.5px] font-black text-brand-green">
+                          สำเร็จเมื่อ: {fmtDateTime(r.completedAt)} น.
+                        </span>
+                        {(r.bookingWindowStart || r.bookingTime) && (
                           <span className="block text-[10.5px] font-semibold text-brand-ink-soft/70 mt-0.5">
-                            {r.bookingTime}
+                            เปิดรับ:{" "}
+                            {r.bookingWindowStart && r.bookingWindowEnd
+                              ? `${r.bookingWindowStart}–${r.bookingWindowEnd}`
+                              : r.bookingTime}
                           </span>
                         )}
                       </TableCell>
@@ -430,6 +555,16 @@ export default function SalesProfitSection() {
                         <span className="line-clamp-1">{r.productName}</span>
                         <span className="text-[10.5px] font-semibold text-brand-ink-soft/70">
                           #{r.bookingCode}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-3 px-3 whitespace-nowrap">
+                        <span className="block font-black text-brand-green">
+                          {r.topupRoundName ?? "ไม่ระบุชื่อรอบ"}
+                        </span>
+                        <span className="mt-0.5 block text-[10.5px] font-bold text-brand-ink-soft">
+                          {r.topupRoundStart && r.topupRoundEnd
+                            ? `${r.topupRoundStart}–${r.topupRoundEnd} น.`
+                            : "ไม่ระบุเวลารอบ"}
                         </span>
                       </TableCell>
                       <TableCell className="py-3 px-3 text-right whitespace-nowrap font-extrabold text-brand-ink">
@@ -445,8 +580,21 @@ export default function SalesProfitSection() {
                       >
                         ฿{fmt(r.profit)}
                       </TableCell>
-                      <TableCell className="py-3 px-4 whitespace-nowrap font-bold text-brand-ink">
-                        @{r.username}
+                      <TableCell className="py-3 px-4 whitespace-nowrap">
+                        <span className="block font-black text-brand-ink">
+                          {fullName(r)}
+                        </span>
+                        <span className="mt-0.5 block text-[10.5px] font-bold text-brand-ink-soft">
+                          @{r.username}
+                        </span>
+                        <span className="mt-0.5 inline-flex items-center gap-1 text-[10.5px] font-bold text-brand-ink-soft">
+                          <Phone className="h-3 w-3 text-brand-green" />
+                          {r.phone || "ไม่ระบุเบอร์"}
+                        </span>
+                        <span className={`mt-1 flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-black ${role.classes}`}>
+                          <RoleIcon className="h-3 w-3" strokeWidth={2.5} />
+                          {role.label}
+                        </span>
                       </TableCell>
                     </TableRow>
                   );

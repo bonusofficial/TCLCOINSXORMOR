@@ -23,6 +23,7 @@ import { productsApi } from "@/lib/eden";
 import type {
   ProductParsed,
   SaleDate,
+  SaleSchedule,
   TimeSlot,
   DiscountUsername,
 } from "@/lib/types/product";
@@ -56,6 +57,31 @@ function parseJSONArray<T>(v: unknown): T[] {
   return [];
 }
 
+function parseSaleSchedules(value: unknown): SaleSchedule[] {
+  return parseJSONArray<Record<string, unknown>>(value)
+    .map((schedule) => {
+      const rawDate = schedule.date;
+      const dateText =
+        rawDate instanceof Date ? rawDate.toISOString() : String(rawDate ?? "");
+      const date = dateText.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+      if (
+        !date ||
+        typeof schedule.bookingStart !== "string" ||
+        typeof schedule.bookingEnd !== "string" ||
+        !Array.isArray(schedule.rounds)
+      ) {
+        return null;
+      }
+      return {
+        date,
+        bookingStart: schedule.bookingStart,
+        bookingEnd: schedule.bookingEnd,
+        rounds: schedule.rounds as SaleSchedule["rounds"],
+      };
+    })
+    .filter((schedule): schedule is SaleSchedule => schedule !== null);
+}
+
 function parseProduct(p: Record<string, unknown>): ProductParsed {
   return {
     id: p.id as number,
@@ -70,6 +96,7 @@ function parseProduct(p: Record<string, unknown>): ProductParsed {
     maxPerUserPerDay: (p.maxPerUserPerDay as number) ?? 0,
     saleDates: parseJSONArray<SaleDate>(p.saleDates),
     timeSlots: parseJSONArray<TimeSlot>(p.timeSlots),
+    saleSchedules: parseSaleSchedules(p.saleSchedules),
     discountEligibleUsernames: parseJSONArray<DiscountUsername>(
       p.discountEligibleUsernames
     ),
@@ -413,16 +440,19 @@ export default function ManagePage() {
                     </TableCell>
                     {/* ตารางขาย */}
                     <TableCell className="py-3 px-3 text-center text-[11px] font-bold text-brand-ink-soft whitespace-nowrap">
-                      {p.saleDates.length > 0 || p.timeSlots.length > 0 ? (
+                      {p.saleSchedules.length > 0 ? (
                         <>
                           <span className="text-brand-ink font-black">
-                            {p.saleDates.length}
+                            {p.saleSchedules.length}
                           </span>
                           <span className="text-brand-ink-soft/60"> วัน · </span>
                           <span className="text-brand-ink font-black">
-                            {p.timeSlots.length}
+                            {p.saleSchedules.reduce(
+                              (total, schedule) => total + schedule.rounds.length,
+                              0
+                            )}
                           </span>
-                          <span className="text-brand-ink-soft/60"> ช่วง</span>
+                          <span className="text-brand-ink-soft/60"> รอบเติม</span>
                         </>
                       ) : (
                         <span className="text-brand-ink-soft/60">—</span>

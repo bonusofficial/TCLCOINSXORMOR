@@ -47,6 +47,13 @@ export type UserMinAggregateOutputType = {
   memberNo: number | null
   role: string | null
   phone: string | null
+  firstName: string | null
+  lastName: string | null
+  addressLine: string | null
+  subdistrict: string | null
+  district: string | null
+  province: string | null
+  postalCode: string | null
   shopName: string | null
   lineId: string | null
 }
@@ -64,6 +71,13 @@ export type UserMaxAggregateOutputType = {
   memberNo: number | null
   role: string | null
   phone: string | null
+  firstName: string | null
+  lastName: string | null
+  addressLine: string | null
+  subdistrict: string | null
+  district: string | null
+  province: string | null
+  postalCode: string | null
   shopName: string | null
   lineId: string | null
 }
@@ -81,6 +95,13 @@ export type UserCountAggregateOutputType = {
   memberNo: number
   role: number
   phone: number
+  firstName: number
+  lastName: number
+  addressLine: number
+  subdistrict: number
+  district: number
+  province: number
+  postalCode: number
   shopName: number
   lineId: number
   _all: number
@@ -108,6 +129,13 @@ export type UserMinAggregateInputType = {
   memberNo?: true
   role?: true
   phone?: true
+  firstName?: true
+  lastName?: true
+  addressLine?: true
+  subdistrict?: true
+  district?: true
+  province?: true
+  postalCode?: true
   shopName?: true
   lineId?: true
 }
@@ -125,6 +153,13 @@ export type UserMaxAggregateInputType = {
   memberNo?: true
   role?: true
   phone?: true
+  firstName?: true
+  lastName?: true
+  addressLine?: true
+  subdistrict?: true
+  district?: true
+  province?: true
+  postalCode?: true
   shopName?: true
   lineId?: true
 }
@@ -142,6 +177,13 @@ export type UserCountAggregateInputType = {
   memberNo?: true
   role?: true
   phone?: true
+  firstName?: true
+  lastName?: true
+  addressLine?: true
+  subdistrict?: true
+  district?: true
+  province?: true
+  postalCode?: true
   shopName?: true
   lineId?: true
   _all?: true
@@ -246,6 +288,13 @@ export type UserGroupByOutputType = {
   memberNo: number | null
   role: string | null
   phone: string | null
+  firstName: string | null
+  lastName: string | null
+  addressLine: string | null
+  subdistrict: string | null
+  district: string | null
+  province: string | null
+  postalCode: string | null
   shopName: string | null
   lineId: string | null
   _count: UserCountAggregateOutputType | null
@@ -286,6 +335,13 @@ export type UserWhereInput = {
   memberNo?: Prisma.IntNullableFilter<"User"> | number | null
   role?: Prisma.StringNullableFilter<"User"> | string | null
   phone?: Prisma.StringNullableFilter<"User"> | string | null
+  firstName?: Prisma.StringNullableFilter<"User"> | string | null
+  lastName?: Prisma.StringNullableFilter<"User"> | string | null
+  addressLine?: Prisma.StringNullableFilter<"User"> | string | null
+  subdistrict?: Prisma.StringNullableFilter<"User"> | string | null
+  district?: Prisma.StringNullableFilter<"User"> | string | null
+  province?: Prisma.StringNullableFilter<"User"> | string | null
+  postalCode?: Prisma.StringNullableFilter<"User"> | string | null
   shopName?: Prisma.StringNullableFilter<"User"> | string | null
   lineId?: Prisma.StringNullableFilter<"User"> | string | null
   accounts?: Prisma.AccountListRelationFilter
@@ -305,6 +361,13 @@ export type UserOrderByWithRelationInput = {
   memberNo?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrderInput | Prisma.SortOrder
   phone?: Prisma.SortOrderInput | Prisma.SortOrder
+  firstName?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastName?: Prisma.SortOrderInput | Prisma.SortOrder
+  addressLine?: Prisma.SortOrderInput | Prisma.SortOrder
+  subdistrict?: Prisma.SortOrderInput | Prisma.SortOrder
+  district?: Prisma.SortOrderInput | Prisma.SortOrder
+  province?: Prisma.SortOrderInput | Prisma.SortOrder
+  postalCode?: Prisma.SortOrderInput | Prisma.SortOrder
   shopName?: Prisma.SortOrderInput | Prisma.SortOrder
   lineId?: Prisma.SortOrderInput | Prisma.SortOrder
   accounts?: Prisma.AccountOrderByRelationAggregateInput
@@ -328,6 +391,13 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   displayUsername?: Prisma.StringNullableFilter<"User"> | string | null
   role?: Prisma.StringNullableFilter<"User"> | string | null
   phone?: Prisma.StringNullableFilter<"User"> | string | null
+  firstName?: Prisma.StringNullableFilter<"User"> | string | null
+  lastName?: Prisma.StringNullableFilter<"User"> | string | null
+  addressLine?: Prisma.StringNullableFilter<"User"> | string | null
+  subdistrict?: Prisma.StringNullableFilter<"User"> | string | null
+  district?: Prisma.StringNullableFilter<"User"> | string | null
+  province?: Prisma.StringNullableFilter<"User"> | string | null
+  postalCode?: Prisma.StringNullableFilter<"User"> | string | null
   shopName?: Prisma.StringNullableFilter<"User"> | string | null
   lineId?: Prisma.StringNullableFilter<"User"> | string | null
   accounts?: Prisma.AccountListRelationFilter
@@ -347,6 +417,13 @@ export type UserOrderByWithAggregationInput = {
   memberNo?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrderInput | Prisma.SortOrder
   phone?: Prisma.SortOrderInput | Prisma.SortOrder
+  firstName?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastName?: Prisma.SortOrderInput | Prisma.SortOrder
+  addressLine?: Prisma.SortOrderInput | Prisma.SortOrder
+  subdistrict?: Prisma.SortOrderInput | Prisma.SortOrder
+  district?: Prisma.SortOrderInput | Prisma.SortOrder
+  province?: Prisma.SortOrderInput | Prisma.SortOrder
+  postalCode?: Prisma.SortOrderInput | Prisma.SortOrder
   shopName?: Prisma.SortOrderInput | Prisma.SortOrder
   lineId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
@@ -372,6 +449,13 @@ export type UserScalarWhereWithAggregatesInput = {
   memberNo?: Prisma.IntNullableWithAggregatesFilter<"User"> | number | null
   role?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   phone?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  firstName?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  lastName?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  addressLine?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  subdistrict?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  district?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  province?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  postalCode?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   shopName?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   lineId?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
 }
@@ -389,6 +473,13 @@ export type UserCreateInput = {
   memberNo?: number | null
   role?: string | null
   phone?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  addressLine?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  postalCode?: string | null
   shopName?: string | null
   lineId?: string | null
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
@@ -408,6 +499,13 @@ export type UserUncheckedCreateInput = {
   memberNo?: number | null
   role?: string | null
   phone?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  addressLine?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  postalCode?: string | null
   shopName?: string | null
   lineId?: string | null
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
@@ -427,6 +525,13 @@ export type UserUpdateInput = {
   memberNo?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
@@ -446,6 +551,13 @@ export type UserUncheckedUpdateInput = {
   memberNo?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
@@ -465,6 +577,13 @@ export type UserCreateManyInput = {
   memberNo?: number | null
   role?: string | null
   phone?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  addressLine?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  postalCode?: string | null
   shopName?: string | null
   lineId?: string | null
 }
@@ -482,6 +601,13 @@ export type UserUpdateManyMutationInput = {
   memberNo?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -499,6 +625,13 @@ export type UserUncheckedUpdateManyInput = {
   memberNo?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -522,6 +655,13 @@ export type UserCountOrderByAggregateInput = {
   memberNo?: Prisma.SortOrder
   role?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  firstName?: Prisma.SortOrder
+  lastName?: Prisma.SortOrder
+  addressLine?: Prisma.SortOrder
+  subdistrict?: Prisma.SortOrder
+  district?: Prisma.SortOrder
+  province?: Prisma.SortOrder
+  postalCode?: Prisma.SortOrder
   shopName?: Prisma.SortOrder
   lineId?: Prisma.SortOrder
 }
@@ -543,6 +683,13 @@ export type UserMaxOrderByAggregateInput = {
   memberNo?: Prisma.SortOrder
   role?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  firstName?: Prisma.SortOrder
+  lastName?: Prisma.SortOrder
+  addressLine?: Prisma.SortOrder
+  subdistrict?: Prisma.SortOrder
+  district?: Prisma.SortOrder
+  province?: Prisma.SortOrder
+  postalCode?: Prisma.SortOrder
   shopName?: Prisma.SortOrder
   lineId?: Prisma.SortOrder
 }
@@ -560,6 +707,13 @@ export type UserMinOrderByAggregateInput = {
   memberNo?: Prisma.SortOrder
   role?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  firstName?: Prisma.SortOrder
+  lastName?: Prisma.SortOrder
+  addressLine?: Prisma.SortOrder
+  subdistrict?: Prisma.SortOrder
+  district?: Prisma.SortOrder
+  province?: Prisma.SortOrder
+  postalCode?: Prisma.SortOrder
   shopName?: Prisma.SortOrder
   lineId?: Prisma.SortOrder
 }
@@ -638,6 +792,13 @@ export type UserCreateWithoutSessionsInput = {
   memberNo?: number | null
   role?: string | null
   phone?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  addressLine?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  postalCode?: string | null
   shopName?: string | null
   lineId?: string | null
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
@@ -656,6 +817,13 @@ export type UserUncheckedCreateWithoutSessionsInput = {
   memberNo?: number | null
   role?: string | null
   phone?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  addressLine?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  postalCode?: string | null
   shopName?: string | null
   lineId?: string | null
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
@@ -690,6 +858,13 @@ export type UserUpdateWithoutSessionsInput = {
   memberNo?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
@@ -708,6 +883,13 @@ export type UserUncheckedUpdateWithoutSessionsInput = {
   memberNo?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
@@ -726,6 +908,13 @@ export type UserCreateWithoutAccountsInput = {
   memberNo?: number | null
   role?: string | null
   phone?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  addressLine?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  postalCode?: string | null
   shopName?: string | null
   lineId?: string | null
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
@@ -744,6 +933,13 @@ export type UserUncheckedCreateWithoutAccountsInput = {
   memberNo?: number | null
   role?: string | null
   phone?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  addressLine?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  postalCode?: string | null
   shopName?: string | null
   lineId?: string | null
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
@@ -778,6 +974,13 @@ export type UserUpdateWithoutAccountsInput = {
   memberNo?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
@@ -796,6 +999,13 @@ export type UserUncheckedUpdateWithoutAccountsInput = {
   memberNo?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   shopName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
@@ -854,6 +1064,13 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   memberNo?: boolean
   role?: boolean
   phone?: boolean
+  firstName?: boolean
+  lastName?: boolean
+  addressLine?: boolean
+  subdistrict?: boolean
+  district?: boolean
+  province?: boolean
+  postalCode?: boolean
   shopName?: boolean
   lineId?: boolean
   accounts?: boolean | Prisma.User$accountsArgs<ExtArgs>
@@ -876,11 +1093,18 @@ export type UserSelectScalar = {
   memberNo?: boolean
   role?: boolean
   phone?: boolean
+  firstName?: boolean
+  lastName?: boolean
+  addressLine?: boolean
+  subdistrict?: boolean
+  district?: boolean
+  province?: boolean
+  postalCode?: boolean
   shopName?: boolean
   lineId?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "email" | "emailVerified" | "image" | "createdAt" | "updatedAt" | "username" | "displayUsername" | "memberNo" | "role" | "phone" | "shopName" | "lineId", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "email" | "emailVerified" | "image" | "createdAt" | "updatedAt" | "username" | "displayUsername" | "memberNo" | "role" | "phone" | "firstName" | "lastName" | "addressLine" | "subdistrict" | "district" | "province" | "postalCode" | "shopName" | "lineId", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   accounts?: boolean | Prisma.User$accountsArgs<ExtArgs>
   sessions?: boolean | Prisma.User$sessionsArgs<ExtArgs>
@@ -906,6 +1130,13 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     memberNo: number | null
     role: string | null
     phone: string | null
+    firstName: string | null
+    lastName: string | null
+    addressLine: string | null
+    subdistrict: string | null
+    district: string | null
+    province: string | null
+    postalCode: string | null
     shopName: string | null
     lineId: string | null
   }, ExtArgs["result"]["user"]>
@@ -1291,6 +1522,13 @@ export interface UserFieldRefs {
   readonly memberNo: Prisma.FieldRef<"User", 'Int'>
   readonly role: Prisma.FieldRef<"User", 'String'>
   readonly phone: Prisma.FieldRef<"User", 'String'>
+  readonly firstName: Prisma.FieldRef<"User", 'String'>
+  readonly lastName: Prisma.FieldRef<"User", 'String'>
+  readonly addressLine: Prisma.FieldRef<"User", 'String'>
+  readonly subdistrict: Prisma.FieldRef<"User", 'String'>
+  readonly district: Prisma.FieldRef<"User", 'String'>
+  readonly province: Prisma.FieldRef<"User", 'String'>
+  readonly postalCode: Prisma.FieldRef<"User", 'String'>
   readonly shopName: Prisma.FieldRef<"User", 'String'>
   readonly lineId: Prisma.FieldRef<"User", 'String'>
 }

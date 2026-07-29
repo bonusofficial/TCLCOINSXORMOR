@@ -1,7 +1,10 @@
 import { Elysia } from "elysia";
 import { withElysiaAudit } from "@/lib/server/audit-route";
 import { prisma } from "@/lib/prisma";
-import { BookingParams, BookingStatusBody } from "@/lib/server/schemas/booking";
+import {
+  BookingAdminUpdateBody,
+  BookingParams,
+} from "@/lib/server/schemas/booking";
 import {
   authMacros,
   errorPlugin,
@@ -23,12 +26,26 @@ function shape(b: {
   userId: string | null;
   username: string;
   phone: string;
+  recipientFirstName: string | null;
+  recipientLastName: string | null;
+  addressLine: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
   content: string | null;
   price: { toString(): string };
   cost: { toString(): string } | null;
   status: string;
   bookingDate: Date;
   bookingTime: string | null;
+  bookingWindowStart: string | null;
+  bookingWindowEnd: string | null;
+  topupRoundCode: string | null;
+  topupRoundName: string | null;
+  topupRoundStart: string | null;
+  topupRoundEnd: string | null;
+  topupRoundCapacity: number | null;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -70,7 +87,7 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
   .use(errorPlugin)
   .use(authMacros)
 
-  /** PATCH /:id — อัปเดต status (admin) */
+  /** PATCH /:id — แก้ Snapshot ผู้จอง/ต้นทุน และอัปเดตสถานะ (admin) */
   .patch(
     "/:id",
     async ({ params, body, user, request, status: code }) => {
@@ -80,17 +97,55 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       if (!before)
         return code(404, { ok: false, message: "ไม่พบการจอง" });
 
-      // เมื่อปิดการขาย (สถานะ = "สำเร็จ") → ล็อกต้นทุน ณ เวลานั้นลงในออเดอร์ (snapshot)
-      // กันยอดกำไรย้อนหลังเพี้ยนหากแก้/ลบต้นทุนสินค้าภายหลัง
-      const costSnapshot =
-        body.status === "สำเร็จ"
-          ? await resolveProductCost(before.productId, before.productName)
-          : undefined;
+      const hasDetailChanges = Object.keys(body).some(
+        (key) => key !== "status"
+      );
+      if (before.status === "สำเร็จ" && hasDetailChanges) {
+        return code(409, {
+          ok: false,
+          message: "รายการสำเร็จแล้ว ไม่สามารถแก้ข้อมูลผู้จองหรือต้นทุนย้อนหลังได้",
+        });
+      }
+
+      const nextStatus = body.status ?? before.status;
+      let costSnapshot: number | undefined;
+      if (body.cost !== undefined) {
+        costSnapshot = body.cost;
+      } else if (nextStatus === "สำเร็จ") {
+        costSnapshot =
+          before.cost != null
+            ? Number(before.cost)
+            : await resolveProductCost(before.productId, before.productName);
+      }
 
       const saved = await prisma.bookings.update({
         where: { id: params.id },
         data: {
-          status: body.status,
+          ...(body.status !== undefined ? { status: body.status } : {}),
+          ...(body.phone !== undefined ? { phone: body.phone.trim() } : {}),
+          ...(body.recipientFirstName !== undefined
+            ? { recipientFirstName: body.recipientFirstName.trim() }
+            : {}),
+          ...(body.recipientLastName !== undefined
+            ? { recipientLastName: body.recipientLastName.trim() }
+            : {}),
+          ...(body.addressLine !== undefined
+            ? { addressLine: body.addressLine.trim() }
+            : {}),
+          ...(body.subdistrict !== undefined
+            ? { subdistrict: body.subdistrict.trim() }
+            : {}),
+          ...(body.district !== undefined
+            ? { district: body.district.trim() }
+            : {}),
+          ...(body.province !== undefined
+            ? { province: body.province.trim() }
+            : {}),
+          ...(body.postalCode !== undefined
+            ? { postalCode: body.postalCode.trim() }
+            : {}),
+          ...(body.content !== undefined ? { content: body.content } : {}),
+          ...(body.price !== undefined ? { price: body.price } : {}),
           ...(costSnapshot !== undefined ? { cost: costSnapshot } : {}),
         },
       });
@@ -103,7 +158,10 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
 
       const responsePayload = {
         ok: true as const,
-        message: `อัปเดตสถานะเป็น "${body.status}"`,
+        message:
+          body.status !== undefined
+            ? `อัปเดตสถานะเป็น "${body.status}"`
+            : "บันทึกข้อมูลรายการจองแล้ว",
         data: shape(saved),
       };
 
@@ -113,8 +171,20 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
         entityId: saved.id,
         details: {
           bookingCode: saved.bookingCode,
-          before: { status: before.status },
-          after: { status: saved.status },
+          before: {
+            status: before.status,
+            phone: before.phone,
+            recipientFirstName: before.recipientFirstName,
+            recipientLastName: before.recipientLastName,
+            cost: before.cost?.toString() ?? null,
+          },
+          after: {
+            status: saved.status,
+            phone: saved.phone,
+            recipientFirstName: saved.recipientFirstName,
+            recipientLastName: saved.recipientLastName,
+            cost: saved.cost?.toString() ?? null,
+          },
           stockDelta: delta,
         },
         payload: { params, body },
@@ -125,7 +195,7 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
 
       return responsePayload;
     },
-    { params: BookingParams, body: BookingStatusBody, requireRole: "admin" }
+    { params: BookingParams, body: BookingAdminUpdateBody, requireRole: "admin" }
   )
 
   /** DELETE /:id — ลบการจอง (admin) */

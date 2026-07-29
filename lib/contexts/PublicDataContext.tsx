@@ -64,6 +64,117 @@ export interface TimeSlot {
   end: string;
 }
 
+export type TopupRoundStatus = "open" | "near_full" | "full" | "closed";
+
+export interface TopupRound {
+  code: string;
+  name: string;
+  start: string;
+  end: string;
+  capacity: number;
+  enabled: boolean;
+  sortOrder: number;
+  bookedCount: number;
+  remaining: number;
+  status: TopupRoundStatus;
+}
+
+export interface SaleSchedule {
+  date: string;
+  bookingStart: string;
+  bookingEnd: string;
+  rounds: TopupRound[];
+}
+
+function toArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function parsePublicSaleSchedules(product: Record<string, unknown>): SaleSchedule[] {
+  const schedules = toArray(product.saleSchedules)
+    .map((value) => {
+      if (!value || typeof value !== "object") return null;
+      const schedule = value as Record<string, unknown>;
+      const dateValue = schedule.date;
+      const dateString =
+        dateValue instanceof Date
+          ? dateValue.toISOString()
+          : String(dateValue ?? "");
+      const date = dateString.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+      if (
+        !date ||
+        typeof schedule.bookingStart !== "string" ||
+        typeof schedule.bookingEnd !== "string" ||
+        !Array.isArray(schedule.rounds)
+      ) {
+        return null;
+      }
+
+      const rounds = schedule.rounds.filter(
+        (round): round is TopupRound =>
+          !!round &&
+          typeof round === "object" &&
+          typeof (round as TopupRound).code === "string" &&
+          typeof (round as TopupRound).name === "string" &&
+          typeof (round as TopupRound).start === "string" &&
+          typeof (round as TopupRound).end === "string"
+      );
+      return {
+        date,
+        bookingStart: schedule.bookingStart,
+        bookingEnd: schedule.bookingEnd,
+        rounds,
+      };
+    })
+    .filter((schedule): schedule is SaleSchedule => schedule !== null);
+  if (schedules.length > 0) return schedules;
+
+  // รองรับสินค้าเดิม/response ที่ยังไม่มี saleSchedules ระหว่างทยอยอัปเกรดระบบ
+  const dates = toArray(product.saleDates)
+    .map((value) => {
+      const match = String(value ?? "").match(/^(\d{4}-\d{2}-\d{2})/);
+      return match?.[1] ?? null;
+    })
+    .filter((date): date is string => date !== null);
+  const slots = toArray(product.timeSlots).filter(
+    (slot): slot is TimeSlot =>
+      !!slot &&
+      typeof slot === "object" &&
+      typeof (slot as TimeSlot).start === "string" &&
+      typeof (slot as TimeSlot).end === "string"
+  );
+  const bookingStart = slots[0]?.start ?? "00:00";
+  const bookingEnd = slots[slots.length - 1]?.end ?? "23:59";
+  return dates.map((date) => ({
+    date,
+    bookingStart,
+    bookingEnd,
+    rounds: [
+      {
+        code: "LEGACY",
+        name: "รอบเติมทั่วไป",
+        start: bookingStart,
+        end: bookingEnd,
+        capacity: 999999,
+        enabled: true,
+        sortOrder: 0,
+        bookedCount: 0,
+        remaining: 999999,
+        status: "open",
+      },
+    ],
+  }));
+}
+
 export interface PublicProduct {
   id: number;
   image: string;
@@ -77,6 +188,7 @@ export interface PublicProduct {
   maxPerUserPerDay: number;
   saleDates: string[];
   timeSlots: TimeSlot[];
+  saleSchedules: SaleSchedule[];
   discountEligibleUsernames: string[];
   note: string | null;
   /** จำนวนคิวจริง (booking ที่ไม่ถูกยกเลิก) — ใช้แสดง "คนเลือกอันนี้" */
@@ -233,19 +345,6 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
           setProducts([]);
           return;
         }
-        // MariaDB JSON บางครั้ง Prisma คืนเป็น string — parse safely ทั้งสองทาง
-        const toArray = (v: unknown): unknown[] => {
-          if (Array.isArray(v)) return v;
-          if (typeof v === "string") {
-            try {
-              const parsed = JSON.parse(v);
-              return Array.isArray(parsed) ? parsed : [];
-            } catch {
-              return [];
-            }
-          }
-          return [];
-        };
         setProducts(
           (data.data as Record<string, unknown>[]).map((p) => ({
             id: p.id as number,
@@ -277,6 +376,7 @@ export function PublicDataProvider({ children }: { children: React.ReactNode }) 
                 typeof (s as TimeSlot).start === "string" &&
                 typeof (s as TimeSlot).end === "string"
             ),
+            saleSchedules: parsePublicSaleSchedules(p),
             discountEligibleUsernames: toArray(
               p.discountEligibleUsernames
             ).filter((u): u is string => typeof u === "string"),

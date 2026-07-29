@@ -93,6 +93,7 @@ export type ProductsCountAggregateOutputType = {
   maxPerUserPerDay: number
   saleDates: number
   timeSlots: number
+  saleSchedules: number
   discountEligibleUsernames: number
   discountAmount: number
   note: number
@@ -169,6 +170,7 @@ export type ProductsCountAggregateInputType = {
   maxPerUserPerDay?: true
   saleDates?: true
   timeSlots?: true
+  saleSchedules?: true
   discountEligibleUsernames?: true
   discountAmount?: true
   note?: true
@@ -276,6 +278,7 @@ export type ProductsGroupByOutputType = {
   maxPerUserPerDay: number
   saleDates: runtime.JsonValue
   timeSlots: runtime.JsonValue
+  saleSchedules: runtime.JsonValue | null
   discountEligibleUsernames: runtime.JsonValue
   discountAmount: runtime.Decimal
   note: string | null
@@ -319,6 +322,7 @@ export type productsWhereInput = {
   maxPerUserPerDay?: Prisma.IntFilter<"products"> | number
   saleDates?: Prisma.JsonFilter<"products">
   timeSlots?: Prisma.JsonFilter<"products">
+  saleSchedules?: Prisma.JsonNullableFilter<"products">
   discountEligibleUsernames?: Prisma.JsonFilter<"products">
   discountAmount?: Prisma.DecimalFilter<"products"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   note?: Prisma.StringNullableFilter<"products"> | string | null
@@ -339,6 +343,7 @@ export type productsOrderByWithRelationInput = {
   maxPerUserPerDay?: Prisma.SortOrder
   saleDates?: Prisma.SortOrder
   timeSlots?: Prisma.SortOrder
+  saleSchedules?: Prisma.SortOrderInput | Prisma.SortOrder
   discountEligibleUsernames?: Prisma.SortOrder
   discountAmount?: Prisma.SortOrder
   note?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -363,6 +368,7 @@ export type productsWhereUniqueInput = Prisma.AtLeast<{
   maxPerUserPerDay?: Prisma.IntFilter<"products"> | number
   saleDates?: Prisma.JsonFilter<"products">
   timeSlots?: Prisma.JsonFilter<"products">
+  saleSchedules?: Prisma.JsonNullableFilter<"products">
   discountEligibleUsernames?: Prisma.JsonFilter<"products">
   discountAmount?: Prisma.DecimalFilter<"products"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   note?: Prisma.StringNullableFilter<"products"> | string | null
@@ -383,6 +389,7 @@ export type productsOrderByWithAggregationInput = {
   maxPerUserPerDay?: Prisma.SortOrder
   saleDates?: Prisma.SortOrder
   timeSlots?: Prisma.SortOrder
+  saleSchedules?: Prisma.SortOrderInput | Prisma.SortOrder
   discountEligibleUsernames?: Prisma.SortOrder
   discountAmount?: Prisma.SortOrder
   note?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -411,6 +418,7 @@ export type productsScalarWhereWithAggregatesInput = {
   maxPerUserPerDay?: Prisma.IntWithAggregatesFilter<"products"> | number
   saleDates?: Prisma.JsonWithAggregatesFilter<"products">
   timeSlots?: Prisma.JsonWithAggregatesFilter<"products">
+  saleSchedules?: Prisma.JsonNullableWithAggregatesFilter<"products">
   discountEligibleUsernames?: Prisma.JsonWithAggregatesFilter<"products">
   discountAmount?: Prisma.DecimalWithAggregatesFilter<"products"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   note?: Prisma.StringNullableWithAggregatesFilter<"products"> | string | null
@@ -430,6 +438,7 @@ export type productsCreateInput = {
   maxPerUserPerDay?: number
   saleDates: Prisma.JsonNullValueInput | runtime.InputJsonValue
   timeSlots: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  saleSchedules?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   discountEligibleUsernames: Prisma.JsonNullValueInput | runtime.InputJsonValue
   discountAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   note?: string | null
@@ -450,6 +459,7 @@ export type productsUncheckedCreateInput = {
   maxPerUserPerDay?: number
   saleDates: Prisma.JsonNullValueInput | runtime.InputJsonValue
   timeSlots: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  saleSchedules?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   discountEligibleUsernames: Prisma.JsonNullValueInput | runtime.InputJsonValue
   discountAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   note?: string | null
@@ -469,6 +479,7 @@ export type productsUpdateInput = {
   maxPerUserPerDay?: Prisma.IntFieldUpdateOperationsInput | number
   saleDates?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   timeSlots?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  saleSchedules?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   discountEligibleUsernames?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   discountAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -489,6 +500,7 @@ export type productsUncheckedUpdateInput = {
   maxPerUserPerDay?: Prisma.IntFieldUpdateOperationsInput | number
   saleDates?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   timeSlots?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  saleSchedules?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   discountEligibleUsernames?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   discountAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -509,6 +521,7 @@ export type productsCreateManyInput = {
   maxPerUserPerDay?: number
   saleDates: Prisma.JsonNullValueInput | runtime.InputJsonValue
   timeSlots: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  saleSchedules?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   discountEligibleUsernames: Prisma.JsonNullValueInput | runtime.InputJsonValue
   discountAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   note?: string | null
@@ -528,6 +541,7 @@ export type productsUpdateManyMutationInput = {
   maxPerUserPerDay?: Prisma.IntFieldUpdateOperationsInput | number
   saleDates?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   timeSlots?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  saleSchedules?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   discountEligibleUsernames?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   discountAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -548,6 +562,7 @@ export type productsUncheckedUpdateManyInput = {
   maxPerUserPerDay?: Prisma.IntFieldUpdateOperationsInput | number
   saleDates?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   timeSlots?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  saleSchedules?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   discountEligibleUsernames?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   discountAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -574,6 +589,7 @@ export type productsCountOrderByAggregateInput = {
   maxPerUserPerDay?: Prisma.SortOrder
   saleDates?: Prisma.SortOrder
   timeSlots?: Prisma.SortOrder
+  saleSchedules?: Prisma.SortOrder
   discountEligibleUsernames?: Prisma.SortOrder
   discountAmount?: Prisma.SortOrder
   note?: Prisma.SortOrder
@@ -650,6 +666,7 @@ export type productsSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   maxPerUserPerDay?: boolean
   saleDates?: boolean
   timeSlots?: boolean
+  saleSchedules?: boolean
   discountEligibleUsernames?: boolean
   discountAmount?: boolean
   note?: boolean
@@ -672,6 +689,7 @@ export type productsSelectScalar = {
   maxPerUserPerDay?: boolean
   saleDates?: boolean
   timeSlots?: boolean
+  saleSchedules?: boolean
   discountEligibleUsernames?: boolean
   discountAmount?: boolean
   note?: boolean
@@ -679,7 +697,7 @@ export type productsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type productsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "image" | "name" | "description" | "price" | "cost" | "agentPrice" | "stockEnabled" | "stock" | "maxPerUserPerDay" | "saleDates" | "timeSlots" | "discountEligibleUsernames" | "discountAmount" | "note" | "createdAt" | "updatedAt", ExtArgs["result"]["products"]>
+export type productsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "image" | "name" | "description" | "price" | "cost" | "agentPrice" | "stockEnabled" | "stock" | "maxPerUserPerDay" | "saleDates" | "timeSlots" | "saleSchedules" | "discountEligibleUsernames" | "discountAmount" | "note" | "createdAt" | "updatedAt", ExtArgs["result"]["products"]>
 
 export type $productsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "products"
@@ -697,6 +715,7 @@ export type $productsPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     maxPerUserPerDay: number
     saleDates: runtime.JsonValue
     timeSlots: runtime.JsonValue
+    saleSchedules: runtime.JsonValue | null
     discountEligibleUsernames: runtime.JsonValue
     discountAmount: runtime.Decimal
     note: string | null
@@ -1083,6 +1102,7 @@ export interface productsFieldRefs {
   readonly maxPerUserPerDay: Prisma.FieldRef<"products", 'Int'>
   readonly saleDates: Prisma.FieldRef<"products", 'Json'>
   readonly timeSlots: Prisma.FieldRef<"products", 'Json'>
+  readonly saleSchedules: Prisma.FieldRef<"products", 'Json'>
   readonly discountEligibleUsernames: Prisma.FieldRef<"products", 'Json'>
   readonly discountAmount: Prisma.FieldRef<"products", 'Decimal'>
   readonly note: Prisma.FieldRef<"products", 'String'>

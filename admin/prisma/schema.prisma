@@ -20,6 +20,13 @@ model User {
   memberNo        Int?      @unique  // เลขสมาชิกแบบรันนิ่ง (UID = OMTC-xxxxx)
   role            String?   @db.Text
   phone           String?   @db.Text
+  firstName       String?   @db.VarChar(120) // ชื่อจริง สำหรับข้อมูลผู้รับสินค้า
+  lastName        String?   @db.VarChar(120) // นามสกุล สำหรับข้อมูลผู้รับสินค้า
+  addressLine     String?   @db.Text         // บ้านเลขที่/หมู่/ถนน/รายละเอียดที่อยู่
+  subdistrict     String?   @db.VarChar(120) // ตำบล/แขวง
+  district        String?   @db.VarChar(120) // อำเภอ/เขต
+  province        String?   @db.VarChar(120)
+  postalCode      String?   @db.VarChar(10)
   shopName        String?   @db.Text  // ชื่อร้านปัจจุบัน (สำหรับตัวแทน)
   lineId          String?   @db.Text  // ไอดีไลน์ปัจจุบันที่ใช้เติม Coins
   accounts        Account[]
@@ -155,18 +162,33 @@ model bookings {
   userId      String?  @db.VarChar(36)
   username    String   @db.VarChar(255)
   phone       String   @db.VarChar(30)
+  recipientFirstName String? @db.VarChar(120) // snapshot ชื่อผู้รับ ณ เวลาจอง
+  recipientLastName  String? @db.VarChar(120) // snapshot นามสกุลผู้รับ ณ เวลาจอง
+  addressLine String? @db.Text                // snapshot รายละเอียดที่อยู่ ณ เวลาจอง
+  subdistrict String? @db.VarChar(120)        // snapshot ตำบล/แขวง
+  district    String? @db.VarChar(120)        // snapshot อำเภอ/เขต
+  province    String? @db.VarChar(120)        // snapshot จังหวัด
+  postalCode  String? @db.VarChar(10)         // snapshot รหัสไปรษณีย์
   content     String?  @db.VarChar(500)
   price       Decimal  @db.Decimal(15, 2)
   cost        Decimal? @db.Decimal(15, 2) // ต้นทุน ณ เวลาขาย (snapshot ตอนกด "สำเร็จ") — null = ยังไม่ล็อก ใช้ต้นทุนสดจาก product
   status      String   @default("รอตรวจสอบ") @db.VarChar(30)
   bookingDate DateTime
-  bookingTime String?  @db.VarChar(50)
+  bookingTime String?  @db.VarChar(50)  // legacy snapshot ช่วงเวลาเปิดรับจอง
+  bookingWindowStart String? @db.VarChar(5)
+  bookingWindowEnd   String? @db.VarChar(5)
+  topupRoundCode     String? @db.VarChar(80)
+  topupRoundName     String? @db.VarChar(120)
+  topupRoundStart    String? @db.VarChar(5)
+  topupRoundEnd      String? @db.VarChar(5)
+  topupRoundCapacity Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([productId, bookingDate, topupRoundCode])
   @@map("bookings")
 }
 
@@ -237,6 +259,7 @@ model products {
   // ─── ตารางขาย (JSON arrays — see helper types) ───
   saleDates   Json    // string[]                     เช่น ["2026-05-19", "2026-05-14"]
   timeSlots   Json    // Array<{start:string,end:string}>  เช่น [{start:"17:10",end:"18:08"}]
+  saleSchedules Json? // [{date,bookingStart,bookingEnd,rounds:[{code,name,start,end,capacity,enabled,sortOrder}]}]
 
   // ─── ส่วนลดผู้มีสิทธิ์พิเศษ ───
   discountEligibleUsernames Json                       // string[]      เช่น ["peak", "riu", "john"] — ไม่จำกัดจำนวน

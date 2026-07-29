@@ -19,12 +19,17 @@ import {
   StickyNote,
   Users,
   Percent,
+  Copy,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { productsApi, usersApi } from "@/lib/eden";
 import { TimePicker } from "@/components/ui/TimePicker";
 import { DatePicker } from "@/components/ui/DatePicker";
 import {
   type ProductParsed,
+  type SaleSchedule,
+  type TopupRound,
   type TimeSlot,
 } from "@/lib/types/product";
 
@@ -54,25 +59,28 @@ function todayPlus(days: number) {
   return `${ICTDate.getUTCFullYear()}-${String(ICTDate.getUTCMonth() + 1).padStart(2, "0")}-${String(ICTDate.getUTCDate()).padStart(2, "0")}`;
 }
 
-const padTimePart = (n: number) => String(n).padStart(2, "0");
-
-function currentThaiHHMM() {
-  const d = new Date();
-  const ICTDate = new Date(d.getTime() + 7 * 60 * 60 * 1000);
-  return `${padTimePart(ICTDate.getUTCHours())}:${padTimePart(ICTDate.getUTCMinutes())}`;
+function defaultTopupRound(index = 0): TopupRound {
+  const startHour = Math.min(21, 12 + index * 3);
+  const start = `${String(startHour).padStart(2, "0")}:00`;
+  const end = `${String(Math.min(23, startHour + 1)).padStart(2, "0")}:00`;
+  return {
+    code: `R${index + 1}`,
+    name: `รอบที่ ${index + 1}`,
+    start,
+    end,
+    capacity: 10,
+    enabled: true,
+    sortOrder: index,
+  };
 }
 
-function addMinutesWithinThaiDay(hhmm: string, minutesToAdd: number) {
-  const [hRaw, mRaw] = hhmm.split(":");
-  const startMinutes = (parseInt(hRaw, 10) || 0) * 60 + (parseInt(mRaw, 10) || 0);
-  const endMinutes = Math.min(23 * 60 + 59, startMinutes + minutesToAdd);
-  return `${padTimePart(Math.floor(endMinutes / 60))}:${padTimePart(endMinutes % 60)}`;
-}
-
-function defaultTimeSlot(): TimeSlot {
-  const start = currentThaiHHMM();
-  const end = addMinutesWithinThaiDay(start, 120);
-  return start < end ? { start, end } : { start: "23:58", end: "23:59" };
+function defaultSaleSchedule(date = todayPlus(0)): SaleSchedule {
+  return {
+    date,
+    bookingStart: "09:00",
+    bookingEnd: "23:00",
+    rounds: [defaultTopupRound(0)],
+  };
 }
 
 function displayUserLabel(
@@ -151,8 +159,9 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   const [stock, setStock] = useState("0");
   const [stockDirty, setStockDirty] = useState(false);
   const [maxPerUserPerDay, setMaxPerUserPerDay] = useState("0"); // 0 = ไม่จำกัด
-  const [saleDates, setSaleDates] = useState<string[]>([todayPlus(0)]);
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>(() => [defaultTimeSlot()]);
+  const [saleSchedules, setSaleSchedules] = useState<SaleSchedule[]>(() => [
+    defaultSaleSchedule(),
+  ]);
   const [selectedUsernames, setSelectedUsernames] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -219,8 +228,6 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
           return m ? m[1] : null;
         })
         .filter((d): d is string => d !== null);
-      setSaleDates(safeDates.length ? safeDates : [todayPlus(0)]);
-
       const safeSlots = toArray(initial.timeSlots).filter(
         (s): s is TimeSlot =>
           !!s &&
@@ -228,9 +235,55 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
           typeof (s as TimeSlot).start === "string" &&
           typeof (s as TimeSlot).end === "string"
       );
-      setTimeSlots(
-        safeSlots.length ? safeSlots : [defaultTimeSlot()]
-      );
+      const safeSchedules = toArray(initial.saleSchedules)
+        .map((value) => {
+          if (!value || typeof value !== "object") return null;
+          const schedule = value as Record<string, unknown>;
+          const rawDate = schedule.date;
+          const dateText =
+            rawDate instanceof Date ? rawDate.toISOString() : String(rawDate ?? "");
+          const date = dateText.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+          if (
+            !date ||
+            typeof schedule.bookingStart !== "string" ||
+            typeof schedule.bookingEnd !== "string" ||
+            !Array.isArray(schedule.rounds)
+          ) {
+            return null;
+          }
+          return {
+            date,
+            bookingStart: schedule.bookingStart,
+            bookingEnd: schedule.bookingEnd,
+            rounds: schedule.rounds as SaleSchedule["rounds"],
+          };
+        })
+        .filter((schedule): schedule is SaleSchedule => schedule !== null);
+      if (safeSchedules.length > 0) {
+        setSaleSchedules(
+          safeSchedules.map((schedule) => ({
+            ...schedule,
+            rounds: schedule.rounds
+              .map((round, index) => ({
+                ...round,
+                capacity: Math.max(1, Number(round.capacity) || 1),
+                enabled: round.enabled !== false,
+                sortOrder: index,
+              }))
+              .sort((a, b) => a.sortOrder - b.sortOrder),
+          }))
+        );
+      } else {
+        const legacyStart = safeSlots[0]?.start ?? "09:00";
+        const legacyEnd = safeSlots[safeSlots.length - 1]?.end ?? "23:00";
+        setSaleSchedules(
+          (safeDates.length ? safeDates : [todayPlus(0)]).map((date) => ({
+            ...defaultSaleSchedule(date),
+            bookingStart: legacyStart,
+            bookingEnd: legacyEnd,
+          }))
+        );
+      }
 
       const safeUsers = toArray(initial.discountEligibleUsernames).filter(
         (u): u is string => typeof u === "string"
@@ -249,8 +302,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       setStock("0");
       setStockDirty(false);
       setMaxPerUserPerDay("0");
-      setSaleDates([todayPlus(0)]);
-      setTimeSlots([defaultTimeSlot()]);
+      setSaleSchedules([defaultSaleSchedule()]);
       setSelectedUsernames([]);
       setDiscountAmount("0");
       setNote("");
@@ -295,23 +347,103 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
     }
   };
 
-  const addDate = () => {
-    setSaleDates([...saleDates, todayPlus(saleDates.length)]);
-  };
-  const setDate = (i: number, v: string) =>
-    setSaleDates(saleDates.map((d, idx) => (idx === i ? v : d)));
-  const removeDate = (i: number) =>
-    setSaleDates(saleDates.filter((_, idx) => idx !== i));
-
-  const addSlot = () => {
-    setTimeSlots((prev) => [...prev, defaultTimeSlot()]);
-  };
-  const setSlot = (i: number, field: keyof TimeSlot, v: string) =>
-    setTimeSlots(
-      timeSlots.map((s, idx) => (idx === i ? { ...s, [field]: v } : s))
+  const updateSchedule = (index: number, patch: Partial<SaleSchedule>) => {
+    setSaleSchedules((previous) =>
+      previous.map((schedule, currentIndex) =>
+        currentIndex === index ? { ...schedule, ...patch } : schedule
+      )
     );
-  const removeSlot = (i: number) =>
-    setTimeSlots(timeSlots.filter((_, idx) => idx !== i));
+  };
+
+  const updateRound = (
+    scheduleIndex: number,
+    roundIndex: number,
+    patch: Partial<TopupRound>
+  ) => {
+    setSaleSchedules((previous) =>
+      previous.map((schedule, currentScheduleIndex) => {
+        if (currentScheduleIndex !== scheduleIndex) return schedule;
+        return {
+          ...schedule,
+          rounds: schedule.rounds.map((round, currentRoundIndex) =>
+            currentRoundIndex === roundIndex ? { ...round, ...patch } : round
+          ),
+        };
+      })
+    );
+  };
+
+  const addRound = (scheduleIndex: number) => {
+    setSaleSchedules((previous) =>
+      previous.map((schedule, currentIndex) => {
+        if (currentIndex !== scheduleIndex) return schedule;
+        let number = schedule.rounds.length + 1;
+        while (schedule.rounds.some((round) => round.code === `R${number}`)) number += 1;
+        return {
+          ...schedule,
+          rounds: [
+            ...schedule.rounds,
+            {
+              ...defaultTopupRound(schedule.rounds.length),
+              code: `R${number}`,
+              name: `รอบที่ ${number}`,
+            },
+          ],
+        };
+      })
+    );
+  };
+
+  const removeRound = (scheduleIndex: number, roundIndex: number) => {
+    setSaleSchedules((previous) =>
+      previous.map((schedule, currentIndex) =>
+        currentIndex === scheduleIndex
+          ? {
+              ...schedule,
+              rounds: schedule.rounds.filter((_, index) => index !== roundIndex),
+            }
+          : schedule
+      )
+    );
+  };
+
+  const moveRound = (
+    scheduleIndex: number,
+    roundIndex: number,
+    direction: -1 | 1
+  ) => {
+    setSaleSchedules((previous) =>
+      previous.map((schedule, currentIndex) => {
+        if (currentIndex !== scheduleIndex) return schedule;
+        const targetIndex = roundIndex + direction;
+        if (targetIndex < 0 || targetIndex >= schedule.rounds.length) return schedule;
+        const rounds = [...schedule.rounds];
+        [rounds[roundIndex], rounds[targetIndex]] = [
+          rounds[targetIndex],
+          rounds[roundIndex],
+        ];
+        return { ...schedule, rounds };
+      })
+    );
+  };
+
+  const copyRoundsToOtherDates = (sourceIndex: number) => {
+    const sourceRounds = saleSchedules[sourceIndex]?.rounds ?? [];
+    setSaleSchedules((previous) =>
+      previous.map((schedule, index) =>
+        index === sourceIndex
+          ? schedule
+          : {
+              ...schedule,
+              rounds: sourceRounds.map((round, roundIndex) => ({
+                ...round,
+                sortOrder: roundIndex,
+              })),
+            }
+      )
+    );
+    toast.success("คัดลอกรอบเติมไปใช้กับวันอื่นแล้ว");
+  };
 
   /* ─── submit ─── */
   const handleSubmit = async (e: React.FormEvent) => {
@@ -321,6 +453,51 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
     if (!name.trim()) {
       toast.warning("ต้องระบุชื่อสินค้า");
       return;
+    }
+    if (saleSchedules.length === 0) {
+      toast.warning("ต้องกำหนดวันเปิดรับจองอย่างน้อย 1 วัน");
+      return;
+    }
+    const seenDates = new Set<string>();
+    for (const schedule of saleSchedules) {
+      if (!schedule.date || seenDates.has(schedule.date)) {
+        toast.warning(
+          seenDates.has(schedule.date)
+            ? `วันที่ ${schedule.date} ถูกตั้งค่าซ้ำ`
+            : "กรุณาระบุวันที่เปิดรับจอง"
+        );
+        return;
+      }
+      seenDates.add(schedule.date);
+      if (
+        !schedule.bookingStart ||
+        !schedule.bookingEnd ||
+        schedule.bookingStart >= schedule.bookingEnd
+      ) {
+        toast.warning(`ช่วงเวลาเปิดรับจองวันที่ ${schedule.date} ไม่ถูกต้อง`);
+        return;
+      }
+      if (schedule.rounds.length === 0) {
+        toast.warning(`วันที่ ${schedule.date} ต้องมีรอบเติมอย่างน้อย 1 รอบ`);
+        return;
+      }
+      const seenCodes = new Set<string>();
+      for (const round of schedule.rounds) {
+        const code = round.code.trim();
+        if (!code || !round.name.trim() || seenCodes.has(code)) {
+          toast.warning(
+            seenCodes.has(code)
+              ? `รหัสรอบ ${code} ซ้ำในวันที่ ${schedule.date}`
+              : `กรุณากรอกรหัสและชื่อรอบในวันที่ ${schedule.date}`
+          );
+          return;
+        }
+        seenCodes.add(code);
+        if (!round.start || !round.end || round.start >= round.end) {
+          toast.warning(`เวลาของ ${round.name} วันที่ ${schedule.date} ไม่ถูกต้อง`);
+          return;
+        }
+      }
     }
 
     setSaving(true);
@@ -365,8 +542,21 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
         stockEnabled: payloadStockEnabled,
         stock: payloadStock,
         maxPerUserPerDay: Math.max(0, Number(maxPerUserPerDay) || 0),
-        saleDates,
-        timeSlots,
+        saleDates: saleSchedules.map((schedule) => schedule.date),
+        timeSlots: saleSchedules.map((schedule) => ({
+          start: schedule.bookingStart,
+          end: schedule.bookingEnd,
+        })),
+        saleSchedules: saleSchedules.map((schedule) => ({
+          ...schedule,
+          rounds: schedule.rounds.map((round, index) => ({
+            ...round,
+            code: round.code.trim(),
+            name: round.name.trim(),
+            capacity: Math.max(1, Number(round.capacity) || 1),
+            sortOrder: index,
+          })),
+        })),
         discountEligibleUsernames: normalizeDiscountUsernames(
           selectedUsernames,
           allUsers
@@ -765,138 +955,251 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          {/* 5. วันและเวลาที่ตั้งขาย */}
-          <div className="space-y-4">
-            {/* วันที่ตั้งการขาย */}
-            <div className="bg-brand-paper/40 p-4 border border-brand-green-100 rounded-2xl">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-[12.5px] font-extrabold text-brand-ink inline-flex items-center gap-1.5">
-                  <CalendarDays className="h-3.5 w-3.5 text-brand-green" />
-                  วันที่ตั้งการขาย
-                  <span className="text-brand-ink-soft font-bold">
-                    (ไม่จำกัด)
-                  </span>
-                </label>
-                <button
-                  type="button"
-                  onClick={addDate}
-                  className="text-[11px] font-extrabold text-brand-green hover:text-brand-green-600 inline-flex items-center gap-1 disabled:opacity-40 cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" /> เพิ่มวันที่
-                </button>
+          {/* 5. ตารางเปิดรับจองและรอบเติม แยกตามวัน */}
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="inline-flex items-center gap-1.5 text-[13px] font-black text-brand-ink">
+                  <CalendarDays className="h-4 w-4 text-brand-green" />
+                  ตารางเปิดรับจองและรอบเติม
+                </h4>
+                <p className="mt-1 text-[10.5px] font-bold text-brand-ink-soft">
+                  เวลาเปิดรับจองคือเวลาที่เว็บไซต์รับคำสั่ง ส่วนรอบเติมคือเวลาที่ร้านดำเนินการให้ลูกค้า
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setSaleSchedules((previous) => [
+                    ...previous,
+                    defaultSaleSchedule(todayPlus(previous.length)),
+                  ])
+                }
+                className="inline-flex flex-shrink-0 items-center gap-1 rounded-xl border border-brand-green/30 bg-brand-green/10 px-3 py-2 text-[11px] font-black text-brand-green hover:bg-brand-green hover:text-white transition cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                เพิ่มวันที่
+              </button>
+            </div>
 
-              {/* วันที่ลูกค้าจอง Preview */}
-              <div className="bg-brand-surface-soft/80 border border-brand-green-100/40 rounded-xl p-3 text-[11px] text-brand-ink-soft space-y-1.5 font-bold mb-3 select-none">
-                <span className="text-[10px] text-brand-green font-extrabold uppercase tracking-wider block">💡 ตัวอย่างปฏิทินที่ลูกค้าจะคลิกจอง (Preview)</span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {saleDates.slice(0, 3).map((d, index) => {
-                    const formattedDate = d ? new Date(d).toLocaleDateString("th-TH", { day: "numeric", month: "short" }) : `วันที่ ${index + 1}`;
-                    return (
-                      <span key={index} className={`px-2.5 py-1 rounded-lg border text-[10.5px] font-black ${index === 0 ? "bg-brand-green text-white border-brand-green shadow-sm shadow-brand-green/20" : "bg-brand-paper border-brand-green-100 text-brand-ink/75"}`}>
-                        {formattedDate}
-                      </span>
-                    );
-                  })}
-                  {saleDates.length > 3 && (
-                    <span className="px-2.5 py-1 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft/75 text-[10.5px]">
-                      +{saleDates.length - 3} วันที่เหลือ...
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {saleDates.map((d, i) => (
-                  <div key={i} className="flex items-center gap-2">
+            {saleSchedules.map((schedule, scheduleIndex) => (
+              <section
+                key={`${schedule.date}-${scheduleIndex}`}
+                className="rounded-2xl border border-brand-green-100 bg-brand-paper/50 p-4"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex-1">
+                    <label className="mb-1.5 block text-[11px] font-extrabold text-brand-ink-soft">
+                      วันที่เปิดรับ
+                    </label>
                     <DatePicker
-                      value={d}
-                      onChange={(v) => setDate(i, v)}
-                      className="flex-1"
+                      value={schedule.date}
+                      onChange={(date) => updateSchedule(scheduleIndex, { date })}
                     />
-                    {saleDates.length > 1 && (
+                  </div>
+                  <div className="flex items-center gap-1.5 self-end">
+                    {saleSchedules.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => removeDate(i)}
-                        className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 flex items-center justify-center transition cursor-pointer flex-shrink-0"
+                        onClick={() => copyRoundsToOtherDates(scheduleIndex)}
+                        className="inline-flex h-10 items-center gap-1 rounded-xl border border-brand-green-100 bg-brand-surface px-2.5 text-[10px] font-extrabold text-brand-green hover:border-brand-green transition cursor-pointer"
+                        title="คัดลอกรอบเติมของวันนี้ไปใช้กับวันอื่นทั้งหมด"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        คัดลอกรอบไปวันอื่น
+                      </button>
+                    )}
+                    {saleSchedules.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSaleSchedules((previous) =>
+                            previous.filter((_, index) => index !== scheduleIndex)
+                          )
+                        }
+                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition cursor-pointer"
+                        aria-label="ลบวันที่"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ช่วงเวลาเปิดรับ */}
-            <div className="bg-brand-paper/40 p-4 border border-brand-green-100 rounded-2xl">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-[12.5px] font-extrabold text-brand-ink inline-flex items-center gap-1.5 flex-wrap">
-                  <Clock className="h-3.5 w-3.5 text-brand-green" />
-                  ช่วงเวลาเปิดรับ
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand-green/10 text-brand-green text-[10px] font-black ring-1 ring-brand-green/30">
-                    เวลาไทย · UTC+7
-                  </span>
-                  <span className="text-brand-ink-soft font-bold">
-                    (ไม่จำกัดจำนวนช่วง)
-                  </span>
-                </label>
-                <button
-                  type="button"
-                  onClick={addSlot}
-                  className="text-[11px] font-extrabold text-brand-green hover:text-brand-green-600 inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" /> เพิ่มเวลา
-                </button>
-              </div>
-              <p className="text-[10.5px] font-bold text-brand-ink-soft -mt-1 mb-3">
-                ระบบใช้เวลาประเทศไทยเสมอ — ลูกค้าทุกคนจะเห็นช่วงเวลานี้ตรงกัน
-              </p>
-
-              {/* ช่วงเวลา Preview */}
-              <div className="bg-brand-surface-soft/80 border border-brand-green-100/40 rounded-xl p-3 text-[11px] text-brand-ink-soft space-y-1.5 font-bold mb-3 select-none">
-                <span className="text-[10px] text-brand-green font-extrabold uppercase tracking-wider block">💡 ตัวอย่างแถบเลือกช่วงเวลาที่ลูกค้าจะกดเลือก (Preview)</span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {timeSlots.slice(0, 3).map((slot, index) => (
-                    <span key={index} className={`px-2.5 py-1 rounded-lg border text-[10.5px] font-black ${index === 0 ? "bg-brand-green text-white border-brand-green shadow-sm shadow-brand-green/20" : "bg-brand-paper border-brand-green-100 text-brand-ink/75"}`}>
-                      {slot.start} - {slot.end}
-                    </span>
-                  ))}
-                  {timeSlots.length > 3 && (
-                    <span className="px-2.5 py-1 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft/75 text-[10.5px]">
-                      +{timeSlots.length - 3} ช่วง...
-                    </span>
-                  )}
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                {timeSlots.map((s, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
+                <div className="mt-4 rounded-xl border border-sky-500/25 bg-sky-500/8 p-3">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs font-black text-sky-500">
+                    <Clock className="h-3.5 w-3.5" />
+                    ส่วนที่ 1 · ช่วงเวลาเปิดรับจอง
+                  </div>
+                  <p className="mb-3 text-[10px] font-bold text-brand-ink-soft">
+                    เว็บไซต์อนุญาตให้ลูกค้ากดยืนยันจองได้เฉพาะช่วงนี้ ไม่ใช่เวลาที่ร้านเติมสินค้า
+                  </p>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                     <TimePicker
-                      value={s.start}
-                      onChange={(v) => setSlot(i, "start", v)}
+                      value={schedule.bookingStart}
+                      onChange={(bookingStart) =>
+                        updateSchedule(scheduleIndex, { bookingStart })
+                      }
                     />
-                    <span className="text-brand-ink-soft font-bold">–</span>
+                    <span className="font-bold text-brand-ink-soft">–</span>
                     <TimePicker
-                      value={s.end}
-                      onChange={(v) => setSlot(i, "end", v)}
+                      value={schedule.bookingEnd}
+                      onChange={(bookingEnd) =>
+                        updateSchedule(scheduleIndex, { bookingEnd })
+                      }
                     />
-                    {timeSlots.length > 1 ? (
-                      <button
-                        type="button"
-                        onClick={() => removeSlot(i)}
-                        className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 flex items-center justify-center transition cursor-pointer"
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-xl border border-brand-green/25 bg-brand-green/5 p-3">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-black text-brand-green">
+                        ส่วนที่ 2 · รอบเติมของวันนี้
+                      </div>
+                      <p className="mt-0.5 text-[10px] font-bold text-brand-ink-soft">
+                        ลูกค้าเลือกรอบได้ 1 รอบต่อออเดอร์ ระบบปิดรอบอัตโนมัติเมื่อเต็ม
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addRound(scheduleIndex)}
+                      className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg border border-brand-green/30 bg-brand-surface px-2.5 py-1.5 text-[10.5px] font-black text-brand-green hover:bg-brand-green hover:text-white transition cursor-pointer"
+                    >
+                      <Plus className="h-3 w-3" />
+                      เพิ่มรอบ
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {schedule.rounds.map((round, roundIndex) => (
+                      <div
+                        key={`${round.code}-${roundIndex}`}
+                        className="rounded-xl border border-brand-green-100 bg-brand-surface p-3"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <div className="w-10" />
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <label className="text-[10px] font-extrabold text-brand-ink-soft">
+                            รหัสรอบ
+                            <input
+                              value={round.code}
+                              onChange={(event) =>
+                                updateRound(scheduleIndex, roundIndex, {
+                                  code: event.target.value,
+                                })
+                              }
+                              maxLength={80}
+                              className={`${inputCls} mt-1`}
+                              placeholder="R1"
+                            />
+                          </label>
+                          <label className="text-[10px] font-extrabold text-brand-ink-soft">
+                            ชื่อรอบ
+                            <input
+                              value={round.name}
+                              onChange={(event) =>
+                                updateRound(scheduleIndex, roundIndex, {
+                                  name: event.target.value,
+                                })
+                              }
+                              maxLength={120}
+                              className={`${inputCls} mt-1`}
+                              placeholder="รอบที่ 1"
+                            />
+                          </label>
+                        </div>
+                        <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                          <label className="text-[10px] font-extrabold text-brand-ink-soft">
+                            เวลาเริ่ม
+                            <TimePicker
+                              value={round.start}
+                              onChange={(start) =>
+                                updateRound(scheduleIndex, roundIndex, { start })
+                              }
+                              className="mt-1"
+                            />
+                          </label>
+                          <span className="pb-3 font-bold text-brand-ink-soft">–</span>
+                          <label className="text-[10px] font-extrabold text-brand-ink-soft">
+                            เวลาสิ้นสุด
+                            <TimePicker
+                              value={round.end}
+                              onChange={(end) =>
+                                updateRound(scheduleIndex, roundIndex, { end })
+                              }
+                              className="mt-1"
+                            />
+                          </label>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-end gap-2">
+                          <label className="min-w-28 flex-1 text-[10px] font-extrabold text-brand-ink-soft">
+                            จำนวนที่รับต่อรอบ
+                            <input
+                              type="number"
+                              min={1}
+                              value={round.capacity}
+                              onChange={(event) =>
+                                updateRound(scheduleIndex, roundIndex, {
+                                  capacity: Math.max(1, Number(event.target.value) || 1),
+                                })
+                              }
+                              className={`${inputCls} mt-1`}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateRound(scheduleIndex, roundIndex, {
+                                enabled: !round.enabled,
+                              })
+                            }
+                            className={`h-10 rounded-xl border px-3 text-[10.5px] font-black transition cursor-pointer ${
+                              round.enabled
+                                ? "border-brand-green/30 bg-brand-green/10 text-brand-green"
+                                : "border-rose-500/30 bg-rose-500/10 text-rose-400"
+                            }`}
+                          >
+                            {round.enabled ? "เปิดรับจอง" : "ปิดรับจอง"}
+                          </button>
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => moveRound(scheduleIndex, roundIndex, -1)}
+                              disabled={roundIndex === 0}
+                              className="flex h-10 w-9 items-center justify-center rounded-lg border border-brand-green-100 text-brand-ink-soft hover:text-brand-green disabled:opacity-30 cursor-pointer"
+                              aria-label="เลื่อนรอบขึ้น"
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveRound(scheduleIndex, roundIndex, 1)}
+                              disabled={roundIndex === schedule.rounds.length - 1}
+                              className="flex h-10 w-9 items-center justify-center rounded-lg border border-brand-green-100 text-brand-ink-soft hover:text-brand-green disabled:opacity-30 cursor-pointer"
+                              aria-label="เลื่อนรอบลง"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeRound(scheduleIndex, roundIndex)}
+                              className="flex h-10 w-9 items-center justify-center rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 cursor-pointer"
+                              aria-label="ลบรอบ"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {schedule.rounds.length === 0 && (
+                      <div className="rounded-xl border border-dashed border-amber-500/30 p-4 text-center text-[11px] font-extrabold text-amber-500">
+                        ยังไม่มีรอบเติม ลูกค้าจะยังจองวันนี้ไม่ได้
+                      </div>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              </section>
+            ))}
           </div>
 
           {/* 6. ส่วนลด (ผู้มีสิทธิ์ได้รับส่วนลด & จำนวนส่วนลด) */}

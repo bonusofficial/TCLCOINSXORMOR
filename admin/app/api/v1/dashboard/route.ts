@@ -363,6 +363,9 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
         username: b.username,
         price: b.price.toString(),
         status: b.status,
+        topupRoundName: b.topupRoundName,
+        topupRoundStart: b.topupRoundStart,
+        topupRoundEnd: b.topupRoundEnd,
         createdAt: b.createdAt.toISOString(),
       }));
 

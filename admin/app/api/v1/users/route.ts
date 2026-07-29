@@ -6,6 +6,7 @@ import {
   errorPlugin,
   loggerPlugin,
 } from "@/lib/server/middleware";
+import { calculateUserActivity } from "@/lib/server/user-inactivity";
 
 const app = new Elysia({ prefix: "/api/v1/users" })
   .use(loggerPlugin)
@@ -16,31 +17,51 @@ const app = new Elysia({ prefix: "/api/v1/users" })
   .get(
     "/",
     async () => {
-      const items = await prisma.user.findMany({
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          memberNo: true,
-          name: true,
-          email: true,
-          username: true,
-          displayUsername: true,
-          image: true,
-          role: true,
-          phone: true,
-          emailVerified: true,
-          shopName: true,
-          lineId: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
+      const [items, latestBookings] = await Promise.all([
+        prisma.user.findMany({
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            memberNo: true,
+            name: true,
+            email: true,
+            username: true,
+            displayUsername: true,
+            image: true,
+            role: true,
+            phone: true,
+            emailVerified: true,
+            shopName: true,
+            lineId: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        prisma.bookings.groupBy({
+          by: ["userId"],
+          where: { userId: { not: null } },
+          _max: { createdAt: true },
+        }),
+      ]);
+      const latestBookingByUserId = new Map<string, Date | null>();
+      for (const item of latestBookings) {
+        if (item.userId) {
+          latestBookingByUserId.set(item.userId, item._max.createdAt);
+        }
+      }
+      const now = new Date();
       return {
         ok: true as const,
         data: items.map((u) => ({
           ...u,
           createdAt: u.createdAt.toISOString(),
           updatedAt: u.updatedAt.toISOString(),
+          ...calculateUserActivity(
+            u.createdAt,
+            latestBookingByUserId.get(u.id) ?? null,
+            now,
+            u.role
+          ),
         })),
       };
     },

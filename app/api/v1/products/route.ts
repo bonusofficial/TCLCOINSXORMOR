@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { prisma } from "@/lib/prisma";
 import { ProductBody } from "@/lib/server/schemas/product";
+import { validateProductInput } from "@/lib/types/product";
 import {
   authMacros,
   errorPlugin,
@@ -36,7 +37,11 @@ const app = new Elysia({ prefix: "/api/v1/products" })
   /** POST — create */
   .post(
     "/",
-    async ({ body }) => {
+    async ({ body, status }) => {
+      const validationError = validateProductInput(body);
+      if (validationError) {
+        return status(400, { ok: false, message: validationError });
+      }
       const saved = await prisma.products.create({
         data: {
           image: body.image,
@@ -50,6 +55,7 @@ const app = new Elysia({ prefix: "/api/v1/products" })
           maxPerUserPerDay: body.maxPerUserPerDay ?? 0,
           saleDates: body.saleDates,
           timeSlots: body.timeSlots,
+          saleSchedules: body.saleSchedules ?? [],
           discountEligibleUsernames: body.discountEligibleUsernames,
           discountAmount: body.discountAmount,
           note: body.note ?? null,

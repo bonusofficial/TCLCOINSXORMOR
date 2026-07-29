@@ -18,19 +18,24 @@ import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
 
-type UserRole = "member" | "agent" | "admin";
+type UserRole = "member" | "vip" | "agent" | "admin";
 
 function resolveUserRole(user?: {
   role?: string | null;
   email?: string | null;
 } | null): UserRole {
   const dbRole = (user?.role ?? "").toLowerCase().trim();
-  if (dbRole === "admin" || dbRole === "agent" || dbRole === "member") {
+  if (
+    dbRole === "admin" ||
+    dbRole === "agent" ||
+    dbRole === "vip" ||
+    dbRole === "member"
+  ) {
     return dbRole as UserRole;
   }
   const email = (user?.email ?? "").toLowerCase().trim();
   if (email.endsWith("@admin.tclcoinsxormor.com")) return "admin";
-  if (email.endsWith("@vip.tclcoinsxormor.com")) return "agent";
+  if (email.endsWith("@vip.tclcoinsxormor.com")) return "vip";
   return "member";
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useSession, signOut } from "@/lib/auth-client";
@@ -17,7 +17,7 @@ import {
   Lock,
   ChevronDown,
   CheckCircle,
-  AlertCircle,
+  Crown,
 } from "lucide-react";
 import Navbar, { formatDisplayID } from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
@@ -28,19 +28,24 @@ import { Pagination } from "@/components/ui/pagination";
 import { fmt } from "@/lib/product-utils";
 import { copyToClipboard } from "@/lib/utils";
 
-type UserRole = "member" | "agent" | "admin";
+type UserRole = "member" | "vip" | "agent" | "admin";
 
 function resolveUserRole(user?: {
   role?: string | null;
   email?: string | null;
 } | null): UserRole {
   const dbRole = (user?.role ?? "").toLowerCase().trim();
-  if (dbRole === "admin" || dbRole === "agent" || dbRole === "member") {
+  if (
+    dbRole === "admin" ||
+    dbRole === "agent" ||
+    dbRole === "vip" ||
+    dbRole === "member"
+  ) {
     return dbRole as UserRole;
   }
   const email = (user?.email ?? "").toLowerCase().trim();
   if (email.endsWith("@admin.tclcoinsxormor.com")) return "admin";
-  if (email.endsWith("@vip.tclcoinsxormor.com")) return "agent";
+  if (email.endsWith("@vip.tclcoinsxormor.com")) return "vip";
   return "member";
 }
 
@@ -53,20 +58,40 @@ interface BookingItem {
   userId: string | null;
   username: string;
   phone: string;
+  recipientFirstName: string | null;
+  recipientLastName: string | null;
+  addressLine: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
   content: string | null;
   price: string;
   status: string;
   bookingDate: string;
   bookingTime: string | null;
+  bookingWindowStart: string | null;
+  bookingWindowEnd: string | null;
+  topupRoundCode: string | null;
+  topupRoundName: string | null;
+  topupRoundStart: string | null;
+  topupRoundEnd: string | null;
+  topupRoundCapacity: number | null;
   createdAt: string;
   updatedAt: string;
 }
 
-type CopyFeedback = {
-  type: "success" | "error";
-  title: string;
-  description: string;
-};
+function formatDeliveryAddress(b: BookingItem) {
+  return [
+    b.addressLine,
+    b.subdistrict && `ตำบล/แขวง ${b.subdistrict}`,
+    b.district && `อำเภอ/เขต ${b.district}`,
+    b.province,
+    b.postalCode,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 export default function OrdersHistoryPage() {
   const { data: session, isPending } = useSession();
@@ -86,6 +111,8 @@ export default function OrdersHistoryPage() {
         memberNo?: number | null;
         username?: string | null;
         name?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
         email?: string | null;
         image?: string | null;
         phone?: string | null;
@@ -100,7 +127,14 @@ export default function OrdersHistoryPage() {
   // Bookings list state
   const [bookings, setBookings] = useState<BookingItem[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
-  const [copyFeedback, setCopyFeedback] = useState<CopyFeedback | null>(null);
+  const [copiedBookingIds, setCopiedBookingIds] = useState<Set<number>>(
+    () => new Set()
+  );
+  const [copyNotice, setCopyNotice] = useState<{
+    bookingCode: string;
+  } | null>(null);
+  const copyResetTimersRef = useRef<Map<number, number>>(new Map());
+  const copyNoticeTimerRef = useRef<number | null>(null);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -109,19 +143,16 @@ export default function OrdersHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const showCopyFeedback = (feedback: CopyFeedback) => {
-    setCopyFeedback(feedback);
-  };
-
   useEffect(() => {
-    if (!copyFeedback) return;
-
-    const id = window.setTimeout(() => {
-      setCopyFeedback(null);
-    }, 2600);
-
-    return () => window.clearTimeout(id);
-  }, [copyFeedback]);
+    const timers = copyResetTimersRef.current;
+    return () => {
+      timers.forEach((timerId) => window.clearTimeout(timerId));
+      timers.clear();
+      if (copyNoticeTimerRef.current) {
+        window.clearTimeout(copyNoticeTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -177,46 +208,87 @@ export default function OrdersHistoryPage() {
 
   // Copy booking detail handler (Precisely formatted as requested)
   const handleCopyBooking = async (b: BookingItem) => {
-    const datePart = formatThaiDateFull(b.bookingDate);
+    if (copiedBookingIds.has(b.id)) return;
+
+    const datePart = formatThaiDateFull(b.bookingDate).replace(" พ.ศ. ", " ");
     // ยศจาก prefix ของรหัสการจอง: MB=ลูกค้าทั่วไป, AG=ตัวแทน, ADM=แอดมิน
     const prefix = (b.bookingCode.split("-")[0] || "").toUpperCase();
     const roleLabel =
-      prefix === "AG" ? "ตัวแทน" : prefix === "ADM" ? "แอดมิน" : "ลูกค้าทั่วไป";
+      prefix === "VIP"
+        ? "VIP"
+        : prefix === "AG"
+          ? "Agent"
+          : prefix === "ADM"
+            ? "Admin"
+            : "Member";
+    const bookingName =
+      [b.recipientFirstName, b.recipientLastName].filter(Boolean).join(" ") ||
+      [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+      user?.name ||
+      "-";
+    const memberId = formatDisplayID(user?.memberNo, b.userId);
+    const usernameAndMemberId =
+      [b.username, memberId].filter(Boolean).join(" / ") || "-";
+    const bookingWindow =
+      b.bookingWindowStart && b.bookingWindowEnd
+        ? `${b.bookingWindowStart}–${b.bookingWindowEnd}`
+        : formatTimeRange(b.bookingTime || "00:00 - 23:59");
+    const refillRound = b.topupRoundName
+      ? `${b.topupRoundName}${
+          b.topupRoundStart && b.topupRoundEnd
+            ? ` เวลา ${b.topupRoundStart}–${b.topupRoundEnd} น.`
+            : ""
+        }`
+      : "-";
 
-    const textToCopy = `รหัสการจอง: ${b.bookingCode}
+    const textToCopy = `รหัสจอง: #${b.bookingCode}
+ชื่อผู้จอง: ${bookingName}
+Username: ${usernameAndMemberId}
+เบอร์โทรศัพท์: ${b.phone || "-"}
 สินค้า: ${b.productName}
-ชื่อผู้ใช้: ${b.username || "-"}${prefix === "AG" ? ` (UID: ${formatDisplayID(user?.memberNo, b.userId) || "-"})` : ""}
-ยศ: ${roleLabel}
-เบอร์โทร: ${b.phone || "-"}
-วันที่: ${datePart}
-เวลา: ${b.bookingTime || "00:00 - 23:59"} น.
-ราคา: ${fmt(b.price)} บาท
-สถานะ: ${getStatusBadge(b.status).emoji} ${getStatusBadge(b.status).label}
-จองเมื่อ: ${formatPressedAt(b.createdAt)}
-รายละเอียด: ${b.content || "-"}`;
+จำนวน: 1 รายการ
+ยอดชำระ: ${fmt(b.price)} บาท
+วันที่จองสินค้า: ${datePart}
+ช่วงเวลาเปิดรับจอง: ${bookingWindow} น.
+รอบเติม: ${refillRound}
+ยศสมาชิก: ${roleLabel}
+หมายเหตุ: ${b.content || "-"}
+สถานะ: ${getStatusBadge(b.status).label}`;
 
     const toastId = toast.loading("กำลังคัดลอกรายละเอียดข้อมูลการจอง...", {
       description: b.bookingCode,
     });
     const copied = await copyToClipboard(textToCopy);
     if (copied) {
-      showCopyFeedback({
-        type: "success",
-        title: "คัดลอกข้อมูลแล้ว",
-        description: b.bookingCode,
+      setCopiedBookingIds((current) => {
+        const next = new Set(current);
+        next.add(b.id);
+        return next;
       });
-      toast.success("คัดลอกรายละเอียดข้อมูลการจองแล้ว!", {
-        id: toastId,
-        description: b.bookingCode,
-      });
+      const previousTimer = copyResetTimersRef.current.get(b.id);
+      if (previousTimer) window.clearTimeout(previousTimer);
+      const resetTimer = window.setTimeout(() => {
+        setCopiedBookingIds((current) => {
+          const next = new Set(current);
+          next.delete(b.id);
+          return next;
+        });
+        copyResetTimersRef.current.delete(b.id);
+      }, 3000);
+      copyResetTimersRef.current.set(b.id, resetTimer);
+
+      toast.dismiss(toastId);
+      setCopyNotice({ bookingCode: b.bookingCode });
+      if (copyNoticeTimerRef.current) {
+        window.clearTimeout(copyNoticeTimerRef.current);
+      }
+      copyNoticeTimerRef.current = window.setTimeout(() => {
+        setCopyNotice(null);
+        copyNoticeTimerRef.current = null;
+      }, 6000);
       return;
     }
 
-    showCopyFeedback({
-      type: "error",
-      title: "คัดลอกข้อมูลไม่สำเร็จ",
-      description: "กรุณาลองอีกครั้ง",
-    });
     toast.error("คัดลอกข้อมูลไม่สำเร็จ", {
       id: toastId,
       description: "กรุณาลองอีกครั้ง หรือเลือกข้อความเพื่อคัดลอกเอง",
@@ -272,6 +344,9 @@ export default function OrdersHistoryPage() {
       return dateStr;
     }
   };
+
+  const formatTimeRange = (value: string) =>
+    value.trim().replace(/\s*-\s*/g, "–");
 
   // Style helper for statuses
   const getStatusBadge = (status: string) => {
@@ -405,34 +480,25 @@ export default function OrdersHistoryPage() {
 
   return (
     <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col">
-      {copyFeedback && (
-        <div className="fixed inset-x-4 top-4 z-[9999] pointer-events-none sm:left-auto sm:right-6 sm:top-6 sm:w-[360px]">
+      {copyNotice && (
+        <div className="pointer-events-none fixed left-4 right-4 top-4 z-[9999] flex justify-end sm:left-auto sm:right-6 sm:top-6">
           <div
-            role={copyFeedback.type === "error" ? "alert" : "status"}
+            role="status"
             aria-live="polite"
-            className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-2xl ring-1 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 ${
-              copyFeedback.type === "success"
-                ? "border-brand-green bg-brand-surface-soft/95 text-brand-ink shadow-brand-green/25 ring-brand-green/25"
-                : "border-rose-400 bg-brand-surface-soft/95 text-brand-ink shadow-rose-500/20 ring-rose-400/20"
-            }`}
+            className="flex w-full max-w-[430px] items-start gap-3 rounded-2xl border border-brand-green bg-brand-surface-soft/95 px-4 py-3.5 text-brand-ink shadow-[0_18px_45px_-16px_rgba(22,163,41,0.5)] ring-1 ring-brand-green/25 backdrop-blur-xl animate-in fade-in slide-in-from-top-3 duration-300"
           >
-            <span
-              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                copyFeedback.type === "success"
-                  ? "bg-brand-green/15 text-brand-green"
-                  : "bg-rose-500/15 text-rose-400"
-              }`}
-            >
-              {copyFeedback.type === "success" ? (
-                <CheckCircle className="h-4.5 w-4.5" />
-              ) : (
-                <AlertCircle className="h-4.5 w-4.5" />
-              )}
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-green/15 text-brand-green">
+              <CheckCircle className="h-5 w-5" strokeWidth={2.5} />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-black leading-5">{copyFeedback.title}</p>
-              <p className="mt-0.5 truncate text-xs font-bold text-brand-ink-soft">
-                {copyFeedback.description}
+              <p className="font-display text-sm font-black leading-tight">
+                คัดลอกข้อมูลการจองสำเร็จ
+              </p>
+              <p className="mt-1 text-xs font-bold leading-relaxed text-brand-ink-soft">
+                กรุณาตรวจสอบรหัสจองและแจ้งแอดมินผ่าน LINE OA
+              </p>
+              <p className="mt-0.5 text-[11px] font-extrabold text-brand-green">
+                รหัสจอง {copyNotice.bookingCode}
               </p>
             </div>
           </div>
@@ -574,6 +640,7 @@ export default function OrdersHistoryPage() {
           <div className="space-y-4">
             {paginatedBookings.map((b) => {
               const badge = getStatusBadge(b.status);
+              const isCopied = copiedBookingIds.has(b.id);
               const isUnpaid = b.status === "รอตรวจสอบ" || b.status === "รอชำระเงิน";
               const productImage =
                 b.productId != null ? productImageById.get(b.productId) : undefined;
@@ -587,17 +654,42 @@ export default function OrdersHistoryPage() {
                   <div className="px-5 sm:px-6 py-3.5 bg-gradient-to-r from-brand-green-50/40 via-transparent to-transparent border-b border-brand-green-100/50 flex flex-wrap items-center justify-between gap-3">
                     
                     {/* Booking code & copy button */}
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2.5">
                       <span className="font-mono font-black text-sm text-brand-ink">
                         #{b.bookingCode}
                       </span>
+                      {b.bookingCode.toUpperCase().startsWith("VIP-") && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-1 text-[10.5px] font-black text-amber-400 shadow-sm shadow-amber-400/10">
+                          <Crown className="h-3.5 w-3.5" strokeWidth={2.7} />
+                          VIP
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleCopyBooking(b)}
-                        className="w-7.5 h-7.5 rounded-lg bg-brand-green-50 hover:bg-brand-green text-brand-green hover:text-white flex items-center justify-center transition cursor-pointer group/copy"
-                        title="คัดลอกรายละเอียดคิวจอง"
+                        disabled={isCopied}
+                        className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border px-3.5 py-2 text-[11.5px] font-black shadow-sm transition sm:text-xs ${
+                          isCopied
+                            ? "cursor-not-allowed border-brand-green/30 bg-brand-green/15 text-brand-green"
+                            : "cursor-pointer border-brand-green bg-brand-green text-white shadow-brand-green/20 hover:-translate-y-0.5 hover:bg-brand-green-600 hover:shadow-md"
+                        }`}
+                        title={
+                          isCopied
+                            ? "คัดลอกข้อมูลการจองแล้ว"
+                            : "คัดลอกข้อมูลการจองทั้งหมด"
+                        }
                       >
-                        <Copy className="h-3.5 w-3.5 transition group-hover/copy:scale-105" />
+                        {isCopied ? (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            คัดลอกแล้ว ✓
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4" />
+                            คัดลอกข้อมูลการจองทั้งหมด
+                          </>
+                        )}
                       </button>
 
                       {/* Display CreatedAt (Thai Buddhist Date Year) */}
@@ -669,13 +761,34 @@ export default function OrdersHistoryPage() {
                       </div>
                       <div className="flex items-center gap-1.5 bg-brand-green-50/50 py-1 px-3 rounded-full border border-brand-green-100/50">
                         <Clock className="h-3.5 w-3.5 text-brand-green" />
-                        <span>ช่วงเวลา:</span>
-                        <span className="text-brand-ink font-black">{b.bookingTime || "00:00 - 23:59"} น.</span>
+                        <span>ช่วงเวลาเปิดรับจอง:</span>
+                        <span className="text-brand-ink font-black">
+                          {b.bookingWindowStart && b.bookingWindowEnd
+                            ? `${b.bookingWindowStart}–${b.bookingWindowEnd}`
+                            : b.bookingTime || "00:00 - 23:59"}{" "}
+                          น.
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-brand-green-50/50 py-1 px-3 rounded-full border border-brand-green-100/50">
+                        <Coins className="h-3.5 w-3.5 text-brand-green" />
+                        <span>รอบเติม:</span>
+                        <span className="text-brand-ink font-black">
+                          {b.topupRoundName || "รายการเดิม"}
+                          {b.topupRoundStart && b.topupRoundEnd
+                            ? ` ${b.topupRoundStart}–${b.topupRoundEnd} น.`
+                            : ""}
+                        </span>
                       </div>
                       
                       {b.content && (
                         <p className="max-w-[320px] truncate text-[11.5px]" title={b.content}>
                           บันทึก: <span className="font-medium text-brand-ink-soft">{b.content}</span>
+                        </p>
+                      )}
+                      {formatDeliveryAddress(b) && (
+                        <p className="max-w-[520px] text-[11.5px] leading-relaxed text-brand-ink-soft">
+                          จัดส่งถึง <span className="font-extrabold text-brand-ink">{[b.recipientFirstName, b.recipientLastName].filter(Boolean).join(" ")}</span>
+                          {" · "}{formatDeliveryAddress(b)}
                         </p>
                       )}
                     </div>

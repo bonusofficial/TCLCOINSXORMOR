@@ -11,9 +11,19 @@ const Params = t.Object({ id: t.String({ minLength: 1 }) });
 
 const UserUpdateBody = t.Object({
   name: t.Optional(t.String({ maxLength: 120 })),
-  phone: t.Optional(t.String({ maxLength: 30 })),
+  phone: t.Optional(
+    t.String({
+      pattern: "^(?:\\d{10})?$",
+      error: "เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก",
+    })
+  ),
   role: t.Optional(
-    t.Union([t.Literal("member"), t.Literal("agent"), t.Literal("admin")])
+    t.Union([
+      t.Literal("member"),
+      t.Literal("vip"),
+      t.Literal("agent"),
+      t.Literal("admin"),
+    ])
   ),
   shopName: t.Optional(t.Union([t.String({ maxLength: 200 }), t.Null()])),
   lineId: t.Optional(t.Union([t.String({ maxLength: 100 }), t.Null()])),

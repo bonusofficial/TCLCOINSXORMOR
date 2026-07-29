@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Search,
@@ -21,12 +21,15 @@ import {
   Download,
   Coins,
   CheckCircle,
+  Clock3,
+  TriangleAlert,
   BarChart3,
   Users as UsersIcon,
 } from "lucide-react";
 import { usersApi } from "@/lib/eden";
 import { timeAgo } from "@/lib/audit-labels";
 import { formatDisplayID } from "@/lib/user-format";
+import { normalizePhoneInput } from "@/lib/utils";
 import {
   Table,
   TableHeader,
@@ -37,7 +40,13 @@ import {
 } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 
-type UserRole = "member" | "agent" | "admin";
+type UserRole = "member" | "vip" | "agent" | "admin";
+type UserActivityStatus =
+  | "normal"
+  | "near_expiry"
+  | "expired"
+  | "exempt";
+type CountedActivityStatus = Exclude<UserActivityStatus, "exempt">;
 
 interface AppUser {
   id: string;
@@ -54,6 +63,14 @@ interface AppUser {
   lineId: string | null;
   createdAt: string;
   updatedAt: string;
+  activityStatus: UserActivityStatus;
+  activityStatusLabel: string;
+  inactivityDays: number | null;
+  daysUntilExpiry: number | null;
+  expiresAt: string | null;
+  lastBookingAt: string | null;
+  activityReferenceAt: string;
+  requiresDeletionReview: boolean;
 }
 
 const ROLE_META: Record<UserRole, {
@@ -63,13 +80,62 @@ const ROLE_META: Record<UserRole, {
   text: string;
 }> = {
   member: { label: "สมาชิก", icon: UserIcon, bg: "bg-brand-green-50", text: "text-brand-green" },
-  agent: { label: "ตัวแทน", icon: Crown, bg: "bg-amber-50", text: "text-amber-700" },
+  vip: { label: "VIP", icon: Crown, bg: "bg-amber-50", text: "text-amber-700" },
+  agent: { label: "ตัวแทน", icon: Store, bg: "bg-emerald-50", text: "text-emerald-700" },
   admin: { label: "ผู้ดูแลระบบ", icon: Shield, bg: "bg-sky-50", text: "text-sky-700" },
 };
 
+const ACTIVITY_META: Record<UserActivityStatus, {
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  bg: string;
+  text: string;
+  border: string;
+}> = {
+  normal: {
+    label: "ปกติ",
+    description: "ไม่มีรายการน้อยกว่า 25 วัน",
+    icon: CheckCircle,
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-500",
+    border: "border-emerald-500/30",
+  },
+  near_expiry: {
+    label: "ใกล้ครบกำหนด",
+    description: "ไม่มีรายการ 25–29 วัน",
+    icon: Clock3,
+    bg: "bg-amber-500/10",
+    text: "text-amber-500",
+    border: "border-amber-500/30",
+  },
+  expired: {
+    label: "ครบกำหนดแล้ว",
+    description: "ไม่มีรายการตั้งแต่ 30 วัน",
+    icon: TriangleAlert,
+    bg: "bg-rose-500/10",
+    text: "text-rose-500",
+    border: "border-rose-500/30",
+  },
+  exempt: {
+    label: "ยกเว้นการนับ",
+    description: "บัญชีผู้ดูแลระบบ",
+    icon: Shield,
+    bg: "bg-sky-500/10",
+    text: "text-sky-600",
+    border: "border-sky-500/30",
+  },
+};
+
+const COUNTED_ACTIVITY_STATUSES: CountedActivityStatus[] = [
+  "normal",
+  "near_expiry",
+  "expired",
+];
+
 function normalizeRole(r: string | null): UserRole {
   const v = (r ?? "").toLowerCase().trim();
-  if (v === "admin" || v === "agent" || v === "member") return v;
+  if (v === "admin" || v === "agent" || v === "vip" || v === "member") return v;
   return "member";
 }
 
@@ -87,13 +153,51 @@ function userDisplayName(u: Pick<AppUser, "displayUsername" | "name" | "username
   );
 }
 
+function SelectionCheckbox({
+  checked,
+  indeterminate = false,
+  disabled,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  disabled?: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      disabled={disabled}
+      aria-label={label}
+      onClick={(event) => event.stopPropagation()}
+      onChange={(event) => onChange(event.target.checked)}
+      className="h-4 w-4 rounded border-brand-green-100 accent-brand-green cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+    />
+  );
+}
+
 export default function UsersPage() {
   const [items, setItems] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all");
+  const [activityFilter, setActivityFilter] = useState<"all" | UserActivityStatus>("all");
   const [editing, setEditing] = useState<AppUser | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [deleteDialogIds, setDeleteDialogIds] = useState<string[]>([]);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Tabs — "list" รายชื่อผู้ใช้ · "summary" สรุปยอดตามบุคคล (เปิดจาก ?tab=summary)
   const [activeTab, setActiveTab] = useState<"list" | "summary">("list");
@@ -109,6 +213,7 @@ export default function UsersPage() {
 
   const resetListView = () => {
     setCurrentPage(1);
+    setSelectedIds(new Set());
   };
 
   const load = useCallback(async () => {
@@ -129,25 +234,23 @@ export default function UsersPage() {
     load();
   }, [load]);
 
-  const handleDelete = async (u: AppUser) => {
-    if (!confirm(`ลบบัญชี "${u.email}" จริงหรือไม่? (จะลบ session/account ด้วย)`)) return;
-    setDeletingId(u.id);
-    const id = toast.loading("กำลังลบ...");
-    const { data, error } = await usersApi.item.api.v1.users({ id: u.id }).delete();
-    setDeletingId(null);
-    if (error) {
-      const value = error.value as { message?: string } | undefined;
-      toast.error("ลบไม่สำเร็จ", { id, description: value?.message });
-      return;
-    }
-    setItems((prev) => prev.filter((x) => x.id !== u.id));
-    toast.success(data.message ?? "ลบแล้ว", { id });
+  const openDeleteDialog = (ids: string[]) => {
+    if (ids.length === 0) return;
+    setDeleteDialogIds(ids);
+    setDeleteConfirmation("");
+  };
+
+  const closeDeleteDialog = () => {
+    if (bulkDeleting) return;
+    setDeleteDialogIds([]);
+    setDeleteConfirmation("");
   };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((u) => {
       if (roleFilter !== "all" && normalizeRole(u.role) !== roleFilter) return false;
+      if (activityFilter !== "all" && u.activityStatus !== activityFilter) return false;
       if (!q) return true;
       return (
         u.name.toLowerCase().includes(q) ||
@@ -157,10 +260,20 @@ export default function UsersPage() {
         (u.phone ?? "").includes(q) ||
         (u.shopName ?? "").toLowerCase().includes(q) ||
         (u.lineId ?? "").toLowerCase().includes(q) ||
-        formatDisplayID(u.memberNo, u.id).toLowerCase().includes(q)
+        formatDisplayID(u.memberNo, u.id).toLowerCase().includes(q) ||
+        u.activityStatusLabel.toLowerCase().includes(q)
       );
     });
-  }, [items, search, roleFilter]);
+  }, [items, search, roleFilter, activityFilter]);
+
+  const activityCounts = useMemo(
+    () => ({
+      normal: items.filter((u) => u.activityStatus === "normal").length,
+      near_expiry: items.filter((u) => u.activityStatus === "near_expiry").length,
+      expired: items.filter((u) => u.activityStatus === "expired").length,
+    }),
+    [items]
+  );
 
   // Paginated items
   const paginatedItems = useMemo(() => {
@@ -168,9 +281,134 @@ export default function UsersPage() {
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
 
+  const selectedUsers = useMemo(
+    () => items.filter((user) => selectedIds.has(user.id)),
+    [items, selectedIds]
+  );
+  const selectedCount = selectedUsers.length;
+  const visibleIds = useMemo(
+    () => paginatedItems.map((user) => user.id),
+    [paginatedItems]
+  );
+  const visibleSelectedCount = useMemo(
+    () => visibleIds.filter((id) => selectedIds.has(id)).length,
+    [selectedIds, visibleIds]
+  );
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleSelectedCount === visibleIds.length;
+  const someVisibleSelected =
+    visibleSelectedCount > 0 && !allVisibleSelected;
+  const deleteDialogUsers = useMemo(() => {
+    const targetIds = new Set(deleteDialogIds);
+    return items.filter((user) => targetIds.has(user.id));
+  }, [deleteDialogIds, items]);
+
+  const handleToggleUserSelection = (id: string, checked: boolean) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleToggleVisibleSelection = (checked: boolean) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      visibleIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
+
+  const handleConfirmedDelete = async () => {
+    if (
+      deleteDialogUsers.length === 0 ||
+      deleteConfirmation.trim() !== "ตกลง" ||
+      bulkDeleting
+    ) {
+      return;
+    }
+
+    const targets = [...deleteDialogUsers];
+    setBulkDeleting(true);
+    setDeletingId(targets.length === 1 ? targets[0].id : null);
+    const toastId = toast.loading(`กำลังลบ ${targets.length} บัญชี...`);
+    const deletedIds: string[] = [];
+    const failures: Array<{ email: string; message: string }> = [];
+
+    for (const target of targets) {
+      try {
+        const { data, error } = await usersApi.item.api.v1
+          .users({ id: target.id })
+          .delete();
+        if (error || !data?.ok) {
+          const value = error?.value as { message?: string } | undefined;
+          failures.push({
+            email: target.email,
+            message: value?.message ?? "ไม่สามารถลบบัญชีได้",
+          });
+          continue;
+        }
+        deletedIds.push(target.id);
+      } catch {
+        failures.push({
+          email: target.email,
+          message: "เกิดข้อผิดพลาดระหว่างลบบัญชี",
+        });
+      }
+    }
+
+    const deletedSet = new Set(deletedIds);
+    if (deletedIds.length > 0) {
+      setItems((previous) => previous.filter((user) => !deletedSet.has(user.id)));
+    }
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      deletedIds.forEach((id) => next.delete(id));
+      return next;
+    });
+    setBulkDeleting(false);
+    setDeletingId(null);
+    setDeleteDialogIds([]);
+    setDeleteConfirmation("");
+
+    if (failures.length === 0) {
+      toast.success("ลบบัญชีเรียบร้อยแล้ว", {
+        id: toastId,
+        description: `ลบสำเร็จ ${deletedIds.length} บัญชี`,
+      });
+      return;
+    }
+
+    toast.error("ลบบางบัญชีไม่สำเร็จ", {
+      id: toastId,
+      description: `สำเร็จ ${deletedIds.length} บัญชี · ไม่สำเร็จ ${failures.length} บัญชี (${failures[0].message})`,
+    });
+  };
+
   // Handle Export to Excel (CSV with UTF-8 BOM)
   const handleExport = () => {
-    const headers = ["UID", "ชื่อที่แสดง", "Username", "อีเมล", "ชื่อร้าน", "ไอดีไลน์เติม Coins", "บทบาท (Role)", "เบอร์โทรศัพท์", "ยืนยันอีเมล", "สมัครเมื่อ"];
+    const headers = [
+      "UID",
+      "ชื่อที่แสดง",
+      "Username",
+      "อีเมล",
+      "ชื่อร้าน",
+      "ไอดีไลน์เติม Coins",
+      "บทบาท (Role)",
+      "เบอร์โทรศัพท์",
+      "ยืนยันอีเมล",
+      "สมัครเมื่อ",
+      "สถานะบัญชี",
+      "จำนวนวันที่ไม่มีรายการ",
+      "วันที่จองล่าสุด",
+      "วันที่อ้างอิง",
+      "วันครบกำหนด 30 วัน",
+      "ต้องตรวจสอบเพื่อลบ",
+    ];
     const rows = filtered.map(u => [
       formatDisplayID(u.memberNo, u.id),
       userDisplayName(u),
@@ -181,7 +419,13 @@ export default function UsersPage() {
       ROLE_META[normalizeRole(u.role)].label,
       u.phone || "—",
       u.emailVerified ? "ยืนยันแล้ว" : "ยังไม่ยืนยัน",
-      new Date(u.createdAt).toLocaleString("th-TH")
+      new Date(u.createdAt).toLocaleString("th-TH"),
+      u.activityStatusLabel,
+      u.inactivityDays ?? "ไม่นับ",
+      u.lastBookingAt ? new Date(u.lastBookingAt).toLocaleString("th-TH") : "ยังไม่เคยจอง",
+      new Date(u.activityReferenceAt).toLocaleString("th-TH"),
+      u.expiresAt ? new Date(u.expiresAt).toLocaleString("th-TH") : "ยกเว้นการนับ",
+      u.requiresDeletionReview ? "ใช่" : "ไม่ใช่",
     ]);
     
     const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
@@ -249,6 +493,43 @@ export default function UsersPage() {
 
       {activeTab === "list" && (
         <>
+      {/* Account activity status */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        {COUNTED_ACTIVITY_STATUSES.map((status) => {
+          const meta = ACTIVITY_META[status];
+          const StatusIcon = meta.icon;
+          const active = activityFilter === status;
+          return (
+            <button
+              key={status}
+              type="button"
+              onClick={() => {
+                setActivityFilter(active ? "all" : status);
+                resetListView();
+              }}
+              aria-pressed={active}
+              className={`rounded-2xl border p-4 text-left transition cursor-pointer ${meta.bg} ${meta.border} ${
+                active ? "ring-2 ring-offset-2 ring-brand-green shadow-md" : "hover:-translate-y-0.5 hover:shadow-sm"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className={`inline-flex items-center gap-2 text-sm font-black ${meta.text}`}>
+                  <StatusIcon className="h-5 w-5" strokeWidth={2.5} />
+                  {meta.label}
+                </span>
+                <span className={`font-display text-2xl font-black ${meta.text}`}>
+                  {activityCounts[status]}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] font-bold text-brand-ink-soft">
+                {meta.description}
+                {status === "expired" ? " · รอตรวจสอบเพื่อลบ" : ""}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Toolbar */}
       <div className="bg-brand-surface border border-brand-green-100 rounded-2xl p-3 mb-4 flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
         <div className="relative flex-1">
@@ -263,8 +544,8 @@ export default function UsersPage() {
             className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 pl-9 pr-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/60"
           />
         </div>
-        <div className="flex gap-1.5 bg-brand-paper border border-brand-green-100 rounded-xl p-1">
-          {(["all", "member", "agent", "admin"] as const).map((r) => (
+        <div className="flex flex-wrap gap-1.5 bg-brand-paper border border-brand-green-100 rounded-xl p-1">
+          {(["all", "member", "vip", "agent", "admin"] as const).map((r) => (
             <button
               key={r}
               onClick={() => {
@@ -281,15 +562,76 @@ export default function UsersPage() {
             </button>
           ))}
         </div>
+        <label className="relative">
+          <span className="sr-only">กรองตามสถานะบัญชี</span>
+          <select
+            value={activityFilter}
+            onChange={(event) => {
+              setActivityFilter(event.target.value as "all" | UserActivityStatus);
+              resetListView();
+            }}
+            className="w-full sm:w-auto rounded-xl border border-brand-green-100 bg-brand-paper px-3 py-2.5 text-sm font-extrabold text-brand-ink outline-none transition cursor-pointer hover:border-brand-green focus:border-brand-green focus:ring-4 focus:ring-brand-green/20"
+          >
+            <option value="all">ทุกสถานะบัญชี</option>
+            <option value="normal">ปกติ</option>
+            <option value="near_expiry">ใกล้ครบกำหนด</option>
+            <option value="expired">ครบกำหนดแล้ว</option>
+            <option value="exempt">ยกเว้นการนับ (Admin)</option>
+          </select>
+        </label>
         <button
           onClick={load}
-          disabled={loading}
+          disabled={loading || bulkDeleting}
           className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-brand-green-100 bg-brand-paper text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50 text-sm font-bold"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           <span>รีเฟรช</span>
         </button>
       </div>
+
+      {selectedCount > 0 && (
+        <div className="mb-4 rounded-2xl border border-rose-500/30 bg-brand-surface px-3 py-3 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center rounded-lg bg-brand-surface px-3 py-2 text-sm font-black text-brand-ink ring-1 ring-rose-100">
+                เลือกแล้ว <b className="mx-1 text-rose-600">{selectedCount}</b> บัญชี
+              </span>
+              {selectedCount < filtered.length && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(new Set(filtered.map((user) => user.id)))}
+                  disabled={bulkDeleting}
+                  className="inline-flex items-center justify-center rounded-lg border border-brand-green-100 bg-brand-surface px-3 py-2 text-xs font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50"
+                >
+                  เลือกที่กรองทั้งหมด ({filtered.length})
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                disabled={bulkDeleting}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-green-100 bg-brand-surface px-3 py-2 text-xs font-extrabold text-brand-ink-soft hover:border-rose-300 hover:text-rose-500 transition cursor-pointer disabled:opacity-50"
+              >
+                <X className="h-3.5 w-3.5" />
+                ล้างรายการที่เลือก
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => openDeleteDialog(selectedUsers.map((user) => user.id))}
+              disabled={bulkDeleting}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-rose-600/25 hover:bg-rose-700 transition cursor-pointer disabled:opacity-60"
+            >
+              {bulkDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              ลบ {selectedCount} บัญชี
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* List */}
       {loading ? (
@@ -300,14 +642,26 @@ export default function UsersPage() {
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block bg-brand-surface border border-brand-green-100 rounded-2xl overflow-hidden shadow-xs">
+          <div className="hidden md:block bg-brand-surface border border-brand-green-100 rounded-2xl overflow-x-auto shadow-xs">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10 py-3 pl-4 pr-0">
+                    <SelectionCheckbox
+                      checked={allVisibleSelected}
+                      indeterminate={someVisibleSelected}
+                      disabled={bulkDeleting || paginatedItems.length === 0}
+                      label="เลือกผู้ใช้ในหน้านี้"
+                      onChange={handleToggleVisibleSelection}
+                    />
+                  </TableHead>
                   <TableHead className="py-3 px-4">ผู้ใช้</TableHead>
                   <TableHead className="py-3 px-3">ติดต่อ</TableHead>
                   <TableHead className="py-3 px-3">ชื่อร้าน / ไอดีไลน์</TableHead>
                   <TableHead className="py-3 px-3 text-center">Role</TableHead>
+                  <TableHead className="py-3 px-3 whitespace-nowrap">สถานะบัญชี</TableHead>
+                  <TableHead className="py-3 px-3 whitespace-nowrap">กิจกรรมล่าสุด</TableHead>
+                  <TableHead className="py-3 px-3 whitespace-nowrap">ครบกำหนด 30 วัน</TableHead>
                   <TableHead className="py-3 px-3 whitespace-nowrap">สมัครเมื่อ</TableHead>
                   <TableHead className="py-3 px-4 text-right">จัดการ</TableHead>
                 </TableRow>
@@ -316,9 +670,27 @@ export default function UsersPage() {
                 {paginatedItems.map((u) => {
                   const role = normalizeRole(u.role);
                   const RoleIcon = ROLE_META[role].icon;
+                  const activity = ACTIVITY_META[u.activityStatus];
+                  const ActivityIcon = activity.icon;
                   const displayName = userDisplayName(u);
                   return (
-                    <TableRow key={u.id}>
+                    <TableRow
+                      key={u.id}
+                      data-state={selectedIds.has(u.id) ? "selected" : undefined}
+                      className={
+                        u.requiresDeletionReview
+                          ? "[&>td:first-child]:border-l-2 [&>td:first-child]:border-l-rose-500"
+                          : ""
+                      }
+                    >
+                      <TableCell className="w-10 py-3 pl-4 pr-0">
+                        <SelectionCheckbox
+                          checked={selectedIds.has(u.id)}
+                          disabled={bulkDeleting || deletingId === u.id}
+                          label={`เลือกบัญชี ${displayName}`}
+                          onChange={(checked) => handleToggleUserSelection(u.id, checked)}
+                        />
+                      </TableCell>
                       <TableCell className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <img
@@ -366,6 +738,61 @@ export default function UsersPage() {
                           {ROLE_META[role].label}
                         </span>
                       </TableCell>
+                      <TableCell className="py-3 px-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10.5px] font-black whitespace-nowrap ${activity.bg} ${activity.text} ${activity.border}`}>
+                          <ActivityIcon className="h-3 w-3" strokeWidth={2.5} />
+                          {activity.label}
+                        </span>
+                        {u.activityStatus === "exempt" ? (
+                          <div className="mt-1 text-[10.5px] font-bold text-sky-600">
+                            ไม่นับเงื่อนไข 25/30 วัน
+                          </div>
+                        ) : (
+                          <div className={`mt-1 text-[10.5px] font-bold ${u.requiresDeletionReview ? "text-rose-600" : "text-brand-ink-soft"}`}>
+                            ไม่มีรายการ {u.inactivityDays} วัน
+                          </div>
+                        )}
+                        {u.activityStatus === "near_expiry" && (
+                          <div className="text-[10px] font-extrabold text-amber-700">
+                            เหลือ {u.daysUntilExpiry} วัน
+                          </div>
+                        )}
+                        {u.requiresDeletionReview && (
+                          <div className="text-[10px] font-extrabold text-rose-600">
+                            รอตรวจสอบเพื่อลบ
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-3 px-3 text-[10.5px] font-bold text-brand-ink-soft whitespace-nowrap">
+                        <div className="text-brand-ink">
+                          {u.lastBookingAt ? "จองล่าสุด" : "ยังไม่เคยจอง"}
+                        </div>
+                        <div>
+                          {new Date(u.activityReferenceAt).toLocaleString("th-TH", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3 px-3 text-[10.5px] font-bold whitespace-nowrap">
+                        {u.expiresAt ? (
+                          <span className={
+                            u.activityStatus === "expired"
+                              ? "text-rose-600"
+                              : u.activityStatus === "near_expiry"
+                                ? "text-amber-700"
+                                : "text-brand-ink"
+                          }>
+                            {new Date(u.expiresAt).toLocaleDateString("th-TH", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+                        ) : (
+                          <span className="text-sky-600">ยกเว้นการนับ</span>
+                        )}
+                      </TableCell>
                       <TableCell className="py-3 px-3 text-[11.5px] font-bold text-brand-ink-soft whitespace-nowrap">
                         {timeAgo(u.createdAt)}
                       </TableCell>
@@ -373,13 +800,14 @@ export default function UsersPage() {
                         <div className="inline-flex gap-1">
                           <button
                             onClick={() => setEditing(u)}
+                            disabled={bulkDeleting}
                             className="w-8 h-8 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:border-brand-green hover:bg-brand-green-50 hover:text-brand-green flex items-center justify-center transition cursor-pointer"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDelete(u)}
-                            disabled={deletingId === u.id}
+                            onClick={() => openDeleteDialog([u.id])}
+                            disabled={bulkDeleting || deletingId === u.id}
                             className="w-8 h-8 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:border-rose-400 hover:bg-rose-500/10 hover:text-rose-400 flex items-center justify-center transition cursor-pointer disabled:opacity-50"
                           >
                             {deletingId === u.id ? (
@@ -402,9 +830,26 @@ export default function UsersPage() {
             {paginatedItems.map((u) => {
               const role = normalizeRole(u.role);
               const RoleIcon = ROLE_META[role].icon;
+              const activity = ACTIVITY_META[u.activityStatus];
+              const ActivityIcon = activity.icon;
               const displayName = userDisplayName(u);
               return (
-                <article key={u.id} className="bg-brand-surface border border-brand-green-100 rounded-2xl p-3 flex gap-3 shadow-xs">
+                <article
+                  key={u.id}
+                  className={`bg-brand-surface border rounded-2xl p-3 flex gap-3 shadow-xs ${
+                    selectedIds.has(u.id)
+                      ? "border-brand-green bg-brand-green-50/40 ring-2 ring-brand-green/15"
+                      : u.requiresDeletionReview
+                        ? "border-rose-500/40"
+                        : "border-brand-green-100"
+                  }`}
+                >
+                  <SelectionCheckbox
+                    checked={selectedIds.has(u.id)}
+                    disabled={bulkDeleting || deletingId === u.id}
+                    label={`เลือกบัญชี ${displayName}`}
+                    onChange={(checked) => handleToggleUserSelection(u.id, checked)}
+                  />
                   <img
                     src={u.image || fallbackAvatar(displayName)}
                     alt={displayName}
@@ -438,11 +883,67 @@ export default function UsersPage() {
                         )}
                       </div>
                     )}
+                    <div className="mt-2 rounded-xl border border-brand-green-100/70 bg-brand-paper/70 p-2">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-black ${activity.bg} ${activity.text} ${activity.border}`}>
+                          <ActivityIcon className="h-3 w-3" strokeWidth={2.5} />
+                          {activity.label}
+                        </span>
+                        <span className={`text-[10px] font-extrabold ${
+                          u.activityStatus === "exempt"
+                            ? "text-sky-600"
+                            : u.requiresDeletionReview
+                              ? "text-rose-600"
+                              : "text-brand-ink-soft"
+                        }`}>
+                          {u.activityStatus === "exempt"
+                            ? "ไม่นับเงื่อนไข 25/30 วัน"
+                            : `ไม่มีรายการ ${u.inactivityDays} วัน`}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[10px] font-bold text-brand-ink-soft">
+                        {u.lastBookingAt ? "จองล่าสุด" : "เริ่มนับจากวันสมัคร"}{" "}
+                        {new Date(u.activityReferenceAt).toLocaleString("th-TH", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </div>
+                      {u.activityStatus === "near_expiry" && (
+                        <div className="mt-0.5 text-[10px] font-extrabold text-amber-700">
+                          เหลืออีก {u.daysUntilExpiry} วันก่อนครบกำหนด
+                        </div>
+                      )}
+                      {u.requiresDeletionReview && (
+                        <div className="mt-0.5 text-[10px] font-extrabold text-rose-600">
+                          รอแอดมินตรวจสอบเพื่อลบ
+                        </div>
+                      )}
+                      <div className="mt-1 border-t border-brand-green-100/60 pt-1 text-[10px] font-bold text-brand-ink-soft">
+                        ครบกำหนด 30 วัน:{" "}
+                        <span className={
+                          u.expiresAt
+                            ? u.activityStatus === "expired"
+                              ? "text-rose-600"
+                              : u.activityStatus === "near_expiry"
+                                ? "text-amber-700"
+                                : "text-brand-ink"
+                            : "text-sky-600"
+                        }>
+                          {u.expiresAt
+                            ? new Date(u.expiresAt).toLocaleDateString("th-TH", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "ยกเว้นการนับ"}
+                        </span>
+                      </div>
+                    </div>
                     <div className="flex gap-1.5 mt-2">
-                      <button onClick={() => setEditing(u)} className="flex-1 py-1.5 rounded-lg text-[11px] font-extrabold bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:text-brand-green inline-flex items-center justify-center gap-1 cursor-pointer">
+                      <button onClick={() => setEditing(u)} disabled={bulkDeleting} className="flex-1 py-1.5 rounded-lg text-[11px] font-extrabold bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:text-brand-green inline-flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50">
                         <Pencil className="h-3 w-3" /> แก้ไข
                       </button>
-                      <button onClick={() => handleDelete(u)} disabled={deletingId === u.id} className="w-9 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:text-rose-400 inline-flex items-center justify-center cursor-pointer disabled:opacity-50">
+                      <button onClick={() => openDeleteDialog([u.id])} disabled={bulkDeleting || deletingId === u.id} className="w-9 rounded-lg bg-brand-paper border border-brand-green-100 text-brand-ink-soft hover:text-rose-400 inline-flex items-center justify-center cursor-pointer disabled:opacity-50">
                         {deletingId === u.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                       </button>
                     </div>
@@ -466,6 +967,110 @@ export default function UsersPage() {
       )}
 
       {activeTab === "summary" && <UserSummaryTab />}
+
+      {deleteDialogUsers.length > 0 && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="ปิดกล่องยืนยัน"
+            onClick={closeDeleteDialog}
+            className="absolute inset-0 bg-black/65 backdrop-blur-sm cursor-default"
+          />
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-users-title"
+            aria-describedby="delete-users-description"
+            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-rose-500/30 bg-brand-surface-soft shadow-2xl ring-1 ring-rose-500/20 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <header className="flex items-start justify-between gap-4 border-b border-rose-500/20 bg-rose-500/10 p-5">
+              <div className="flex items-start gap-3">
+                <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-500">
+                  <TriangleAlert className="h-6 w-6" strokeWidth={2.4} />
+                </span>
+                <div>
+                  <h2 id="delete-users-title" className="font-display text-lg font-black text-brand-ink">
+                    ยืนยันการลบบัญชี
+                  </h2>
+                  <p id="delete-users-description" className="mt-1 text-xs font-bold leading-relaxed text-brand-ink-soft">
+                    การดำเนินการนี้จะลบบัญชีและ Session ที่เกี่ยวข้องถาวร ไม่สามารถย้อนกลับได้
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeDeleteDialog}
+                disabled={bulkDeleting}
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-rose-500/20 bg-brand-surface text-brand-ink-soft hover:text-rose-500 transition cursor-pointer disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+
+            <div className="space-y-4 p-5">
+              <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3">
+                <div className="text-sm font-black text-rose-500">
+                  บัญชีที่จะลบทั้งหมด {deleteDialogUsers.length} บัญชี
+                </div>
+                <div className="mt-2 max-h-32 space-y-1 overflow-y-auto pr-1">
+                  {deleteDialogUsers.slice(0, 8).map((user) => (
+                    <div key={user.id} className="flex items-center justify-between gap-3 text-[11px] font-bold">
+                      <span className="truncate text-brand-ink">{userDisplayName(user)}</span>
+                      <span className="truncate text-brand-ink-soft">{user.email}</span>
+                    </div>
+                  ))}
+                  {deleteDialogUsers.length > 8 && (
+                    <div className="text-[11px] font-extrabold text-rose-600">
+                      และอีก {deleteDialogUsers.length - 8} บัญชี
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <label className="block">
+                <span className="text-sm font-extrabold text-brand-ink">
+                  พิมพ์คำว่า <strong className="text-rose-600">ตกลง</strong> เพื่อยืนยัน
+                </span>
+                <input
+                  autoFocus
+                  value={deleteConfirmation}
+                  onChange={(event) => setDeleteConfirmation(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") handleConfirmedDelete();
+                  }}
+                  disabled={bulkDeleting}
+                  placeholder="พิมพ์คำว่า ตกลง"
+                  className="mt-2 w-full rounded-xl border border-rose-200 bg-brand-paper px-3.5 py-3 text-sm font-bold text-brand-ink outline-none transition placeholder:text-brand-ink-soft/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/15 disabled:opacity-60"
+                />
+              </label>
+            </div>
+
+            <footer className="flex flex-col-reverse gap-2 border-t border-brand-green-100/60 p-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeDeleteDialog}
+                disabled={bulkDeleting}
+                className="rounded-xl border border-brand-green-100 bg-brand-paper px-4 py-2.5 text-sm font-extrabold text-brand-ink-soft hover:border-brand-green hover:text-brand-green transition cursor-pointer disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmedDelete}
+                disabled={deleteConfirmation.trim() !== "ตกลง" || bulkDeleting}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-rose-600/20 hover:bg-rose-700 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {bulkDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                ยืนยันลบ {deleteDialogUsers.length} บัญชี
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
 
       {/* Edit modal */}
       {editing && (
@@ -600,8 +1205,8 @@ function UserSummaryTab() {
             className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 pl-9 pr-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/60"
           />
         </div>
-        <div className="flex gap-1.5 bg-brand-paper border border-brand-green-100 rounded-xl p-1">
-          {(["all", "member", "agent", "admin"] as const).map((r) => (
+        <div className="flex flex-wrap gap-1.5 bg-brand-paper border border-brand-green-100 rounded-xl p-1">
+          {(["all", "member", "vip", "agent", "admin"] as const).map((r) => (
             <button
               key={r}
               onClick={() => {
@@ -797,7 +1402,7 @@ function UserEditModal({
   const [email, setEmail] = useState(user.email);
   const [username, setUsername] = useState(user.username ?? "");
   const [displayUsername, setDisplayUsername] = useState(userDisplayName(user));
-  const [phone, setPhone] = useState(user.phone ?? "");
+  const [phone, setPhone] = useState(normalizePhoneInput(user.phone ?? ""));
   const [shopName, setShopName] = useState(user.shopName ?? "");
   const [lineId, setLineId] = useState(user.lineId ?? "");
   const [role, setRole] = useState<UserRole>(normalizeRole(user.role));
@@ -828,6 +1433,11 @@ function UserEditModal({
       return;
     }
 
+    if (phone && !/^\d{10}$/.test(phone)) {
+      toast.warning("เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก");
+      return;
+    }
+
     setSaving(true);
     const tId = toast.loading("กำลังบันทึก...");
     try {
@@ -849,7 +1459,7 @@ function UserEditModal({
         return;
       }
       toast.success(data.message ?? "อัปเดตแล้ว", { id: tId });
-      onSaved(data.data);
+      onSaved({ ...user, ...data.data });
     } finally {
       setSaving(false);
     }
@@ -932,9 +1542,13 @@ function UserEditModal({
               เบอร์โทร
             </label>
               <input
+                type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                maxLength={30}
+                onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+                inputMode="numeric"
+                maxLength={10}
+                pattern="[0-9]{10}"
+                placeholder="เบอร์โทรศัพท์ 10 หลัก"
                 className={editInputCls}
               />
           </div>
@@ -968,8 +1582,8 @@ function UserEditModal({
 
           <div>
             <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">Role</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(["member", "agent", "admin"] as const).map((r) => {
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {(["member", "vip", "agent", "admin"] as const).map((r) => {
                 const Icon = ROLE_META[r].icon;
                 const active = role === r;
                 return (

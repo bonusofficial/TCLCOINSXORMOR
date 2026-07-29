@@ -36,7 +36,7 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 
-type UserRole = "member" | "agent" | "admin";
+type UserRole = "member" | "vip" | "agent" | "admin";
 
 type CopyFeedback = {
   type: "success" | "error";
@@ -75,9 +75,19 @@ const ROLE_CONFIG: Record<
     badgeDot: "bg-brand-green",
     badgeIconBg: "bg-gradient-to-br from-brand-green to-brand-green-600",
   },
+  vip: {
+    label: "VIP MEMBER",
+    icon: Crown,
+    ringClass: "ring-amber-400",
+    shadowClass: "shadow-amber-400/40",
+    badgeText: "text-amber-400",
+    badgeColor: "from-yellow-300 via-amber-400 to-orange-500",
+    badgeDot: "bg-amber-400",
+    badgeIconBg: "bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500",
+  },
   agent: {
     label: "ตัวแทนจำหน่าย",
-    icon: Crown,
+    icon: UserCog,
     ringClass: "ring-brand-gold",
     shadowClass: "shadow-brand-gold/30",
     badgeText: "text-brand-gold",
@@ -428,7 +438,9 @@ export default function Navbar({
                         />
                         {role.label}
                       </p>
-                      {(userRole === "agent" || userRole === "admin") && (
+                      {(userRole === "vip" ||
+                        userRole === "agent" ||
+                        userRole === "admin") && (
                         <div 
                           onClick={handleCopyId}
                           className="flex items-center gap-1 mt-1 bg-brand-paper hover:bg-brand-green-50 border border-brand-green-100 rounded-lg py-0.5 px-2 text-[9.5px] font-extrabold text-brand-ink-soft w-fit cursor-pointer transition select-none group/uid"
@@ -621,7 +633,9 @@ export default function Navbar({
                         />
                         {role.label}
                       </p>
-                      {(userRole === "agent" || userRole === "admin") && (
+                      {(userRole === "vip" ||
+                        userRole === "agent" ||
+                        userRole === "admin") && (
                         <div 
                           onClick={handleCopyId}
                           className="flex items-center gap-1 bg-brand-paper border border-brand-green-100 rounded-lg py-0.5 px-1.5 text-[9.5px] font-extrabold text-brand-ink-soft cursor-pointer transition select-none group/uid"

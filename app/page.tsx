@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { User } from "lucide-react";
+import React, { useState } from "react";
+import { Crown, User } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
 import { getAdminDashboardHref } from "@/lib/admin-url";
 
-type UserRole = "member" | "agent" | "admin";
+type UserRole = "member" | "vip" | "agent" | "admin";
 
 /**
  * Resolve the effective user role.
@@ -30,12 +30,17 @@ function resolveUserRole(user?: {
   email?: string | null;
 } | null): UserRole {
   const dbRole = (user?.role ?? "").toLowerCase().trim();
-  if (dbRole === "admin" || dbRole === "agent" || dbRole === "member") {
+  if (
+    dbRole === "admin" ||
+    dbRole === "agent" ||
+    dbRole === "vip" ||
+    dbRole === "member"
+  ) {
     return dbRole as UserRole;
   }
   const email = (user?.email ?? "").toLowerCase().trim();
   if (email.endsWith("@admin.tclcoinsxormor.com")) return "admin";
-  if (email.endsWith("@vip.tclcoinsxormor.com")) return "agent";
+  if (email.endsWith("@vip.tclcoinsxormor.com")) return "vip";
   return "member";
 }
 
@@ -128,26 +133,35 @@ export default function Home() {
       {isLoggedIn && (() => {
         const isAdmin = userRole === "admin";
         const isAgent = userRole === "agent";
+        const isVip = userRole === "vip";
         const isMember = userRole === "member";
         const dotColor = isAdmin
           ? "bg-sky-400"
           : isAgent
           ? "bg-brand-gold"
+          : isVip
+          ? "bg-amber-400"
           : "bg-brand-green";
         const iconColor = isAdmin
           ? "text-sky-400"
           : isAgent
           ? "text-brand-gold"
+          : isVip
+          ? "text-amber-400"
           : "text-brand-green";
         const roleLabel = isAdmin
           ? "ผู้ดูแลระบบ"
           : isAgent
           ? "ตัวแทนจำหน่าย"
+          : isVip
+          ? "VIP MEMBER"
           : "สมาชิกทั่วไป";
         const description = isAdmin
           ? "คุณเข้าใช้งานในฐานะผู้ดูแลระบบ — เข้าถึงแดชบอร์ดและจัดการระบบได้เต็มรูปแบบ"
           : isAgent
           ? "ยินดีต้อนรับ! คุณอยู่ในฐานะตัวแทนจำหน่าย รับส่วนลดพิเศษ 5% ทุกออเดอร์"
+          : isVip
+          ? "บัญชีของคุณได้รับยศ VIP และรหัสการจองเฉพาะที่ขึ้นต้นด้วย VIP-"
           : "คุณเป็นสมาชิกทั่วไป สามารถอัปเกรดเพื่อรับเรทราคาสุดพิเศษของตัวแทนได้ทันที";
 
         return (
@@ -173,7 +187,14 @@ export default function Home() {
                 )}
                 {isAgent && (
                   <div className="text-xs font-extrabold text-brand-gold bg-brand-gold/10 py-2 px-3 rounded-lg border border-brand-gold/30 text-center inline-flex items-center justify-center gap-1.5 w-full">
-                    👑 ตัวแทนจำหน่าย · เปิดใช้งานแล้ว
+                    <User className="h-4 w-4" strokeWidth={2.5} />
+                    ตัวแทนจำหน่าย · เปิดใช้งานแล้ว
+                  </div>
+                )}
+                {isVip && (
+                  <div className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-center text-xs font-extrabold text-amber-400">
+                    <Crown className="h-4 w-4" strokeWidth={2.7} />
+                    VIP MEMBER · เปิดใช้งานแล้ว
                   </div>
                 )}
                 {isMember && (
@@ -207,7 +228,14 @@ export default function Home() {
                     <span className={`h-2 w-2 rounded-full animate-pulse ${dotColor}`} />
                     {roleLabel}
                   </span>
-                  <User className={`h-3.5 w-3.5 flex-shrink-0 ${iconColor}`} />
+                  {isVip ? (
+                    <Crown
+                      className={`h-4 w-4 flex-shrink-0 ${iconColor}`}
+                      strokeWidth={2.7}
+                    />
+                  ) : (
+                    <User className={`h-3.5 w-3.5 flex-shrink-0 ${iconColor}`} />
+                  )}
                 </div>
               </button>
 

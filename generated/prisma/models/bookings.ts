@@ -35,6 +35,7 @@ export type BookingsAvgAggregateOutputType = {
   productId: number | null
   price: runtime.Decimal | null
   cost: runtime.Decimal | null
+  topupRoundCapacity: number | null
 }
 
 export type BookingsSumAggregateOutputType = {
@@ -42,6 +43,7 @@ export type BookingsSumAggregateOutputType = {
   productId: number | null
   price: runtime.Decimal | null
   cost: runtime.Decimal | null
+  topupRoundCapacity: number | null
 }
 
 export type BookingsMinAggregateOutputType = {
@@ -53,12 +55,26 @@ export type BookingsMinAggregateOutputType = {
   userId: string | null
   username: string | null
   phone: string | null
+  recipientFirstName: string | null
+  recipientLastName: string | null
+  addressLine: string | null
+  subdistrict: string | null
+  district: string | null
+  province: string | null
+  postalCode: string | null
   content: string | null
   price: runtime.Decimal | null
   cost: runtime.Decimal | null
   status: string | null
   bookingDate: Date | null
   bookingTime: string | null
+  bookingWindowStart: string | null
+  bookingWindowEnd: string | null
+  topupRoundCode: string | null
+  topupRoundName: string | null
+  topupRoundStart: string | null
+  topupRoundEnd: string | null
+  topupRoundCapacity: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -72,12 +88,26 @@ export type BookingsMaxAggregateOutputType = {
   userId: string | null
   username: string | null
   phone: string | null
+  recipientFirstName: string | null
+  recipientLastName: string | null
+  addressLine: string | null
+  subdistrict: string | null
+  district: string | null
+  province: string | null
+  postalCode: string | null
   content: string | null
   price: runtime.Decimal | null
   cost: runtime.Decimal | null
   status: string | null
   bookingDate: Date | null
   bookingTime: string | null
+  bookingWindowStart: string | null
+  bookingWindowEnd: string | null
+  topupRoundCode: string | null
+  topupRoundName: string | null
+  topupRoundStart: string | null
+  topupRoundEnd: string | null
+  topupRoundCapacity: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -91,12 +121,26 @@ export type BookingsCountAggregateOutputType = {
   userId: number
   username: number
   phone: number
+  recipientFirstName: number
+  recipientLastName: number
+  addressLine: number
+  subdistrict: number
+  district: number
+  province: number
+  postalCode: number
   content: number
   price: number
   cost: number
   status: number
   bookingDate: number
   bookingTime: number
+  bookingWindowStart: number
+  bookingWindowEnd: number
+  topupRoundCode: number
+  topupRoundName: number
+  topupRoundStart: number
+  topupRoundEnd: number
+  topupRoundCapacity: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -108,6 +152,7 @@ export type BookingsAvgAggregateInputType = {
   productId?: true
   price?: true
   cost?: true
+  topupRoundCapacity?: true
 }
 
 export type BookingsSumAggregateInputType = {
@@ -115,6 +160,7 @@ export type BookingsSumAggregateInputType = {
   productId?: true
   price?: true
   cost?: true
+  topupRoundCapacity?: true
 }
 
 export type BookingsMinAggregateInputType = {
@@ -126,12 +172,26 @@ export type BookingsMinAggregateInputType = {
   userId?: true
   username?: true
   phone?: true
+  recipientFirstName?: true
+  recipientLastName?: true
+  addressLine?: true
+  subdistrict?: true
+  district?: true
+  province?: true
+  postalCode?: true
   content?: true
   price?: true
   cost?: true
   status?: true
   bookingDate?: true
   bookingTime?: true
+  bookingWindowStart?: true
+  bookingWindowEnd?: true
+  topupRoundCode?: true
+  topupRoundName?: true
+  topupRoundStart?: true
+  topupRoundEnd?: true
+  topupRoundCapacity?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -145,12 +205,26 @@ export type BookingsMaxAggregateInputType = {
   userId?: true
   username?: true
   phone?: true
+  recipientFirstName?: true
+  recipientLastName?: true
+  addressLine?: true
+  subdistrict?: true
+  district?: true
+  province?: true
+  postalCode?: true
   content?: true
   price?: true
   cost?: true
   status?: true
   bookingDate?: true
   bookingTime?: true
+  bookingWindowStart?: true
+  bookingWindowEnd?: true
+  topupRoundCode?: true
+  topupRoundName?: true
+  topupRoundStart?: true
+  topupRoundEnd?: true
+  topupRoundCapacity?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -164,12 +238,26 @@ export type BookingsCountAggregateInputType = {
   userId?: true
   username?: true
   phone?: true
+  recipientFirstName?: true
+  recipientLastName?: true
+  addressLine?: true
+  subdistrict?: true
+  district?: true
+  province?: true
+  postalCode?: true
   content?: true
   price?: true
   cost?: true
   status?: true
   bookingDate?: true
   bookingTime?: true
+  bookingWindowStart?: true
+  bookingWindowEnd?: true
+  topupRoundCode?: true
+  topupRoundName?: true
+  topupRoundStart?: true
+  topupRoundEnd?: true
+  topupRoundCapacity?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -270,12 +358,26 @@ export type BookingsGroupByOutputType = {
   userId: string | null
   username: string
   phone: string
+  recipientFirstName: string | null
+  recipientLastName: string | null
+  addressLine: string | null
+  subdistrict: string | null
+  district: string | null
+  province: string | null
+  postalCode: string | null
   content: string | null
   price: runtime.Decimal
   cost: runtime.Decimal | null
   status: string
   bookingDate: Date
   bookingTime: string | null
+  bookingWindowStart: string | null
+  bookingWindowEnd: string | null
+  topupRoundCode: string | null
+  topupRoundName: string | null
+  topupRoundStart: string | null
+  topupRoundEnd: string | null
+  topupRoundCapacity: number | null
   createdAt: Date
   updatedAt: Date
   _count: BookingsCountAggregateOutputType | null
@@ -312,12 +414,26 @@ export type bookingsWhereInput = {
   userId?: Prisma.StringNullableFilter<"bookings"> | string | null
   username?: Prisma.StringFilter<"bookings"> | string
   phone?: Prisma.StringFilter<"bookings"> | string
+  recipientFirstName?: Prisma.StringNullableFilter<"bookings"> | string | null
+  recipientLastName?: Prisma.StringNullableFilter<"bookings"> | string | null
+  addressLine?: Prisma.StringNullableFilter<"bookings"> | string | null
+  subdistrict?: Prisma.StringNullableFilter<"bookings"> | string | null
+  district?: Prisma.StringNullableFilter<"bookings"> | string | null
+  province?: Prisma.StringNullableFilter<"bookings"> | string | null
+  postalCode?: Prisma.StringNullableFilter<"bookings"> | string | null
   content?: Prisma.StringNullableFilter<"bookings"> | string | null
   price?: Prisma.DecimalFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.DecimalNullableFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFilter<"bookings"> | string
   bookingDate?: Prisma.DateTimeFilter<"bookings"> | Date | string
   bookingTime?: Prisma.StringNullableFilter<"bookings"> | string | null
+  bookingWindowStart?: Prisma.StringNullableFilter<"bookings"> | string | null
+  bookingWindowEnd?: Prisma.StringNullableFilter<"bookings"> | string | null
+  topupRoundCode?: Prisma.StringNullableFilter<"bookings"> | string | null
+  topupRoundName?: Prisma.StringNullableFilter<"bookings"> | string | null
+  topupRoundStart?: Prisma.StringNullableFilter<"bookings"> | string | null
+  topupRoundEnd?: Prisma.StringNullableFilter<"bookings"> | string | null
+  topupRoundCapacity?: Prisma.IntNullableFilter<"bookings"> | number | null
   createdAt?: Prisma.DateTimeFilter<"bookings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"bookings"> | Date | string
 }
@@ -331,12 +447,26 @@ export type bookingsOrderByWithRelationInput = {
   userId?: Prisma.SortOrderInput | Prisma.SortOrder
   username?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  recipientFirstName?: Prisma.SortOrderInput | Prisma.SortOrder
+  recipientLastName?: Prisma.SortOrderInput | Prisma.SortOrder
+  addressLine?: Prisma.SortOrderInput | Prisma.SortOrder
+  subdistrict?: Prisma.SortOrderInput | Prisma.SortOrder
+  district?: Prisma.SortOrderInput | Prisma.SortOrder
+  province?: Prisma.SortOrderInput | Prisma.SortOrder
+  postalCode?: Prisma.SortOrderInput | Prisma.SortOrder
   content?: Prisma.SortOrderInput | Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   bookingDate?: Prisma.SortOrder
   bookingTime?: Prisma.SortOrderInput | Prisma.SortOrder
+  bookingWindowStart?: Prisma.SortOrderInput | Prisma.SortOrder
+  bookingWindowEnd?: Prisma.SortOrderInput | Prisma.SortOrder
+  topupRoundCode?: Prisma.SortOrderInput | Prisma.SortOrder
+  topupRoundName?: Prisma.SortOrderInput | Prisma.SortOrder
+  topupRoundStart?: Prisma.SortOrderInput | Prisma.SortOrder
+  topupRoundEnd?: Prisma.SortOrderInput | Prisma.SortOrder
+  topupRoundCapacity?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _relevance?: Prisma.bookingsOrderByRelevanceInput
@@ -354,12 +484,26 @@ export type bookingsWhereUniqueInput = Prisma.AtLeast<{
   userId?: Prisma.StringNullableFilter<"bookings"> | string | null
   username?: Prisma.StringFilter<"bookings"> | string
   phone?: Prisma.StringFilter<"bookings"> | string
+  recipientFirstName?: Prisma.StringNullableFilter<"bookings"> | string | null
+  recipientLastName?: Prisma.StringNullableFilter<"bookings"> | string | null
+  addressLine?: Prisma.StringNullableFilter<"bookings"> | string | null
+  subdistrict?: Prisma.StringNullableFilter<"bookings"> | string | null
+  district?: Prisma.StringNullableFilter<"bookings"> | string | null
+  province?: Prisma.StringNullableFilter<"bookings"> | string | null
+  postalCode?: Prisma.StringNullableFilter<"bookings"> | string | null
   content?: Prisma.StringNullableFilter<"bookings"> | string | null
   price?: Prisma.DecimalFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.DecimalNullableFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFilter<"bookings"> | string
   bookingDate?: Prisma.DateTimeFilter<"bookings"> | Date | string
   bookingTime?: Prisma.StringNullableFilter<"bookings"> | string | null
+  bookingWindowStart?: Prisma.StringNullableFilter<"bookings"> | string | null
+  bookingWindowEnd?: Prisma.StringNullableFilter<"bookings"> | string | null
+  topupRoundCode?: Prisma.StringNullableFilter<"bookings"> | string | null
+  topupRoundName?: Prisma.StringNullableFilter<"bookings"> | string | null
+  topupRoundStart?: Prisma.StringNullableFilter<"bookings"> | string | null
+  topupRoundEnd?: Prisma.StringNullableFilter<"bookings"> | string | null
+  topupRoundCapacity?: Prisma.IntNullableFilter<"bookings"> | number | null
   createdAt?: Prisma.DateTimeFilter<"bookings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"bookings"> | Date | string
 }, "id" | "bookingCode">
@@ -373,12 +517,26 @@ export type bookingsOrderByWithAggregationInput = {
   userId?: Prisma.SortOrderInput | Prisma.SortOrder
   username?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  recipientFirstName?: Prisma.SortOrderInput | Prisma.SortOrder
+  recipientLastName?: Prisma.SortOrderInput | Prisma.SortOrder
+  addressLine?: Prisma.SortOrderInput | Prisma.SortOrder
+  subdistrict?: Prisma.SortOrderInput | Prisma.SortOrder
+  district?: Prisma.SortOrderInput | Prisma.SortOrder
+  province?: Prisma.SortOrderInput | Prisma.SortOrder
+  postalCode?: Prisma.SortOrderInput | Prisma.SortOrder
   content?: Prisma.SortOrderInput | Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   bookingDate?: Prisma.SortOrder
   bookingTime?: Prisma.SortOrderInput | Prisma.SortOrder
+  bookingWindowStart?: Prisma.SortOrderInput | Prisma.SortOrder
+  bookingWindowEnd?: Prisma.SortOrderInput | Prisma.SortOrder
+  topupRoundCode?: Prisma.SortOrderInput | Prisma.SortOrder
+  topupRoundName?: Prisma.SortOrderInput | Prisma.SortOrder
+  topupRoundStart?: Prisma.SortOrderInput | Prisma.SortOrder
+  topupRoundEnd?: Prisma.SortOrderInput | Prisma.SortOrder
+  topupRoundCapacity?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.bookingsCountOrderByAggregateInput
@@ -400,12 +558,26 @@ export type bookingsScalarWhereWithAggregatesInput = {
   userId?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
   username?: Prisma.StringWithAggregatesFilter<"bookings"> | string
   phone?: Prisma.StringWithAggregatesFilter<"bookings"> | string
+  recipientFirstName?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  recipientLastName?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  addressLine?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  subdistrict?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  district?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  province?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  postalCode?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
   content?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
   price?: Prisma.DecimalWithAggregatesFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.DecimalNullableWithAggregatesFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringWithAggregatesFilter<"bookings"> | string
   bookingDate?: Prisma.DateTimeWithAggregatesFilter<"bookings"> | Date | string
   bookingTime?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  bookingWindowStart?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  bookingWindowEnd?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  topupRoundCode?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  topupRoundName?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  topupRoundStart?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  topupRoundEnd?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  topupRoundCapacity?: Prisma.IntNullableWithAggregatesFilter<"bookings"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"bookings"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"bookings"> | Date | string
 }
@@ -418,12 +590,26 @@ export type bookingsCreateInput = {
   userId?: string | null
   username: string
   phone: string
+  recipientFirstName?: string | null
+  recipientLastName?: string | null
+  addressLine?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  postalCode?: string | null
   content?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: string
   bookingDate: Date | string
   bookingTime?: string | null
+  bookingWindowStart?: string | null
+  bookingWindowEnd?: string | null
+  topupRoundCode?: string | null
+  topupRoundName?: string | null
+  topupRoundStart?: string | null
+  topupRoundEnd?: string | null
+  topupRoundCapacity?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -437,12 +623,26 @@ export type bookingsUncheckedCreateInput = {
   userId?: string | null
   username: string
   phone: string
+  recipientFirstName?: string | null
+  recipientLastName?: string | null
+  addressLine?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  postalCode?: string | null
   content?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: string
   bookingDate: Date | string
   bookingTime?: string | null
+  bookingWindowStart?: string | null
+  bookingWindowEnd?: string | null
+  topupRoundCode?: string | null
+  topupRoundName?: string | null
+  topupRoundStart?: string | null
+  topupRoundEnd?: string | null
+  topupRoundCapacity?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -455,12 +655,26 @@ export type bookingsUpdateInput = {
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   username?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  recipientFirstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recipientLastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   bookingDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookingTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bookingWindowStart?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bookingWindowEnd?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundStart?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundEnd?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundCapacity?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -474,12 +688,26 @@ export type bookingsUncheckedUpdateInput = {
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   username?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  recipientFirstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recipientLastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   bookingDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookingTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bookingWindowStart?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bookingWindowEnd?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundStart?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundEnd?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundCapacity?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -493,12 +721,26 @@ export type bookingsCreateManyInput = {
   userId?: string | null
   username: string
   phone: string
+  recipientFirstName?: string | null
+  recipientLastName?: string | null
+  addressLine?: string | null
+  subdistrict?: string | null
+  district?: string | null
+  province?: string | null
+  postalCode?: string | null
   content?: string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: string
   bookingDate: Date | string
   bookingTime?: string | null
+  bookingWindowStart?: string | null
+  bookingWindowEnd?: string | null
+  topupRoundCode?: string | null
+  topupRoundName?: string | null
+  topupRoundStart?: string | null
+  topupRoundEnd?: string | null
+  topupRoundCapacity?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -511,12 +753,26 @@ export type bookingsUpdateManyMutationInput = {
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   username?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  recipientFirstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recipientLastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   bookingDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookingTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bookingWindowStart?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bookingWindowEnd?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundStart?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundEnd?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundCapacity?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -530,12 +786,26 @@ export type bookingsUncheckedUpdateManyInput = {
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   username?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
+  recipientFirstName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recipientLastName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  addressLine?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subdistrict?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  district?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
   bookingDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookingTime?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bookingWindowStart?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bookingWindowEnd?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundStart?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundEnd?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  topupRoundCapacity?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -555,12 +825,26 @@ export type bookingsCountOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   username?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  recipientFirstName?: Prisma.SortOrder
+  recipientLastName?: Prisma.SortOrder
+  addressLine?: Prisma.SortOrder
+  subdistrict?: Prisma.SortOrder
+  district?: Prisma.SortOrder
+  province?: Prisma.SortOrder
+  postalCode?: Prisma.SortOrder
   content?: Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrder
   status?: Prisma.SortOrder
   bookingDate?: Prisma.SortOrder
   bookingTime?: Prisma.SortOrder
+  bookingWindowStart?: Prisma.SortOrder
+  bookingWindowEnd?: Prisma.SortOrder
+  topupRoundCode?: Prisma.SortOrder
+  topupRoundName?: Prisma.SortOrder
+  topupRoundStart?: Prisma.SortOrder
+  topupRoundEnd?: Prisma.SortOrder
+  topupRoundCapacity?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -570,6 +854,7 @@ export type bookingsAvgOrderByAggregateInput = {
   productId?: Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrder
+  topupRoundCapacity?: Prisma.SortOrder
 }
 
 export type bookingsMaxOrderByAggregateInput = {
@@ -581,12 +866,26 @@ export type bookingsMaxOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   username?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  recipientFirstName?: Prisma.SortOrder
+  recipientLastName?: Prisma.SortOrder
+  addressLine?: Prisma.SortOrder
+  subdistrict?: Prisma.SortOrder
+  district?: Prisma.SortOrder
+  province?: Prisma.SortOrder
+  postalCode?: Prisma.SortOrder
   content?: Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrder
   status?: Prisma.SortOrder
   bookingDate?: Prisma.SortOrder
   bookingTime?: Prisma.SortOrder
+  bookingWindowStart?: Prisma.SortOrder
+  bookingWindowEnd?: Prisma.SortOrder
+  topupRoundCode?: Prisma.SortOrder
+  topupRoundName?: Prisma.SortOrder
+  topupRoundStart?: Prisma.SortOrder
+  topupRoundEnd?: Prisma.SortOrder
+  topupRoundCapacity?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -600,12 +899,26 @@ export type bookingsMinOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   username?: Prisma.SortOrder
   phone?: Prisma.SortOrder
+  recipientFirstName?: Prisma.SortOrder
+  recipientLastName?: Prisma.SortOrder
+  addressLine?: Prisma.SortOrder
+  subdistrict?: Prisma.SortOrder
+  district?: Prisma.SortOrder
+  province?: Prisma.SortOrder
+  postalCode?: Prisma.SortOrder
   content?: Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrder
   status?: Prisma.SortOrder
   bookingDate?: Prisma.SortOrder
   bookingTime?: Prisma.SortOrder
+  bookingWindowStart?: Prisma.SortOrder
+  bookingWindowEnd?: Prisma.SortOrder
+  topupRoundCode?: Prisma.SortOrder
+  topupRoundName?: Prisma.SortOrder
+  topupRoundStart?: Prisma.SortOrder
+  topupRoundEnd?: Prisma.SortOrder
+  topupRoundCapacity?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -615,6 +928,7 @@ export type bookingsSumOrderByAggregateInput = {
   productId?: Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrder
+  topupRoundCapacity?: Prisma.SortOrder
 }
 
 export type DecimalFieldUpdateOperationsInput = {
@@ -644,12 +958,26 @@ export type bookingsSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   userId?: boolean
   username?: boolean
   phone?: boolean
+  recipientFirstName?: boolean
+  recipientLastName?: boolean
+  addressLine?: boolean
+  subdistrict?: boolean
+  district?: boolean
+  province?: boolean
+  postalCode?: boolean
   content?: boolean
   price?: boolean
   cost?: boolean
   status?: boolean
   bookingDate?: boolean
   bookingTime?: boolean
+  bookingWindowStart?: boolean
+  bookingWindowEnd?: boolean
+  topupRoundCode?: boolean
+  topupRoundName?: boolean
+  topupRoundStart?: boolean
+  topupRoundEnd?: boolean
+  topupRoundCapacity?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["bookings"]>
@@ -665,17 +993,31 @@ export type bookingsSelectScalar = {
   userId?: boolean
   username?: boolean
   phone?: boolean
+  recipientFirstName?: boolean
+  recipientLastName?: boolean
+  addressLine?: boolean
+  subdistrict?: boolean
+  district?: boolean
+  province?: boolean
+  postalCode?: boolean
   content?: boolean
   price?: boolean
   cost?: boolean
   status?: boolean
   bookingDate?: boolean
   bookingTime?: boolean
+  bookingWindowStart?: boolean
+  bookingWindowEnd?: boolean
+  topupRoundCode?: boolean
+  topupRoundName?: boolean
+  topupRoundStart?: boolean
+  topupRoundEnd?: boolean
+  topupRoundCapacity?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type bookingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "bookingCode" | "productId" | "productCode" | "productName" | "userId" | "username" | "phone" | "content" | "price" | "cost" | "status" | "bookingDate" | "bookingTime" | "createdAt" | "updatedAt", ExtArgs["result"]["bookings"]>
+export type bookingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "bookingCode" | "productId" | "productCode" | "productName" | "userId" | "username" | "phone" | "recipientFirstName" | "recipientLastName" | "addressLine" | "subdistrict" | "district" | "province" | "postalCode" | "content" | "price" | "cost" | "status" | "bookingDate" | "bookingTime" | "bookingWindowStart" | "bookingWindowEnd" | "topupRoundCode" | "topupRoundName" | "topupRoundStart" | "topupRoundEnd" | "topupRoundCapacity" | "createdAt" | "updatedAt", ExtArgs["result"]["bookings"]>
 
 export type $bookingsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "bookings"
@@ -689,12 +1031,26 @@ export type $bookingsPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     userId: string | null
     username: string
     phone: string
+    recipientFirstName: string | null
+    recipientLastName: string | null
+    addressLine: string | null
+    subdistrict: string | null
+    district: string | null
+    province: string | null
+    postalCode: string | null
     content: string | null
     price: runtime.Decimal
     cost: runtime.Decimal | null
     status: string
     bookingDate: Date
     bookingTime: string | null
+    bookingWindowStart: string | null
+    bookingWindowEnd: string | null
+    topupRoundCode: string | null
+    topupRoundName: string | null
+    topupRoundStart: string | null
+    topupRoundEnd: string | null
+    topupRoundCapacity: number | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["bookings"]>
@@ -1074,12 +1430,26 @@ export interface bookingsFieldRefs {
   readonly userId: Prisma.FieldRef<"bookings", 'String'>
   readonly username: Prisma.FieldRef<"bookings", 'String'>
   readonly phone: Prisma.FieldRef<"bookings", 'String'>
+  readonly recipientFirstName: Prisma.FieldRef<"bookings", 'String'>
+  readonly recipientLastName: Prisma.FieldRef<"bookings", 'String'>
+  readonly addressLine: Prisma.FieldRef<"bookings", 'String'>
+  readonly subdistrict: Prisma.FieldRef<"bookings", 'String'>
+  readonly district: Prisma.FieldRef<"bookings", 'String'>
+  readonly province: Prisma.FieldRef<"bookings", 'String'>
+  readonly postalCode: Prisma.FieldRef<"bookings", 'String'>
   readonly content: Prisma.FieldRef<"bookings", 'String'>
   readonly price: Prisma.FieldRef<"bookings", 'Decimal'>
   readonly cost: Prisma.FieldRef<"bookings", 'Decimal'>
   readonly status: Prisma.FieldRef<"bookings", 'String'>
   readonly bookingDate: Prisma.FieldRef<"bookings", 'DateTime'>
   readonly bookingTime: Prisma.FieldRef<"bookings", 'String'>
+  readonly bookingWindowStart: Prisma.FieldRef<"bookings", 'String'>
+  readonly bookingWindowEnd: Prisma.FieldRef<"bookings", 'String'>
+  readonly topupRoundCode: Prisma.FieldRef<"bookings", 'String'>
+  readonly topupRoundName: Prisma.FieldRef<"bookings", 'String'>
+  readonly topupRoundStart: Prisma.FieldRef<"bookings", 'String'>
+  readonly topupRoundEnd: Prisma.FieldRef<"bookings", 'String'>
+  readonly topupRoundCapacity: Prisma.FieldRef<"bookings", 'Int'>
   readonly createdAt: Prisma.FieldRef<"bookings", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"bookings", 'DateTime'>
 }

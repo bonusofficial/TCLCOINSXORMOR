@@ -1,7 +1,7 @@
 import { Coins, TriangleAlert, Trophy, Medal, Sparkles, Flame, Rocket, Clock } from "lucide-react";
 import { PublicProduct as QueueProduct } from "@/lib/contexts/PublicDataContext";
 import { UserRole } from "@/lib/booking";
-import { getProductAvailability, getEffectivePrice, fmt, fmtThaiDate, padHHMM, useNowTick } from "@/lib/product-utils";
+import { getProductAvailability, getEffectivePrice, fmt, fmtThaiDate, useNowTick } from "@/lib/product-utils";
 
 const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
@@ -100,11 +100,27 @@ export function PackageCard({
       ? Math.round((soldCount / maxQueueCount) * 100)
       : 0;
 
-  // วันที่ + ช่วงเวลาเปิดรับ (จาก saleDates / timeSlots)
-  const dateLabel = formatSaleDateLabel(p.saleDates);
-  const timeLabel = p.timeSlots.length
-    ? p.timeSlots.map((s) => `${padHHMM(s.start)}-${padHHMM(s.end)}`).join(", ")
+  // วันที่ + ช่วงเวลาเปิดรับจองเป็นคนละข้อมูลกับรอบเติม
+  const schedules = [...p.saleSchedules].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+  const dateLabel = formatSaleDateLabel(schedules.map((schedule) => schedule.date));
+  const bookingWindowLabel = schedules.length
+    ? schedules
+        .map(
+          (schedule) =>
+            `${fmtThaiDate(schedule.date)} ${schedule.bookingStart}–${schedule.bookingEnd} น.`
+        )
+        .join(" · ")
     : "";
+  const availableRoundCount = schedules.reduce(
+    (total, schedule) =>
+      total +
+      schedule.rounds.filter(
+        (round) => round.status !== "full" && round.status !== "closed"
+      ).length,
+    0
+  );
 
   const BadgeIcon = idx === 1 
     ? Trophy 
@@ -128,7 +144,7 @@ export function PackageCard({
       : isOutOfStock
         ? "สินค้าหมด"
         : "ปิดจองแล้ว";
-  const statusDetail = [dateLabel, timeLabel && `เวลา ${timeLabel}`].filter(Boolean).join(" · ");
+  const statusDetail = dateLabel;
   const buttonLabel = isSoon
     ? "ยังไม่ถึงเวลาจอง"
     : isEnded
@@ -256,6 +272,16 @@ export function PackageCard({
             {statusDetail}
           </p>
         )}
+        {bookingWindowLabel && (
+          <p className="text-[10.5px] font-bold text-brand-ink-soft leading-relaxed">
+            ช่วงเวลาเปิดรับจอง:{" "}
+            <span className="font-black text-brand-ink">{bookingWindowLabel}</span>
+          </p>
+        )}
+        <p className="text-[10.5px] font-bold text-brand-ink-soft">
+          รอบเติมที่กำหนด:{" "}
+          <span className="font-black text-brand-green">{availableRoundCount} รอบ</span>
+        </p>
       </div>
 
       {/* Footer */}

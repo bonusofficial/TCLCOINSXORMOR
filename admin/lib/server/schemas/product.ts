@@ -15,6 +15,23 @@ const TimeSlot = t.Object({
   end: t.String({ pattern: "^\\d{2}:\\d{2}$", error: "เวลาสิ้นสุดต้องเป็น HH:mm" }),
 });
 
+const TopupRound = t.Object({
+  code: t.String({ minLength: 1, maxLength: 80 }),
+  name: t.String({ minLength: 1, maxLength: 120 }),
+  start: t.String({ pattern: "^\\d{2}:\\d{2}$" }),
+  end: t.String({ pattern: "^\\d{2}:\\d{2}$" }),
+  capacity: t.Integer({ minimum: 1 }),
+  enabled: t.Boolean(),
+  sortOrder: t.Integer({ minimum: 0 }),
+});
+
+const SaleSchedule = t.Object({
+  date: SaleDate,
+  bookingStart: t.String({ pattern: "^\\d{2}:\\d{2}$" }),
+  bookingEnd: t.String({ pattern: "^\\d{2}:\\d{2}$" }),
+  rounds: t.Array(TopupRound),
+});
+
 export const ProductBody = t.Object({
   image: t.String(),
   name: t.String({ minLength: 1, error: "ต้องระบุชื่อสินค้า" }),
@@ -31,6 +48,7 @@ export const ProductBody = t.Object({
 
   saleDates: t.Array(SaleDate),
   timeSlots: t.Array(TimeSlot),
+  saleSchedules: t.Optional(t.Array(SaleSchedule)),
 
   discountEligibleUsernames: t.Array(t.String()),
   discountAmount: t.Number({ minimum: 0 }),

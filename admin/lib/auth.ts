@@ -49,6 +49,9 @@ export const auth = betterAuth({
   session: {
     expiresIn: AUTH_SESSION_MAX_AGE_SECONDS,
     updateAge: AUTH_SESSION_MAX_AGE_SECONDS,
+    cookieCache: {
+      enabled: false,
+    },
   },
   emailAndPassword: {
     enabled: true,
@@ -97,6 +100,12 @@ export const auth = betterAuth({
         required: false,
         defaultValue: "",
         input: true,
+        transform: {
+          input: (value) =>
+            typeof value === "string"
+              ? value.replace(/\D/g, "").slice(0, 10)
+              : value,
+        },
       },
       shopName: {
         type: "string",

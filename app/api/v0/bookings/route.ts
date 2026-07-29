@@ -32,6 +32,69 @@ function toArr(v: unknown): unknown[] {
   return [];
 }
 
+type TopupRound = {
+  code: string;
+  name: string;
+  start: string;
+  end: string;
+  capacity: number;
+  enabled: boolean;
+  sortOrder: number;
+};
+
+type SaleSchedule = {
+  date: string;
+  bookingStart: string;
+  bookingEnd: string;
+  rounds: TopupRound[];
+};
+
+function parseSaleSchedules(
+  saleSchedules: unknown,
+  saleDates: unknown,
+  timeSlots: unknown
+): SaleSchedule[] {
+  const schedules = toArr(saleSchedules).filter(
+    (item): item is SaleSchedule =>
+      !!item &&
+      typeof item === "object" &&
+      typeof (item as SaleSchedule).date === "string" &&
+      typeof (item as SaleSchedule).bookingStart === "string" &&
+      typeof (item as SaleSchedule).bookingEnd === "string" &&
+      Array.isArray((item as SaleSchedule).rounds)
+  );
+  if (schedules.length > 0) return schedules;
+
+  const dates = toArr(saleDates).filter(
+    (date): date is string => typeof date === "string"
+  );
+  const slots = toArr(timeSlots).filter(
+    (slot): slot is { start: string; end: string } =>
+      !!slot &&
+      typeof slot === "object" &&
+      typeof (slot as { start?: unknown }).start === "string" &&
+      typeof (slot as { end?: unknown }).end === "string"
+  );
+  const bookingStart = slots[0]?.start ?? "00:00";
+  const bookingEnd = slots[slots.length - 1]?.end ?? "23:59";
+  return dates.map((date) => ({
+    date: date.slice(0, 10),
+    bookingStart,
+    bookingEnd,
+    rounds: [
+      {
+        code: "LEGACY",
+        name: "รอบเติมทั่วไป",
+        start: bookingStart,
+        end: bookingEnd,
+        capacity: 999999,
+        enabled: true,
+        sortOrder: 0,
+      },
+    ],
+  }));
+}
+
 function shape(b: {
   id: number;
   bookingCode: string;
@@ -41,11 +104,25 @@ function shape(b: {
   userId: string | null;
   username: string;
   phone: string;
+  recipientFirstName: string | null;
+  recipientLastName: string | null;
+  addressLine: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
   content: string | null;
   price: { toString(): string };
   status: string;
   bookingDate: Date;
   bookingTime: string | null;
+  bookingWindowStart: string | null;
+  bookingWindowEnd: string | null;
+  topupRoundCode: string | null;
+  topupRoundName: string | null;
+  topupRoundStart: string | null;
+  topupRoundEnd: string | null;
+  topupRoundCapacity: number | null;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -60,17 +137,31 @@ function shape(b: {
     userId: b.userId,
     username: b.username,
     phone: b.phone,
+    recipientFirstName: b.recipientFirstName,
+    recipientLastName: b.recipientLastName,
+    addressLine: b.addressLine,
+    subdistrict: b.subdistrict,
+    district: b.district,
+    province: b.province,
+    postalCode: b.postalCode,
     content: b.content,
     price: b.price.toString(),
     status: b.status,
     bookingDate: b.bookingDate.toISOString(),
     bookingTime: b.bookingTime,
+    bookingWindowStart: b.bookingWindowStart,
+    bookingWindowEnd: b.bookingWindowEnd,
+    topupRoundCode: b.topupRoundCode,
+    topupRoundName: b.topupRoundName,
+    topupRoundStart: b.topupRoundStart,
+    topupRoundEnd: b.topupRoundEnd,
+    topupRoundCapacity: b.topupRoundCapacity,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
   };
 }
 
-type BookingErrorStatus = 400 | 404 | 409 | 429;
+type BookingErrorStatus = 400 | 404 | 409;
 
 class BookingHttpError extends Error {
   constructor(
@@ -81,35 +172,22 @@ class BookingHttpError extends Error {
   }
 }
 
-function bookingLockKey(userId: string, productId: number, date: string): string {
-  return `booking:${userId}:${productId}:${date}`;
-}
-
-async function acquireBookingLock(
+/**
+ * ล็อกแถวสินค้าไว้จน transaction commit เพื่อ serialize การจองของสินค้านี้
+ * การ count ความจุรอบและ create จึงไม่มีช่องว่างให้สอง request แย่งที่สุดท้าย
+ */
+async function lockProductForBooking(
   tx: Prisma.TransactionClient,
-  lockKey: string
+  productId: number
 ): Promise<void> {
-  const rows = await tx.$queryRaw<Array<{ got: number | bigint | null }>>`
-    SELECT GET_LOCK(${lockKey}, 5) AS got
+  const rows = await tx.$queryRaw<Array<{ id: number }>>`
+    SELECT id FROM products WHERE id = ${productId} FOR UPDATE
   `;
-  if (Number(rows[0]?.got ?? 0) !== 1) {
-    throw new BookingHttpError(429, {
+  if (!rows[0]) {
+    throw new BookingHttpError(404, {
       ok: false,
-      message: "มีคำขอจองซ้ำในเวลาใกล้กัน กรุณารอสักครู่แล้วลองใหม่",
+      message: "ไม่พบสินค้าที่ต้องการจอง",
     });
-  }
-}
-
-async function releaseBookingLock(
-  tx: Prisma.TransactionClient,
-  lockKey: string
-): Promise<void> {
-  try {
-    await tx.$queryRaw<Array<{ released: number | bigint | null }>>`
-      SELECT RELEASE_LOCK(${lockKey}) AS released
-    `;
-  } catch {
-    // Connection-bound advisory locks are also released when the DB connection closes.
   }
 }
 
@@ -147,6 +225,30 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         return code(400, { ok: false, message: "ต้องระบุสินค้าที่ต้องการจอง" });
       }
 
+      const delivery = {
+        recipientFirstName: body.recipientFirstName?.trim() ?? "",
+        recipientLastName: body.recipientLastName?.trim() ?? "",
+        addressLine: body.addressLine?.trim() ?? "",
+        subdistrict: body.subdistrict?.trim() ?? "",
+        district: body.district?.trim() ?? "",
+        province: body.province?.trim() ?? "",
+        postalCode: body.postalCode?.trim() ?? "",
+      };
+      if (
+        !delivery.recipientFirstName ||
+        !delivery.recipientLastName ||
+        !delivery.addressLine ||
+        !delivery.subdistrict ||
+        !delivery.district ||
+        !delivery.province ||
+        !/^\d{5}$/.test(delivery.postalCode)
+      ) {
+        return code(400, {
+          ok: false,
+          message: "กรุณากรอกชื่อผู้รับและที่อยู่จัดส่งให้ครบถ้วน",
+        });
+      }
+
       // โหลดสินค้าเพื่อตรวจสอบความถูกต้องของข้อมูล
       const prod = await prisma.products.findUnique({
         where: { id: body.productId },
@@ -160,45 +262,47 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       const today = bangkokToday();
       const nowHHMM = bangkokHHMM();
 
-      const saleDates = toArr(prod.saleDates)
-        .map((d) => (typeof d === "string" ? d.slice(0, 10) : ""))
-        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
-      const timeSlots = toArr(prod.timeSlots).filter(
-        (s): s is { start: string; end: string } =>
-          !!s &&
-          typeof s === "object" &&
-          typeof (s as { start?: unknown }).start === "string" &&
-          typeof (s as { end?: unknown }).end === "string"
+      const schedules = parseSaleSchedules(
+        prod.saleSchedules,
+        prod.saleDates,
+        prod.timeSlots
       );
-
-      // ต้องเป็นวันเปิดขาย "วันนี้" ตามเวลาไทยฝั่งเซิร์ฟเวอร์เท่านั้น
-      if (!saleDates.includes(today)) {
+      const todaySchedule = schedules.find((schedule) => schedule.date === today);
+      if (!todaySchedule) {
         return code(400, {
           ok: false,
           message: "ขออภัย ขณะนี้ไม่อยู่ในวันเปิดจองของสินค้านี้",
         });
       }
-
-      // ต้องอยู่ในช่วงเวลาเปิดจองจริง (ถ้าไม่กำหนดช่วงเวลา = เปิดทั้งวัน)
-      let activeSlot: { start: string; end: string } | null = null;
-      if (timeSlots.length > 0) {
-        activeSlot =
-          timeSlots.find(
-            (s) => nowHHMM >= padHHMM(s.start) && nowHHMM <= padHHMM(s.end)
-          ) ?? null;
-        if (!activeSlot) {
-          return code(400, {
-            ok: false,
-            message: "ขออภัย ขณะนี้ไม่อยู่ในช่วงเวลาเปิดจองของสินค้านี้",
-          });
-        }
+      if (
+        nowHHMM < padHHMM(todaySchedule.bookingStart) ||
+        nowHHMM > padHHMM(todaySchedule.bookingEnd)
+      ) {
+        return code(400, {
+          ok: false,
+          message: "ขออภัย ขณะนี้ไม่อยู่ในช่วงเวลาเปิดรับจองของสินค้านี้",
+        });
+      }
+      const requestedRoundCode = body.topupRoundCode?.trim();
+      if (!requestedRoundCode) {
+        return code(400, {
+          ok: false,
+          message: "กรุณาเลือกรอบเติมที่ต้องการ",
+        });
+      }
+      const requestedRound = todaySchedule.rounds.find(
+        (round) => round.code === requestedRoundCode
+      );
+      if (!requestedRound || !requestedRound.enabled) {
+        return code(409, {
+          ok: false,
+          message: "รอบเติมที่เลือกปิดรับจองแล้ว กรุณาเลือกรอบอื่น",
+        });
       }
 
       // วัน/เวลา ที่จะบันทึก — ยึดของเซิร์ฟเวอร์ ไม่เชื่อค่าจาก client
       const bookingDateUTC = bangkokDateToUTCMidnight(today);
-      const bookingTime = activeSlot
-        ? `${padHHMM(activeSlot.start)} - ${padHHMM(activeSlot.end)}`
-        : body.bookingTime?.trim() || null;
+      const bookingTime = `${padHHMM(todaySchedule.bookingStart)} - ${padHHMM(todaySchedule.bookingEnd)}`;
 
       // ── เตรียมช่วงวันไทยสำหรับเช็คโควตาการจองต่อวัน ──
       const { start: startOfDay, end: endOfDay } = bangkokDayRangeUTC(today);
@@ -229,12 +333,9 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       let saved;
       try {
         saved = await prisma.$transaction(async (tx) => {
-          const lockKey = bookingLockKey(user.id, prod.id, today);
-          await acquireBookingLock(tx, lockKey);
-
-          try {
+          await lockProductForBooking(tx, prod.id);
             // ลิมิตเฉพาะสินค้านี้ต่อคน/วัน (product.maxPerUserPerDay) — 0 = ไม่จำกัด
-            // อยู่ใต้ advisory lock เพื่อกันยิงหลาย request พร้อมกันแล้วหลุด quota
+            // อยู่ใต้ row lock เพื่อกันยิงหลาย request พร้อมกันแล้วหลุด quota
             if (prod.maxPerUserPerDay > 0) {
               const prodCount = await tx.bookings.count({
                 where: {
@@ -254,12 +355,51 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
 
             const stockState = await tx.products.findUnique({
               where: { id: prod.id },
-              select: { stockEnabled: true },
+              select: {
+                stockEnabled: true,
+                saleSchedules: true,
+                saleDates: true,
+                timeSlots: true,
+              },
             });
             if (!stockState) {
               throw new BookingHttpError(404, {
                 ok: false,
                 message: "ไม่พบสินค้าที่ต้องการจอง",
+              });
+            }
+            const liveSchedule = parseSaleSchedules(
+              stockState.saleSchedules,
+              stockState.saleDates,
+              stockState.timeSlots
+            ).find((schedule) => schedule.date === today);
+            const liveRound = liveSchedule?.rounds.find(
+              (round) => round.code === requestedRoundCode
+            );
+            if (
+              !liveSchedule ||
+              nowHHMM < padHHMM(liveSchedule.bookingStart) ||
+              nowHHMM > padHHMM(liveSchedule.bookingEnd) ||
+              !liveRound ||
+              !liveRound.enabled
+            ) {
+              throw new BookingHttpError(409, {
+                ok: false,
+                message: "รอบเติมที่เลือกปิดรับจองแล้ว กรุณาเลือกรอบอื่น",
+              });
+            }
+            const roundBookingCount = await tx.bookings.count({
+              where: {
+                productId: prod.id,
+                bookingDate: { gte: startOfDay, lte: endOfDay },
+                topupRoundCode: liveRound.code,
+                status: { not: "ยกเลิก" },
+              },
+            });
+            if (roundBookingCount >= liveRound.capacity) {
+              throw new BookingHttpError(409, {
+                ok: false,
+                message: `${liveRound.name} เต็มแล้ว กรุณาเลือกรอบเติมอื่น`,
               });
             }
 
@@ -289,7 +429,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
               bookingCode = generateBookingCode(user.role as string | null);
             }
 
-            return tx.bookings.create({
+          return tx.bookings.create({
               data: {
                 bookingCode,
                 productId: prod.id,
@@ -298,16 +438,21 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
                 userId: user.id,
                 username: bookingUsername,
                 phone: body.phone,
+                ...delivery,
                 content: body.content ?? null,
                 price, // ราคาที่เซิร์ฟเวอร์คำนวณเอง
                 bookingDate: bookingDateUTC, // วันไทยของเซิร์ฟเวอร์
                 bookingTime,
+                bookingWindowStart: padHHMM(liveSchedule.bookingStart),
+                bookingWindowEnd: padHHMM(liveSchedule.bookingEnd),
+                topupRoundCode: liveRound.code,
+                topupRoundName: liveRound.name,
+                topupRoundStart: padHHMM(liveRound.start),
+                topupRoundEnd: padHHMM(liveRound.end),
+                topupRoundCapacity: liveRound.capacity,
                 status: "รอตรวจสอบ",
               },
-            });
-          } finally {
-            await releaseBookingLock(tx, lockKey);
-          }
+          });
         });
       } catch (err) {
         if (err instanceof BookingHttpError) {
@@ -324,6 +469,10 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
           bookingCode: saved.bookingCode,
           productName: prod.name,
           price,
+          bookingWindow: `${saved.bookingWindowStart}-${saved.bookingWindowEnd}`,
+          topupRoundCode: saved.topupRoundCode,
+          topupRoundName: saved.topupRoundName,
+          topupRoundTime: `${saved.topupRoundStart}-${saved.topupRoundEnd}`,
           stockDelta,
         },
         user,

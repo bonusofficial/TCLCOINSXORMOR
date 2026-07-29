@@ -10,6 +10,7 @@ import {
 import { publicApi } from "@/lib/eden";
 import { toast } from "sonner";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
+import { normalizePhoneInput } from "@/lib/utils";
 import {
   X,
   User,
@@ -36,7 +37,7 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: "login" | "register";
-  onLoginSuccess?: (role: "member" | "agent" | "admin") => void;
+  onLoginSuccess?: (role: "member" | "vip" | "agent" | "admin") => void;
 }
 
 /* Password strength rules */
@@ -325,7 +326,10 @@ export default function AuthModal({
     const { name, value } = e.target;
     if (activeTab === "login") setLoginError(null);
     if (activeTab === "register") setRegisterError(null);
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "phone" ? normalizePhoneInput(value) : value,
+    }));
   };
 
   const showLoginWarning = (title: string, description: string) => {
@@ -375,19 +379,24 @@ export default function AuthModal({
   const resolveUserRole = (user?: {
     role?: string | null;
     email?: string | null;
-  } | null): "member" | "agent" | "admin" => {
+  } | null): "member" | "vip" | "agent" | "admin" => {
     if (!user) return "member";
     const dbRole = (user.role ?? "").toLowerCase().trim();
-    if (dbRole === "admin" || dbRole === "agent" || dbRole === "member") {
-      return dbRole as "member" | "agent" | "admin";
+    if (
+      dbRole === "admin" ||
+      dbRole === "agent" ||
+      dbRole === "vip" ||
+      dbRole === "member"
+    ) {
+      return dbRole as "member" | "vip" | "agent" | "admin";
     }
     const email = (user.email ?? "").toLowerCase().trim();
     if (email.endsWith("@admin.tclcoinsxormor.com")) return "admin";
-    if (email.endsWith("@vip.tclcoinsxormor.com")) return "agent";
+    if (email.endsWith("@vip.tclcoinsxormor.com")) return "vip";
     return "member";
   };
 
-  const finishSuccess = (role: "member" | "agent" | "admin") => {
+  const finishSuccess = (role: "member" | "vip" | "agent" | "admin") => {
     setSuccess(true);
     setTimeout(() => {
       setSuccess(false);
@@ -472,6 +481,8 @@ export default function AuthModal({
           ? "เข้าสู่ระบบในฐานะผู้ดูแลระบบ"
           : role === "agent"
           ? "เข้าสู่ระบบในฐานะตัวแทนจำหน่าย"
+          : role === "vip"
+          ? "เข้าสู่ระบบในฐานะ VIP MEMBER"
           : `เข้าสู่ระบบด้วย${isEmail ? "อีเมล" : "ชื่อผู้ใช้"}สำเร็จ`;
       toast.success("ยินดีต้อนรับกลับ! 🎉", { id, description: roleDesc });
       setLoading(false);
@@ -508,6 +519,14 @@ export default function AuthModal({
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showRegisterError("อีเมลไม่ถูกต้อง", "กรุณาระบุอีเมลที่ถูกต้อง", "warning");
+      return;
+    }
+    if (!/^\d{10}$/.test(formData.phone)) {
+      showRegisterError(
+        "เบอร์โทรศัพท์ไม่ถูกต้อง",
+        "กรุณากรอกเบอร์โทรศัพท์เป็นตัวเลข 10 หลัก",
+        "warning"
+      );
       return;
     }
     // เช็ค "รหัสผ่านยืนยัน" ก่อนเสมอ — ให้ขึ้น alert ทันทีถ้ายังไม่กรอก/ไม่ตรงกัน
@@ -775,7 +794,10 @@ export default function AuthModal({
                         value={formData.phone}
                         onChange={handleInputChange}
                         required
-                        placeholder="เบอร์โทรศัพท์"
+                        inputMode="numeric"
+                        maxLength={10}
+                        pattern="[0-9]{10}"
+                        placeholder="เบอร์โทรศัพท์ 10 หลัก"
                         className="w-full rounded-2xl border border-brand-green-100 bg-brand-paper py-4.5 pr-4 pl-12.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:bg-brand-surface focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/70"
                       />
                     </div>

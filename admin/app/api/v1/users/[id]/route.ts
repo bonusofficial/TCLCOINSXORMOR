@@ -18,10 +18,23 @@ const UserUpdateBody = t.Object({
   username: t.Optional(t.String({ maxLength: 30 })),
   displayUsername: t.Optional(t.Union([t.String({ maxLength: 120 }), t.Null()])),
   image: t.Optional(t.Union([t.String(), t.Null()])),
-  phone: t.Optional(t.Union([t.String({ maxLength: 30 }), t.Null()])),
+  phone: t.Optional(
+    t.Union([
+      t.String({
+        pattern: "^\\d{10}$",
+        error: "เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก",
+      }),
+      t.Null(),
+    ])
+  ),
   emailVerified: t.Optional(t.Boolean()),
   role: t.Optional(
-    t.Union([t.Literal("member"), t.Literal("agent"), t.Literal("admin")])
+    t.Union([
+      t.Literal("member"),
+      t.Literal("vip"),
+      t.Literal("agent"),
+      t.Literal("admin"),
+    ])
   ),
   shopName: t.Optional(t.Union([t.String({ maxLength: 200 }), t.Null()])),
   lineId: t.Optional(t.Union([t.String({ maxLength: 100 }), t.Null()])),

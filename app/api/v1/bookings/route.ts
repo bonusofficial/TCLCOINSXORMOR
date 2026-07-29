@@ -19,17 +19,33 @@ function shape(b: {
   userId: string | null;
   username: string;
   phone: string;
+  recipientFirstName: string | null;
+  recipientLastName: string | null;
+  addressLine: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
   content: string | null;
   price: { toString(): string };
+  cost: { toString(): string } | null;
   status: string;
   bookingDate: Date;
   bookingTime: string | null;
+  bookingWindowStart: string | null;
+  bookingWindowEnd: string | null;
+  topupRoundCode: string | null;
+  topupRoundName: string | null;
+  topupRoundStart: string | null;
+  topupRoundEnd: string | null;
+  topupRoundCapacity: number | null;
   createdAt: Date;
   updatedAt: Date;
 }) {
   return {
     ...b,
     price: b.price.toString(),
+    cost: b.cost != null ? b.cost.toString() : null,
     bookingDate: b.bookingDate.toISOString(),
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
@@ -87,6 +103,13 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
           userId: user.id,
           username: body.username,
           phone: body.phone,
+          recipientFirstName: body.recipientFirstName?.trim() || null,
+          recipientLastName: body.recipientLastName?.trim() || null,
+          addressLine: body.addressLine?.trim() || null,
+          subdistrict: body.subdistrict?.trim() || null,
+          district: body.district?.trim() || null,
+          province: body.province?.trim() || null,
+          postalCode: body.postalCode?.trim() || null,
           content: body.content ?? null,
           price: body.price,
           bookingDate: new Date(body.bookingDate),

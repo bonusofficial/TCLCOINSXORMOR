@@ -50,6 +50,10 @@ export const fmtThaiDate = (iso: string) => {
 };
 
 function getFirstSlotStart(p: QueueProduct) {
+  if (p.saleSchedules.length > 0) {
+    return [...p.saleSchedules]
+      .sort((a, b) => a.date.localeCompare(b.date))[0]?.bookingStart ?? "";
+  }
   const firstSlot = [...p.timeSlots]
     .sort((a, b) => padHHMM(a.start).localeCompare(padHHMM(b.start)))[0];
 
@@ -60,7 +64,9 @@ function getUpcomingDateAvailability(p: QueueProduct, saleDates: string[], today
   const upcoming = [...saleDates].sort().find((d) => d > today);
   if (!upcoming) return null;
 
-  const firstSlotStart = getFirstSlotStart(p);
+  const firstSlotStart =
+    p.saleSchedules.find((schedule) => schedule.date === upcoming)
+      ?.bookingStart ?? getFirstSlotStart(p);
   return {
     status: "soon" as const,
     label: `เปิดจองวันที่ ${fmtThaiDate(upcoming)}${firstSlotStart ? ` เวลา ${firstSlotStart}` : ""}`,
@@ -76,7 +82,15 @@ export function getProductAvailability(p: QueueProduct): {
   if (p.stockEnabled && p.stock <= 0) {
     return { status: "outOfStock", label: "สินค้าหมด" };
   }
-  if (!p.saleDates.length) {
+  const schedules = p.saleSchedules.length
+    ? p.saleSchedules
+    : p.saleDates.map((date) => ({
+        date,
+        bookingStart: p.timeSlots[0]?.start ?? "00:00",
+        bookingEnd: p.timeSlots[p.timeSlots.length - 1]?.end ?? "23:59",
+        rounds: [],
+      }));
+  if (!schedules.length) {
     return {
       status: "ended",
       label: "ไม่ระบุวันขาย",
@@ -85,8 +99,9 @@ export function getProductAvailability(p: QueueProduct): {
   }
   const today = todayISO();
   const now = currentHHMM();
-  const saleDates = p.saleDates.map((d) => d.trim());
-  const isToday = saleDates.includes(today);
+  const saleDates = schedules.map((schedule) => schedule.date.trim());
+  const todaySchedule = schedules.find((schedule) => schedule.date === today);
+  const isToday = !!todaySchedule;
 
   if (!isToday) {
     const upcomingAvailability = getUpcomingDateAvailability(p, saleDates, today);
@@ -99,21 +114,21 @@ export function getProductAvailability(p: QueueProduct): {
     };
   }
 
-  // เป็นวันนี้ — เช็คเวลา (pad ก่อนเทียบ string เสมอ)
-  const activeSlot = p.timeSlots.find(
-    (s) => now >= padHHMM(s.start) && now <= padHHMM(s.end)
-  );
-  if (activeSlot) {
-    return { status: "open", label: "เปิดจองอยู่" };
+  // เป็นวันนี้ — เช็ค "ช่วงเวลาเปิดรับจอง" แยกจากรอบเติม
+  if (
+    todaySchedule &&
+    now >= padHHMM(todaySchedule.bookingStart) &&
+    now <= padHHMM(todaySchedule.bookingEnd)
+  ) {
+    return {
+      status: "open",
+      label: `เปิดรับจอง ${padHHMM(todaySchedule.bookingStart)}–${padHHMM(todaySchedule.bookingEnd)}`,
+    };
   }
-  // หา slot ถัดไป
-  const upcomingSlot = p.timeSlots
-    .filter((s) => padHHMM(s.start) > now)
-    .sort((a, b) => padHHMM(a.start).localeCompare(padHHMM(b.start)))[0];
-  if (upcomingSlot) {
+  if (todaySchedule && padHHMM(todaySchedule.bookingStart) > now) {
     return {
       status: "soon",
-      label: `เปิดจองวันนี้ เวลา ${padHHMM(upcomingSlot.start)}`,
+      label: `เปิดรับจองวันนี้ เวลา ${padHHMM(todaySchedule.bookingStart)}`,
       message: "ยังไม่ถึงเวลาจอง",
     };
   }

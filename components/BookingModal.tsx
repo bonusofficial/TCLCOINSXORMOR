@@ -5,7 +5,7 @@ import { X, Calendar, Clock, AlertTriangle, ArrowRight, ArrowLeft, Check, Ticket
 import { useSession } from "@/lib/auth-client";
 import { generateBookingCode, formatBookingDateTime } from "@/lib/booking";
 import { toast } from "sonner";
-import { copyToClipboard } from "@/lib/utils";
+import { copyToClipboard, normalizePhoneInput } from "@/lib/utils";
 
 interface PackageData {
   coins: string;
@@ -50,7 +50,9 @@ export default function BookingModal({ isOpen, onClose, selectedPackage }: Booki
         ...prev,
         reserveDate: today,
         reserveTime: "00.00–23.00",
-        phone: (session?.user as { phone?: string } | undefined)?.phone ?? prev.phone,
+        phone: normalizePhoneInput(
+          (session?.user as { phone?: string } | undefined)?.phone ?? prev.phone
+        ),
       }));
       setBookedAt(null);
     }
@@ -71,7 +73,10 @@ export default function BookingModal({ isOpen, onClose, selectedPackage }: Booki
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "phone" ? normalizePhoneInput(value) : value,
+    }));
   };
 
   const handleNextStep = () => {
@@ -230,7 +235,10 @@ export default function BookingModal({ isOpen, onClose, selectedPackage }: Booki
                 value={formData.phone}
                 onChange={handleInputChange}
                 required
-                placeholder="เช่น 081-234-5678"
+                inputMode="numeric"
+                maxLength={10}
+                pattern="[0-9]{10}"
+                placeholder="เบอร์โทรศัพท์ 10 หลัก"
                 className="w-full rounded-2xl border border-brand-green-100 bg-brand-surface py-3.5 px-4 text-sm font-semibold outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green-50 text-brand-ink"
               />
               <p className="text-[10px] text-brand-ink-soft font-bold mt-1 pl-1">

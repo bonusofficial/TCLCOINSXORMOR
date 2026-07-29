@@ -13,10 +13,12 @@ import {
   Tag,
   ArrowRight,
   Users,
-  Crown
+  Crown,
+  Clock3,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
+import ThaiAddressFields, { type ThaiAddress } from "@/components/ThaiAddressFields";
 import { publicApi } from "@/lib/eden";
 import {
   useConfig,
@@ -31,7 +33,7 @@ import {
 } from "@/lib/booking";
 import { getProductAvailability, getEffectivePrice, fmtThaiDate, fmt, todayISO, useNowTick } from "@/lib/product-utils";
 import { PackageCard } from "@/components/PackageCard";
-import { copyToClipboard } from "@/lib/utils";
+import { copyToClipboard, normalizePhoneInput } from "@/lib/utils";
 
 /* ─────────────────────────────────────────────
  * Types — Reuse PublicProduct + TimeSlot from context
@@ -59,11 +61,34 @@ type BookingQuotaItem = {
   bookingDate: string;
 };
 
+type BookingProfile = {
+  phone: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  addressLine: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
+};
+
 type BookingNotice = {
   type: "warning" | "error";
   title: string;
   description: string;
 } | null;
+
+function hasCompleteRecipientProfile(profile: BookingProfile) {
+  return Boolean(
+    profile.firstName?.trim() &&
+    profile.lastName?.trim() &&
+    profile.addressLine?.trim() &&
+    profile.subdistrict?.trim() &&
+    profile.district?.trim() &&
+    profile.province?.trim() &&
+    /^\d{5}$/.test(profile.postalCode?.trim() ?? "")
+  );
+}
 
 function getQuotaExceededMessage(p: QueueProduct, bookedToday: number) {
   if (p.maxPerUserPerDay <= 0 || bookedToday < p.maxPerUserPerDay) return null;
@@ -98,12 +123,28 @@ function isQuotaErrorMessage(message: string) {
 function QueueContent() {
   const { data: session } = useSession();
   const user = session?.user as
-    | { id?: string; email?: string; username?: string; displayUsername?: string; phone?: string; role?: string }
+    | {
+        id?: string;
+        email?: string;
+        username?: string;
+        displayUsername?: string;
+        phone?: string;
+        firstName?: string;
+        lastName?: string;
+        addressLine?: string;
+        subdistrict?: string;
+        district?: string;
+        province?: string;
+        postalCode?: string;
+        role?: string;
+      }
     | undefined;
   const isLoggedIn = !!user;
   const userRole: UserRole = (() => {
     const r = (user?.role ?? "").toLowerCase().trim();
-    if (r === "admin" || r === "agent" || r === "member") return r;
+    if (r === "admin" || r === "agent" || r === "vip" || r === "member") {
+      return r;
+    }
     return "member";
   })();
 
@@ -125,9 +166,24 @@ function QueueContent() {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  const [selectedRoundCode, setSelectedRoundCode] = useState("");
   const [phone, setPhone] = useState("");
+  const [recipientFirstName, setRecipientFirstName] = useState("");
+  const [recipientLastName, setRecipientLastName] = useState("");
+  const [address, setAddress] = useState<ThaiAddress>({
+    addressLine: "",
+    subdistrict: "",
+    district: "",
+    province: "",
+    postalCode: "",
+  });
   const [notes, setNotes] = useState("");
+  const [profileLoadState, setProfileLoadState] = useState<
+    "idle" | "loading" | "complete" | "incomplete"
+  >("idle");
+  const [saveToProfile, setSaveToProfile] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [redirectingToOrders, setRedirectingToOrders] = useState(false);
   const [dailyBookingCountState, setDailyBookingCountState] = useState<{
     userId: string;
     counts: Record<number, number>;
@@ -144,16 +200,32 @@ function QueueContent() {
     bookedAt: string;
   } | null>(null);
 
-  // Prefill phone from session
+  // Prefill contact and delivery details from the saved profile without overwriting edits in this form.
   useEffect(() => {
-    if (!user?.phone || phone) return;
-
     const id = window.setTimeout(() => {
-      setPhone(user.phone ?? "");
+      setPhone((current) => current || normalizePhoneInput(user?.phone || ""));
+      setRecipientFirstName((current) => current || user?.firstName || "");
+      setRecipientLastName((current) => current || user?.lastName || "");
+      setAddress((current) => ({
+        addressLine: current.addressLine || user?.addressLine || "",
+        subdistrict: current.subdistrict || user?.subdistrict || "",
+        district: current.district || user?.district || "",
+        province: current.province || user?.province || "",
+        postalCode: current.postalCode || user?.postalCode || "",
+      }));
     }, 0);
 
     return () => window.clearTimeout(id);
-  }, [user?.phone, phone]);
+  }, [
+    user?.phone,
+    user?.firstName,
+    user?.lastName,
+    user?.addressLine,
+    user?.subdistrict,
+    user?.district,
+    user?.province,
+    user?.postalCode,
+  ]);
 
   // เข้าหน้าจองครั้งใด → ดึงสินค้าใหม่เสมอ กันค้างค่าเก่า (limit ต่อคน/วัน, สต็อก, รอบเวลาเปิดจอง)
   useEffect(() => {
@@ -195,6 +267,16 @@ function QueueContent() {
     () => products.find((p) => p.id === selectedProductId) ?? null,
     [products, selectedProductId]
   );
+  const selectedSchedule = useMemo(
+    () =>
+      selectedProduct?.saleSchedules.find(
+        (schedule) => schedule.date === selectedDate
+      ) ?? null,
+    [selectedDate, selectedProduct]
+  );
+  const selectedRound =
+    selectedSchedule?.rounds.find((round) => round.code === selectedRoundCode) ??
+    null;
 
   const effectivePrice = useMemo(
     () =>
@@ -212,6 +294,60 @@ function QueueContent() {
     dailyBookingCountState && dailyBookingCountState.userId === user?.id
       ? dailyBookingCountState.counts
       : {};
+
+  const applyBookingProfile = (profile: BookingProfile) => {
+    setPhone(normalizePhoneInput(profile.phone ?? ""));
+    setRecipientFirstName(profile.firstName ?? "");
+    setRecipientLastName(profile.lastName ?? "");
+    setAddress({
+      addressLine: profile.addressLine ?? "",
+      subdistrict: profile.subdistrict ?? "",
+      district: profile.district ?? "",
+      province: profile.province ?? "",
+      postalCode: profile.postalCode ?? "",
+    });
+    setProfileLoadState(
+      hasCompleteRecipientProfile(profile) ? "complete" : "incomplete"
+    );
+  };
+
+  const loadBookingProfile = async () => {
+    if (!user?.id) return;
+
+    setProfileLoadState("loading");
+    setSaveToProfile(false);
+    try {
+      const response = await fetch("/api/v1/profile/delivery-address", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { ok?: boolean; message?: string; data?: BookingProfile }
+        | null;
+      if (!response.ok || !payload?.ok || !payload.data) {
+        throw new Error(payload?.message ?? "ไม่สามารถโหลดข้อมูลโปรไฟล์ได้");
+      }
+      applyBookingProfile(payload.data);
+    } catch (error) {
+      const fallbackProfile: BookingProfile = {
+        phone: user.phone ?? null,
+        firstName: user.firstName ?? null,
+        lastName: user.lastName ?? null,
+        addressLine: user.addressLine ?? null,
+        subdistrict: user.subdistrict ?? null,
+        district: user.district ?? null,
+        province: user.province ?? null,
+        postalCode: user.postalCode ?? null,
+      };
+      applyBookingProfile(fallbackProfile);
+      toast.warning("โหลดข้อมูลโปรไฟล์ล่าสุดไม่สำเร็จ", {
+        description:
+          error instanceof Error
+            ? `${error.message} กรุณาตรวจสอบข้อมูลก่อนยืนยันจอง`
+            : "กรุณาตรวจสอบข้อมูลก่อนยืนยันจอง",
+      });
+    }
+  };
 
   const showBookingNotice = (
     notice: NonNullable<BookingNotice>,
@@ -242,6 +378,16 @@ function QueueContent() {
 
     return () => window.clearTimeout(id);
   }, [bookingNotice]);
+
+  useEffect(() => {
+    if (!redirectingToOrders) return;
+
+    const id = window.setTimeout(() => {
+      router.push("/profile/orders");
+    }, 1500);
+
+    return () => window.clearTimeout(id);
+  }, [redirectingToOrders, router]);
 
   useEffect(() => {
     const currentUserId = user?.id;
@@ -304,11 +450,50 @@ function QueueContent() {
       });
       return true;
     }
-
-    if (phone.trim().length < 6) {
-      toast.warning("กรอกเบอร์โทรให้ถูกต้อง", {
-        description: "เบอร์โทรติดต่อกลับต้องมีอย่างน้อย 6 ตัวอักษร",
+    if (
+      !selectedRound ||
+      selectedRound.status === "full" ||
+      selectedRound.status === "closed"
+    ) {
+      toast.warning("กรุณาเลือกรอบเติม", {
+        description: "ต้องเลือกรอบเติมที่ยังเปิดรับจองก่อนยืนยันรายการ",
       });
+      document
+        .getElementById("topup-round-selector")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return true;
+    }
+
+    if (profileLoadState === "loading") {
+      toast.info("กำลังโหลดข้อมูลโปรไฟล์", {
+        description: "กรุณารอสักครู่ก่อนยืนยันการจอง",
+      });
+      return true;
+    }
+
+    if (!/^\d{10}$/.test(phone)) {
+      toast.warning("กรอกเบอร์โทรให้ถูกต้อง", {
+        description: "เบอร์โทรติดต่อกลับต้องเป็นตัวเลข 10 หลัก",
+      });
+      return true;
+    }
+
+    if (
+      !recipientFirstName.trim() ||
+      !recipientLastName.trim() ||
+      !address.addressLine.trim() ||
+      !address.subdistrict ||
+      !address.district ||
+      !address.province ||
+      !/^\d{5}$/.test(address.postalCode)
+    ) {
+      toast.warning("กรุณากรอกชื่อและที่อยู่ให้ครบถ้วน", {
+        description:
+          "ต้องระบุชื่อ–นามสกุลจริง ที่อยู่ จังหวัด อำเภอ/เขต ตำบล/แขวง และรหัสไปรษณีย์",
+      });
+      document
+        .getElementById("booking-recipient-details")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return true;
     }
 
@@ -340,13 +525,23 @@ function QueueContent() {
     showQuotaToast(p);
 
     setSelectedProductId(p.id);
+    void loadBookingProfile();
     // เลือกวันแรกที่ยังไม่ผ่าน (>= วันนี้) เป็นค่าเริ่มต้น — ไม่ดีฟอลต์เป็นวันที่หมดเวลาไปแล้ว
     const today = todayISO();
-    const upcomingDates = [...p.saleDates].filter((d) => d >= today).sort();
+    const upcomingDates = p.saleSchedules
+      .map((schedule) => schedule.date)
+      .filter((date) => date >= today)
+      .sort();
     setSelectedDate(upcomingDates[0] ?? today);
-    setSelectedTime(
-      p.timeSlots[0] ? `${p.timeSlots[0].start} - ${p.timeSlots[0].end}` : ""
+    const firstSchedule = p.saleSchedules.find(
+      (schedule) => schedule.date === (upcomingDates[0] ?? today)
     );
+    setSelectedTime(
+      firstSchedule
+        ? `${firstSchedule.bookingStart} - ${firstSchedule.bookingEnd}`
+        : ""
+    );
+    setSelectedRoundCode("");
     // scroll to form
     setTimeout(() => {
       document.getElementById("booking-form")?.scrollIntoView({ behavior: "smooth" });
@@ -377,7 +572,18 @@ function QueueContent() {
     selectedProduct !== null &&
     selectedDate !== "" &&
     selectedTime !== "" &&
-    phone.trim().length >= 6 &&
+    selectedRound !== null &&
+    selectedRound.status !== "full" &&
+    selectedRound.status !== "closed" &&
+    profileLoadState !== "loading" &&
+    /^\d{10}$/.test(phone) &&
+    recipientFirstName.trim() !== "" &&
+    recipientLastName.trim() !== "" &&
+    address.addressLine.trim() !== "" &&
+    address.subdistrict !== "" &&
+    address.district !== "" &&
+    address.province !== "" &&
+    /^\d{5}$/.test(address.postalCode) &&
     !selectedQuotaMessage;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -400,6 +606,14 @@ function QueueContent() {
         productName: selectedProduct.name,
         username: user?.displayUsername || user?.username || user?.email?.split("@")[0] || "user",
         phone: phone.trim(),
+        recipientFirstName: recipientFirstName.trim(),
+        recipientLastName: recipientLastName.trim(),
+        addressLine: address.addressLine.trim(),
+        subdistrict: address.subdistrict,
+        district: address.district,
+        province: address.province,
+        postalCode: address.postalCode,
+        topupRoundCode: selectedRoundCode,
         content: notes.trim() || undefined,
         price: effectivePrice.amount,
         bookingDate: selectedDate,
@@ -430,7 +644,64 @@ function QueueContent() {
       }
       const booking = data.data;
       setBookingNotice(null);
-      toast.success("จองคิวสำเร็จ! กำลังนำทางไปหน้าประวัติการจอง...", { id: tId });
+      let profileSaveError: string | null = null;
+      if (saveToProfile) {
+        try {
+          const profileResponse = await fetch(
+            "/api/v1/profile/delivery-address",
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                phone: phone.trim(),
+                firstName: recipientFirstName.trim(),
+                lastName: recipientLastName.trim(),
+                addressLine: address.addressLine.trim(),
+                subdistrict: address.subdistrict,
+                district: address.district,
+                province: address.province,
+                postalCode: address.postalCode,
+              }),
+            }
+          );
+          const profilePayload = (await profileResponse
+            .json()
+            .catch(() => null)) as
+            | { ok?: boolean; message?: string; data?: BookingProfile }
+            | null;
+          if (
+            !profileResponse.ok ||
+            !profilePayload?.ok ||
+            !profilePayload.data
+          ) {
+            throw new Error(
+              profilePayload?.message ?? "ไม่สามารถบันทึกข้อมูลลงโปรไฟล์ได้"
+            );
+          }
+          setProfileLoadState("complete");
+          setSaveToProfile(false);
+        } catch (error) {
+          profileSaveError =
+            error instanceof Error
+              ? error.message
+              : "ไม่สามารถบันทึกข้อมูลลงโปรไฟล์ได้";
+        }
+      }
+
+      if (profileSaveError) {
+        toast.warning("จองสำเร็จ แต่บันทึกโปรไฟล์ไม่สำเร็จ", {
+          id: tId,
+          description: profileSaveError,
+        });
+      } else {
+        toast.success(
+          saveToProfile
+            ? "จองและบันทึกข้อมูลโปรไฟล์สำเร็จ!"
+            : "จองคิวสำเร็จ!",
+          { id: tId }
+        );
+      }
       setResult({
         code: booking.bookingCode,
         productName: booking.productName,
@@ -454,12 +725,9 @@ function QueueContent() {
       void refreshProducts();
       // reset form
       setSelectedProductId(null);
+      setSelectedRoundCode("");
       setNotes("");
-
-      // Redirect with slight delay
-      setTimeout(() => {
-        router.push("/profile/orders");
-      }, 800);
+      setRedirectingToOrders(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาด";
       showBookingNotice(
@@ -477,6 +745,32 @@ function QueueContent() {
 
   return (
     <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col">
+      {redirectingToOrders && (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-label="กำลังไปยังประวัติการจอง"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-brand-paper/95 px-6 backdrop-blur-md"
+        >
+          <div className="flex max-w-md flex-col items-center text-center">
+            <div className="relative flex h-20 w-20 items-center justify-center">
+              <div className="absolute inset-0 animate-ping rounded-full bg-brand-green/15" />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-green-100 bg-brand-surface shadow-lg shadow-brand-green/20">
+                <Loader2
+                  className="h-8 w-8 animate-spin text-brand-green"
+                  strokeWidth={2.5}
+                />
+              </div>
+            </div>
+            <h2 className="mt-6 font-display text-xl font-black text-brand-ink sm:text-2xl">
+              กำลังพาคุณไปยังประวัติการจอง…
+            </h2>
+            <p className="mt-2 text-sm font-bold text-brand-ink-soft">
+              บันทึกการจองสำเร็จแล้ว กรุณารอสักครู่
+            </p>
+          </div>
+        </div>
+      )}
       <Navbar
         onOpenAuth={(tab) => {
           setAuthTab(tab);
@@ -705,13 +999,13 @@ function QueueContent() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Step 1: เลือกวันและเวลา */}
+            {/* Step 1: ช่วงเวลาเปิดรับจองและรอบเติม */}
             <section className="bg-brand-surface border-l-4 border-l-brand-green border border-brand-green-100 rounded-2xl p-5">
               <h3 className="font-display font-black text-base text-brand-ink mb-1">
-                เลือกวันและเวลา
+                วันที่และช่วงเวลาเปิดรับจอง
               </h3>
               <p className="text-[11.5px] text-brand-ink-soft font-bold mb-4">
-                สามารถเลือกวันที่หมายเหตุได้ในช่วงที่ระบบกำหนด และเวลาอาจมีการเปลี่ยนแปลง กรุณาเป็นไปตามกลุ่ม LINE OpenChat
+                ช่วงเวลานี้คือเวลาที่เว็บไซต์อนุญาตให้ส่งรายการจอง ไม่ใช่เวลาที่ร้านจะเติมสินค้า
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -720,19 +1014,35 @@ function QueueContent() {
                   </label>
                   <select
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    onChange={(e) => {
+                      const date = e.target.value;
+                      const schedule = selectedProduct?.saleSchedules.find(
+                        (item) => item.date === date
+                      );
+                      setSelectedDate(date);
+                      setSelectedTime(
+                        schedule
+                          ? `${schedule.bookingStart} - ${schedule.bookingEnd}`
+                          : ""
+                      );
+                      setSelectedRoundCode("");
+                    }}
                     disabled={!selectedProduct}
                     className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink disabled:opacity-60 cursor-pointer"
                   >
                     <option value="" className="bg-brand-surface text-brand-ink">
                       กรุณาเลือกแพ็กเกจก่อน
                     </option>
-                    {(selectedProduct?.saleDates ?? [])
-                      .filter((d) => d >= todayISO())
-                      .sort()
-                      .map((d) => (
-                        <option key={d} value={d} className="bg-brand-surface text-brand-ink">
-                          {fmtThaiDate(d)}
+                    {(selectedProduct?.saleSchedules ?? [])
+                      .filter((schedule) => schedule.date >= todayISO())
+                      .sort((a, b) => a.date.localeCompare(b.date))
+                      .map((schedule) => (
+                        <option
+                          key={schedule.date}
+                          value={schedule.date}
+                          className="bg-brand-surface text-brand-ink"
+                        >
+                          {fmtThaiDate(schedule.date)}
                         </option>
                       ))}
                   </select>
@@ -742,30 +1052,107 @@ function QueueContent() {
                 </div>
                 <div>
                   <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5 flex-wrap">
-                    เวลาที่ต้องการจอง
+                    ช่วงเวลาเปิดรับจอง
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand-green/10 text-brand-green text-[10px] font-black ring-1 ring-brand-green/30">
                       เวลาไทย
                     </span>
                   </label>
-                  <select
-                    value={selectedTime}
-                    onChange={(e) => setSelectedTime(e.target.value)}
-                    disabled={!selectedProduct}
-                    className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink disabled:opacity-60 cursor-pointer"
-                  >
-                    <option value="" className="bg-brand-surface text-brand-ink">
-                      -- กรุณาเลือกแพ็กเกจก่อน --
-                    </option>
-                    {(selectedProduct?.timeSlots ?? []).map((s, i) => (
-                      <option key={i} value={`${s.start} - ${s.end}`} className="bg-brand-surface text-brand-ink">
-                        {s.start} - {s.end}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex min-h-[42px] items-center gap-2 rounded-xl border border-brand-green-100 bg-brand-paper px-3.5 py-2.5 text-sm font-semibold text-brand-ink">
+                    <Clock3 className="h-4 w-4 text-brand-green" />
+                    {selectedSchedule
+                      ? `${selectedSchedule.bookingStart}–${selectedSchedule.bookingEnd} น.`
+                      : "เลือกแพ็กเกจและวันที่ก่อน"}
+                  </div>
                   <p className="text-[10.5px] font-bold text-brand-ink-soft mt-1.5">
-                    {selectedProduct ? "เลือกเวลาที่สะดวกตามรอบการเปิดรับ" : "กรุณาเลือกแพ็กเกจที่ต้องการก่อน"}
+                    ใช้สำหรับส่งรายการจองผ่านเว็บไซต์เท่านั้น
                   </p>
                 </div>
+              </div>
+
+              <div
+                id="topup-round-selector"
+                className="mt-5 border-t border-brand-green-100/70 pt-5"
+              >
+                <h4 className="font-display text-base font-black text-brand-ink">
+                  เลือกรอบเติมที่ต้องการ <span className="text-rose-400">*</span>
+                </h4>
+                <p className="mt-1 text-[11px] font-bold text-brand-ink-soft">
+                  รอบเติมคือช่วงเวลาที่ร้านดำเนินการเติมสินค้า เลือกได้ 1 รอบต่อการจอง
+                </p>
+                {!selectedSchedule ? (
+                  <div className="mt-3 rounded-xl border border-dashed border-brand-green-100 bg-brand-paper px-4 py-5 text-center text-xs font-bold text-brand-ink-soft">
+                    กรุณาเลือกแพ็กเกจและวันที่ก่อน
+                  </div>
+                ) : selectedSchedule.rounds.length === 0 ? (
+                  <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-xs font-black text-amber-500">
+                    วันนี้ยังไม่มีรอบเติมที่เปิดให้เลือก
+                  </div>
+                ) : (
+                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {[...selectedSchedule.rounds]
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((round) => {
+                        const disabled =
+                          round.status === "full" || round.status === "closed";
+                        const selected = selectedRoundCode === round.code;
+                        const statusLabel =
+                          round.status === "near_full"
+                            ? "ใกล้เต็ม"
+                            : round.status === "full"
+                              ? "เต็มแล้ว"
+                              : round.status === "closed"
+                                ? "ปิดรับจอง"
+                                : "เปิดรับจอง";
+                        const statusClass =
+                          round.status === "near_full"
+                            ? "bg-amber-500/15 text-amber-500 ring-amber-500/30"
+                            : round.status === "full" ||
+                                round.status === "closed"
+                              ? "bg-rose-500/10 text-rose-400 ring-rose-500/25"
+                              : "bg-brand-green/10 text-brand-green ring-brand-green/25";
+
+                        return (
+                          <label
+                            key={round.code}
+                            className={`relative rounded-2xl border p-4 transition ${
+                              disabled
+                                ? "cursor-not-allowed border-brand-green-100/50 bg-brand-paper/50 opacity-60"
+                                : selected
+                                  ? "cursor-pointer border-brand-green bg-brand-green/10 ring-2 ring-brand-green/25"
+                                  : "cursor-pointer border-brand-green-100 bg-brand-paper hover:border-brand-green/60"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="radio"
+                                name="topupRound"
+                                value={round.code}
+                                checked={selected}
+                                disabled={disabled}
+                                onChange={() => setSelectedRoundCode(round.code)}
+                                className="mt-0.5 h-4 w-4 accent-[var(--brand-green)]"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="font-black text-brand-ink">
+                                  {round.name}
+                                </p>
+                                <p className="mt-1 text-xs font-extrabold text-brand-ink-soft">
+                                  {round.start}–{round.end} น.
+                                </p>
+                                <span
+                                  className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] font-black ring-1 ${statusClass}`}
+                                >
+                                  {statusLabel}
+                                  {round.status === "near_full" &&
+                                    ` · เหลือ ${round.remaining}`}
+                                </span>
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
             </section>
 
@@ -858,14 +1245,121 @@ function QueueContent() {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
                   required
-                  placeholder="เช่น 081-234-5678"
+                  disabled={profileLoadState === "loading"}
+                  inputMode="numeric"
+                  maxLength={10}
+                  pattern="[0-9]{10}"
+                  placeholder="เช่น 0812345678"
                   className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/60"
                 />
                 <p className="text-[10.5px] font-bold text-brand-ink-soft mt-1.5">
-                  ใช้สำหรับให้แอดมินติดต่อกลับ
+                  {profileLoadState === "complete"
+                    ? "ดึงจากโปรไฟล์แล้ว — แก้ไขช่องนี้ได้เฉพาะรายการจองนี้"
+                    : "ใช้สำหรับให้แอดมินติดต่อกลับ"}
                 </p>
+              </div>
+
+              <div
+                id="booking-recipient-details"
+                className="mt-5 border-t border-brand-green-100/60 pt-5"
+              >
+                <div className="mb-4">
+                  <h4 className="font-display font-black text-base text-brand-ink">
+                    ข้อมูลผู้รับสินค้า
+                  </h4>
+                  <p className="mt-1 text-[11px] font-bold text-brand-ink-soft">
+                    {profileLoadState === "complete"
+                      ? "ดึงข้อมูลจากโปรไฟล์แล้ว คุณสามารถแก้ชื่อ–นามสกุล ที่อยู่ และเบอร์สำหรับรายการนี้ได้โดยไม่เปลี่ยนข้อมูลในโปรไฟล์"
+                      : "ระบบจะบันทึกข้อมูลนี้ไว้กับรายการจอง เพื่อให้ที่อยู่ของออเดอร์เก่าไม่เปลี่ยนตามโปรไฟล์ภายหลัง"}
+                  </p>
+                  <p className="mt-2 rounded-xl border border-brand-green-100 bg-brand-green/10 px-3 py-2.5 text-[10.5px] font-extrabold leading-relaxed text-brand-ink">
+                    ข้อมูลชื่อและที่อยู่ใช้สำหรับจัดทำเอกสารทางบัญชีและภาษีของร้าน กรุณาตรวจสอบให้ถูกต้องก่อนยืนยันการจอง
+                  </p>
+                </div>
+                {profileLoadState === "loading" && (
+                  <div className="mb-4 flex items-center gap-2 rounded-xl border border-brand-green-100 bg-brand-green/10 px-3 py-2.5 text-xs font-extrabold text-brand-green">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    กำลังดึงชื่อ ที่อยู่ และเบอร์จากโปรไฟล์…
+                  </div>
+                )}
+                {profileLoadState === "incomplete" && (
+                  <div className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 p-3.5">
+                    <div className="flex items-start gap-2">
+                      <AlertOctagon className="mt-0.5 h-4.5 w-4.5 flex-shrink-0 text-amber-500" />
+                      <div>
+                        <p className="text-xs font-black text-amber-500">
+                          โปรไฟล์ยังไม่มีชื่อ–นามสกุลจริงหรือที่อยู่ครบถ้วน
+                        </p>
+                        <p className="mt-1 text-[10.5px] font-bold leading-relaxed text-brand-ink-soft">
+                          กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบก่อนยืนยันการจอง
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-pressed={saveToProfile}
+                      onClick={() => setSaveToProfile((current) => !current)}
+                      className={`mt-3 flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-black transition cursor-pointer ${
+                        saveToProfile
+                          ? "border-brand-green bg-brand-green text-white shadow-md shadow-brand-green/20"
+                          : "border-brand-green/40 bg-brand-surface text-brand-green hover:bg-brand-green/10"
+                      }`}
+                    >
+                      <CheckCircle2 className="h-4 w-4" strokeWidth={2.7} />
+                      บันทึกข้อมูลนี้ไว้ในโปรไฟล์สำหรับการจองครั้งถัดไป
+                    </button>
+                    {saveToProfile && (
+                      <p className="mt-2 text-center text-[10px] font-extrabold text-brand-green">
+                        ระบบจะบันทึกลงโปรไฟล์หลังจากจองสำเร็จ
+                      </p>
+                    )}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-[12.5px] font-extrabold text-brand-ink">
+                      ชื่อจริง <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={recipientFirstName}
+                      onChange={(event) => setRecipientFirstName(event.target.value)}
+                      required
+                      disabled={profileLoadState === "loading"}
+                      maxLength={120}
+                      autoComplete="shipping given-name"
+                      placeholder="ชื่อผู้รับสินค้า"
+                      className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/60"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-[12.5px] font-extrabold text-brand-ink">
+                      นามสกุล <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={recipientLastName}
+                      onChange={(event) => setRecipientLastName(event.target.value)}
+                      required
+                      disabled={profileLoadState === "loading"}
+                      maxLength={120}
+                      autoComplete="shipping family-name"
+                      placeholder="นามสกุลผู้รับสินค้า"
+                      className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/60"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <ThaiAddressFields
+                    value={address}
+                    onChange={setAddress}
+                    required
+                    disabled={profileLoadState === "loading"}
+                    idPrefix="booking-address"
+                  />
+                </div>
               </div>
 
               {/* Notes */}

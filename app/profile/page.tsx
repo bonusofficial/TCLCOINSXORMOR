@@ -31,11 +31,12 @@ import {
 } from "lucide-react";
 import Navbar, { formatDisplayID } from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
+import ThaiAddressFields, { type ThaiAddress } from "@/components/ThaiAddressFields";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
-import { copyToClipboard } from "@/lib/utils";
+import { copyToClipboard, normalizePhoneInput } from "@/lib/utils";
 
 
-type UserRole = "member" | "agent" | "admin";
+type UserRole = "member" | "vip" | "agent" | "admin";
 
 type PageFeedback = {
   type: "success" | "error" | "warning" | "info";
@@ -43,17 +44,36 @@ type PageFeedback = {
   description: string;
 };
 
+type DeliveryAddressResponse = {
+  ok?: boolean;
+  message?: string;
+  data?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    addressLine?: string | null;
+    subdistrict?: string | null;
+    district?: string | null;
+    province?: string | null;
+    postalCode?: string | null;
+  };
+};
+
 function resolveUserRole(user?: {
   role?: string | null;
   email?: string | null;
 } | null): UserRole {
   const dbRole = (user?.role ?? "").toLowerCase().trim();
-  if (dbRole === "admin" || dbRole === "agent" || dbRole === "member") {
+  if (
+    dbRole === "admin" ||
+    dbRole === "agent" ||
+    dbRole === "vip" ||
+    dbRole === "member"
+  ) {
     return dbRole as UserRole;
   }
   const email = (user?.email ?? "").toLowerCase().trim();
   if (email.endsWith("@admin.tclcoinsxormor.com")) return "admin";
-  if (email.endsWith("@vip.tclcoinsxormor.com")) return "agent";
+  if (email.endsWith("@vip.tclcoinsxormor.com")) return "vip";
   return "member";
 }
 
@@ -62,7 +82,8 @@ const ROLE_META: Record<
   { label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; color: string }
 > = {
   member: { label: "สมาชิกทั่วไป", icon: ShieldCheck, color: "text-brand-green" },
-  agent: { label: "ตัวแทนจำหน่าย", icon: Crown, color: "text-brand-gold" },
+  vip: { label: "VIP MEMBER", icon: Crown, color: "text-amber-400" },
+  agent: { label: "ตัวแทนจำหน่าย", icon: Store, color: "text-brand-gold" },
   admin: { label: "ผู้ดูแลระบบ", icon: Shield, color: "text-sky-400" },
 };
 
@@ -87,6 +108,13 @@ export default function ProfilePage() {
         email?: string | null;
         image?: string | null;
         phone?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        addressLine?: string | null;
+        subdistrict?: string | null;
+        district?: string | null;
+        province?: string | null;
+        postalCode?: string | null;
         role?: string | null;
         shopName?: string | null;
         lineId?: string | null;
@@ -108,6 +136,15 @@ export default function ProfilePage() {
   // Account info
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [address, setAddress] = useState<ThaiAddress>({
+    addressLine: "",
+    subdistrict: "",
+    district: "",
+    province: "",
+    postalCode: "",
+  });
   // ข้อมูลร้าน (สำหรับตัวแทน) — ชื่อร้านปัจจุบัน + ไอดีไลน์ที่ใช้เติม Coins
   const [shopName, setShopName] = useState("");
   const [lineId, setLineId] = useState("");
@@ -129,14 +166,58 @@ export default function ProfilePage() {
     if (!user) return;
 
     const id = window.setTimeout(() => {
-      setPhone(user.phone ?? "");
+      setPhone(normalizePhoneInput(user.phone ?? ""));
       setUsername(user.displayUsername?.trim() ? user.displayUsername : user.username ?? "");
+      setFirstName(user.firstName ?? "");
+      setLastName(user.lastName ?? "");
+      setAddress({
+        addressLine: user.addressLine ?? "",
+        subdistrict: user.subdistrict ?? "",
+        district: user.district ?? "",
+        province: user.province ?? "",
+        postalCode: user.postalCode ?? "",
+      });
       setShopName(user.shopName ?? "");
       setLineId(user.lineId ?? "");
     }, 0);
 
     return () => window.clearTimeout(id);
   }, [user?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Address updates bypass Better Auth, so always load the authoritative value
+  // from the database instead of relying on a possibly stale session payload.
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const controller = new AbortController();
+    void fetch("/api/v1/profile/delivery-address", {
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = (await response.json().catch(() => null)) as
+          | DeliveryAddressResponse
+          | null;
+        if (!response.ok || !payload?.ok || !payload.data) return;
+
+        setFirstName(payload.data.firstName ?? "");
+        setLastName(payload.data.lastName ?? "");
+        setAddress({
+          addressLine: payload.data.addressLine ?? "",
+          subdistrict: payload.data.subdistrict ?? "",
+          district: payload.data.district ?? "",
+          province: payload.data.province ?? "",
+          postalCode: payload.data.postalCode ?? "",
+        });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("[profile] load delivery address failed:", error);
+      });
+
+    return () => controller.abort();
+  }, [user?.id]);
 
   useEffect(() => {
     if (!copyFeedback) return;
@@ -303,6 +384,19 @@ export default function ProfilePage() {
         setSavingInfo(false);
         return;
       }
+      if (phone && !/^\d{10}$/.test(phone)) {
+        setProfileFeedback({
+          type: "warning",
+          title: "เบอร์โทรศัพท์ไม่ถูกต้อง",
+          description: "กรุณากรอกเบอร์โทรศัพท์ให้ครบ 10 หลัก",
+        });
+        toast.warning("เบอร์โทรศัพท์ไม่ถูกต้อง", {
+          id,
+          description: "ต้องเป็นตัวเลข 10 หลักเท่านั้น",
+        });
+        setSavingInfo(false);
+        return;
+      }
 
       // เช็คชื่อผู้ใช้/ชื่อร้าน/ไอดีไลน์ ห้ามซ้ำกับผู้ใช้คนอื่น ก่อนบันทึก
       const check = await profileApi.api.v1.profile.unique.post({
@@ -332,7 +426,7 @@ export default function ProfilePage() {
       }
 
       const res = await authClient.updateUser({
-        name: nextUsername,
+        name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" ") || nextUsername,
         username: nextUsername,
         displayUsername: nextUsername,
         phone,
@@ -352,6 +446,37 @@ export default function ProfilePage() {
         setSavingInfo(false);
         return;
       }
+
+      const addressResponse = await fetch("/api/v1/profile/delivery-address", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          addressLine: address.addressLine,
+          subdistrict: address.subdistrict,
+          district: address.district,
+          province: address.province,
+          postalCode: address.postalCode,
+        }),
+      });
+      const addressPayload = (await addressResponse.json().catch(() => null)) as
+        | DeliveryAddressResponse
+        | null;
+      if (!addressResponse.ok || !addressPayload?.ok || !addressPayload.data) {
+        throw new Error(addressPayload?.message ?? "ไม่สามารถบันทึกข้อมูลที่อยู่ได้");
+      }
+      setFirstName(addressPayload.data.firstName ?? "");
+      setLastName(addressPayload.data.lastName ?? "");
+      setAddress({
+        addressLine: addressPayload.data.addressLine ?? "",
+        subdistrict: addressPayload.data.subdistrict ?? "",
+        district: addressPayload.data.district ?? "",
+        province: addressPayload.data.province ?? "",
+        postalCode: addressPayload.data.postalCode ?? "",
+      });
+
       // เปลี่ยนชื่อผู้ใช้ → ย้ายสิทธิ์ส่วนลดพิเศษให้ตามชื่อใหม่อัตโนมัติ (ไม่บล็อกการบันทึกหลัก)
       if (
         previousUsername &&
@@ -649,6 +774,15 @@ export default function ProfilePage() {
                 {user?.email}
               </p>
 
+              {userRole === "vip" && (
+                <div className="mb-4 inline-flex items-center gap-2 rounded-xl border border-amber-400/40 bg-gradient-to-r from-yellow-300/15 via-amber-400/10 to-orange-500/15 px-3.5 py-2 text-amber-400 shadow-sm shadow-amber-400/15">
+                  <Crown className="h-4.5 w-4.5" strokeWidth={2.7} />
+                  <span className="text-xs font-black tracking-wide">
+                    VIP MEMBER · สิทธิ์พิเศษเปิดใช้งานแล้ว
+                  </span>
+                </div>
+              )}
+
               {/* อัปเกรดเป็นตัวแทน — แสดงเฉพาะสมาชิกทั่วไป */}
               {userRole === "member" && (
                 <a
@@ -710,10 +844,38 @@ export default function ProfilePage() {
             ข้อมูลบัญชี
           </h2>
           <p className="text-xs text-brand-ink-soft font-bold mb-5">
-            อีเมลไม่สามารถเปลี่ยนแปลงได้ ชื่อผู้ใช้ เบอร์โทรศัพท์ ชื่อร้าน และไอดีไลน์สามารถอัปเดตและบันทึกข้อมูลได้ตามต้องการ
+            บันทึกชื่อและที่อยู่เริ่มต้นไว้ใช้ในการจองครั้งถัดไปได้ โดยอีเมลไม่สามารถเปลี่ยนแปลงได้
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">
+                ชื่อจริง
+              </label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="ระบุชื่อจริง"
+                maxLength={120}
+                autoComplete="given-name"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">
+                นามสกุล
+              </label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="ระบุนามสกุล"
+                maxLength={120}
+                autoComplete="family-name"
+                className={inputCls}
+              />
+            </div>
             <div>
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-brand-green" />
@@ -741,7 +903,7 @@ export default function ProfilePage() {
                 className={inputCls}
               />
             </div>
-            {userRole === "agent" && (
+            {(userRole === "vip" || userRole === "agent") && (
             <div>
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
                 <AtSign className="h-3.5 w-3.5 text-brand-green" />
@@ -773,8 +935,11 @@ export default function ProfilePage() {
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="ระบุเบอร์โทรศัพท์ของคุณ"
+                onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+                inputMode="numeric"
+                maxLength={10}
+                pattern="[0-9]{10}"
+                placeholder="เบอร์โทรศัพท์ 10 หลัก"
                 className={inputCls}
               />
             </div>
@@ -805,6 +970,14 @@ export default function ProfilePage() {
                 className={inputCls}
               />
             </div>
+          </div>
+
+          <div className="mt-6 border-t border-brand-green-100/60 pt-5">
+            <h3 className="font-display font-black text-base text-brand-ink">ที่อยู่สำหรับรับสินค้า</h3>
+            <p className="mt-1 mb-4 text-[11.5px] font-bold text-brand-ink-soft">
+              เลือกจังหวัด อำเภอ/เขต และตำบล/แขวง แล้วระบบจะระบุรหัสไปรษณีย์ให้โดยอัตโนมัติ
+            </p>
+            <ThaiAddressFields value={address} onChange={setAddress} idPrefix="profile-address" />
           </div>
 
           <div className="flex justify-end mt-6 border-t border-brand-green-100/60 pt-4">

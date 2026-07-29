@@ -5,6 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** รับเฉพาะตัวเลขและตัดความยาวเบอร์โทรไว้สูงสุด 10 หลัก */
+export function normalizePhoneInput(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 10);
+}
+
 export function copyToClipboard(text: string): boolean {
   if (typeof window === "undefined") return false;
   

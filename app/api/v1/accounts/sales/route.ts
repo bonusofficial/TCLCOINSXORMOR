@@ -29,6 +29,17 @@ function productNameKey(name: string): string {
   return name.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+type CustomerRole = "member" | "vip" | "agent" | "admin";
+
+/** ยศ ณ เวลาจองถูกล็อกอยู่ใน prefix ของรหัสจอง */
+function customerRoleFromBookingCode(bookingCode: string): CustomerRole {
+  const prefix = bookingCode.split("-", 1)[0]?.toUpperCase();
+  if (prefix === "ADM") return "admin";
+  if (prefix === "AG") return "agent";
+  if (prefix === "VIP") return "vip";
+  return "member";
+}
+
 const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
   .use(loggerPlugin)
   .use(errorPlugin)
@@ -110,12 +121,22 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
           bookingCode: b.bookingCode,
           productName: b.productName,
           username: b.username,
+          recipientFirstName: b.recipientFirstName,
+          recipientLastName: b.recipientLastName,
+          phone: b.phone,
+          customerRole: customerRoleFromBookingCode(b.bookingCode),
           salePrice: salePrice.toFixed(2),
           cost: cost.toFixed(2),
           profit: profit.toFixed(2),
           completedAt: b.updatedAt.toISOString(),
+          bookedAt: b.createdAt.toISOString(),
           bookingDate: b.bookingDate.toISOString(),
           bookingTime: b.bookingTime,
+          bookingWindowStart: b.bookingWindowStart,
+          bookingWindowEnd: b.bookingWindowEnd,
+          topupRoundName: b.topupRoundName,
+          topupRoundStart: b.topupRoundStart,
+          topupRoundEnd: b.topupRoundEnd,
         };
       });
 

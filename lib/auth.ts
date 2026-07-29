@@ -52,6 +52,9 @@ export const auth = betterAuth({
   session: {
     expiresIn: AUTH_SESSION_MAX_AGE_SECONDS,
     updateAge: AUTH_SESSION_MAX_AGE_SECONDS,
+    cookieCache: {
+      enabled: false,
+    },
   },
   emailAndPassword: {
     enabled: true,
@@ -96,6 +99,54 @@ export const auth = betterAuth({
         input: false,
       },
       phone: {
+        type: "string",
+        required: false,
+        defaultValue: "",
+        input: true,
+        transform: {
+          input: (value) =>
+            typeof value === "string"
+              ? value.replace(/\D/g, "").slice(0, 10)
+              : value,
+        },
+      },
+      firstName: {
+        type: "string",
+        required: false,
+        defaultValue: "",
+        input: true,
+      },
+      lastName: {
+        type: "string",
+        required: false,
+        defaultValue: "",
+        input: true,
+      },
+      addressLine: {
+        type: "string",
+        required: false,
+        defaultValue: "",
+        input: true,
+      },
+      subdistrict: {
+        type: "string",
+        required: false,
+        defaultValue: "",
+        input: true,
+      },
+      district: {
+        type: "string",
+        required: false,
+        defaultValue: "",
+        input: true,
+      },
+      province: {
+        type: "string",
+        required: false,
+        defaultValue: "",
+        input: true,
+      },
+      postalCode: {
         type: "string",
         required: false,
         defaultValue: "",
