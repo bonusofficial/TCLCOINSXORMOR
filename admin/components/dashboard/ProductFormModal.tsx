@@ -7,6 +7,7 @@ import {
   X,
   Trash2,
   Plus,
+  Minus,
   ImageIcon,
   Upload,
   Loader2,
@@ -51,6 +52,81 @@ const inputCls =
   "w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none transition focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink placeholder:text-brand-ink-soft/60";
 
 const textareaCls = `${inputCls} resize-none`;
+
+function CapacityStepper({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = (rawValue: string) => {
+    const parsed = Number(rawValue);
+    const next =
+      Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 1;
+    setDraft(String(next));
+    onChange(next);
+  };
+
+  const adjust = (amount: number) => {
+    const parsed = Number(draft);
+    const current =
+      Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : value;
+    const next = Math.max(1, current + amount);
+    setDraft(String(next));
+    onChange(next);
+  };
+
+  return (
+    <div className="mt-1 grid grid-cols-[2.5rem_minmax(4.5rem,1fr)_2.5rem] overflow-hidden rounded-xl border border-brand-green-100 bg-brand-paper transition focus-within:border-brand-green focus-within:ring-4 focus-within:ring-brand-green/20">
+      <button
+        type="button"
+        onClick={() => adjust(-1)}
+        disabled={(Number(draft) || value) <= 1}
+        aria-label="ลดจำนวนที่รับต่อรอบ"
+        className="flex h-10 items-center justify-center border-r border-brand-green-100 text-brand-ink-soft transition hover:bg-brand-green-50 hover:text-brand-green disabled:cursor-not-allowed disabled:opacity-35 cursor-pointer"
+      >
+        <Minus className="h-4 w-4" strokeWidth={3} />
+      </button>
+      <input
+        type="number"
+        min={1}
+        step={1}
+        inputMode="numeric"
+        value={draft}
+        onChange={(event) => {
+          const rawValue = event.target.value;
+          setDraft(rawValue);
+          const parsed = Number(rawValue);
+          if (
+            rawValue !== "" &&
+            Number.isInteger(parsed) &&
+            parsed >= 1
+          ) {
+            onChange(parsed);
+          }
+        }}
+        onBlur={() => commit(draft)}
+        aria-label="จำนวนที่รับต่อรอบ"
+        className="h-10 min-w-0 appearance-none border-0 bg-transparent px-2 text-center text-sm font-black text-brand-ink outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      />
+      <button
+        type="button"
+        onClick={() => adjust(1)}
+        aria-label="เพิ่มจำนวนที่รับต่อรอบ"
+        className="flex h-10 items-center justify-center border-l border-brand-green-100 text-brand-green transition hover:bg-brand-green-50 cursor-pointer"
+      >
+        <Plus className="h-4 w-4" strokeWidth={3} />
+      </button>
+    </div>
+  );
+}
 
 function todayPlus(days: number) {
   const d = new Date();
@@ -1131,20 +1207,17 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                           </label>
                         </div>
                         <div className="mt-2 flex flex-wrap items-end gap-2">
-                          <label className="min-w-28 flex-1 text-[10px] font-extrabold text-brand-ink-soft">
+                          <div className="min-w-40 flex-1 text-[10px] font-extrabold text-brand-ink-soft">
                             จำนวนที่รับต่อรอบ
-                            <input
-                              type="number"
-                              min={1}
+                            <CapacityStepper
                               value={round.capacity}
-                              onChange={(event) =>
+                              onChange={(capacity) =>
                                 updateRound(scheduleIndex, roundIndex, {
-                                  capacity: Math.max(1, Number(event.target.value) || 1),
+                                  capacity,
                                 })
                               }
-                              className={`${inputCls} mt-1`}
                             />
-                          </label>
+                          </div>
                           <button
                             type="button"
                             onClick={() =>
