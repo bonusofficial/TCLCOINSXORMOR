@@ -56,6 +56,7 @@ interface Booking {
   postalCode: string | null;
   price: string;
   cost: string | null;
+  currentProductCost: string | null;
   status: string;
   bookingDate: string;
   bookingTime: string | null;
@@ -108,6 +109,10 @@ function formatDeliveryAddress(b: Booking) {
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+function effectiveBookingCost(booking: Booking) {
+  return booking.cost ?? booking.currentProductCost;
 }
 
 function CopyButton({ value }: { value: string }) {
@@ -330,18 +335,6 @@ export default function BookingsPage() {
   };
 
   const handleStatusChange = async (b: Booking, status: string) => {
-    if (status === "สำเร็จ" && b.status !== "สำเร็จ") {
-      if (b.cost == null) {
-        setSelectedIds(new Set([b.id]));
-        setCostDrafts({ [b.id]: "" });
-        setUseSharedCost(false);
-        setSharedCost("");
-        setCostEditorOpen(true);
-        toast.warning("กรุณาบันทึกต้นทุนก่อนเปลี่ยนเป็นสำเร็จ");
-        return;
-      }
-    }
-
     setUpdatingId(b.id);
     const tId = toast.loading("กำลังอัปเดต...");
     const { data, error } = await bookingsApi.item.api.v1
@@ -370,11 +363,6 @@ export default function BookingsPage() {
       toast.warning("รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก");
       return;
     }
-    if (editTargetStatus === "สำเร็จ" && editForm.cost.trim() === "") {
-      toast.warning("กรุณาตรวจสอบต้นทุนบัตรเงินสดที่ใช้จริงก่อนกดสำเร็จ");
-      return;
-    }
-
     setSavingEdit(true);
     const tId = toast.loading(
       editTargetStatus === "สำเร็จ"
@@ -620,7 +608,7 @@ export default function BookingsPage() {
     }
     setCostDrafts(
       Object.fromEntries(
-        editable.map((booking) => [booking.id, booking.cost ?? ""])
+        editable.map((booking) => [booking.id, ""])
       )
     );
     setUseSharedCost(false);
@@ -629,19 +617,34 @@ export default function BookingsPage() {
   };
 
   const handleSaveBulkCosts = async () => {
-    const targets = selectedBookings.filter((booking) => booking.status !== "สำเร็จ");
-    if (targets.length === 0) {
+    const editable = selectedBookings.filter(
+      (booking) => booking.status !== "สำเร็จ"
+    );
+    if (editable.length === 0) {
       toast.info("ไม่มีรายการที่สามารถแก้ต้นทุนได้");
       return;
     }
 
-    const values = targets.map((booking) => {
+    if (useSharedCost && sharedCost.trim() === "") {
+      toast.warning("กรุณากรอกต้นทุนที่ใช้ร่วมกัน");
+      return;
+    }
+
+    const values = editable.flatMap((booking) => {
       const rawValue = useSharedCost
         ? sharedCost
-        : costDrafts[booking.id] ?? booking.cost ?? "";
+        : costDrafts[booking.id] ?? "";
+      if (rawValue.trim() === "") return [];
       const value = Number(rawValue);
-      return { booking, rawValue: rawValue.trim(), value };
+      return [{ booking, rawValue: rawValue.trim(), value }];
     });
+    if (values.length === 0) {
+      setCostEditorOpen(false);
+      toast.info("ไม่ได้แก้ไขต้นทุน", {
+        description: "ระบบจะใช้ต้นทุนปัจจุบันจากสินค้าเมื่อกดสำเร็จ",
+      });
+      return;
+    }
     const invalid = values.find(
       ({ rawValue, value }) =>
         rawValue === "" || !Number.isFinite(value) || value < 0
@@ -652,7 +655,7 @@ export default function BookingsPage() {
     }
 
     setBulkUpdating(true);
-    const tId = toast.loading(`กำลังบันทึกต้นทุน ${targets.length} รายการ...`);
+    const tId = toast.loading(`กำลังบันทึกต้นทุน ${values.length} รายการ...`);
     const updated: Booking[] = [];
     const failedIds: number[] = [];
 
@@ -710,22 +713,6 @@ export default function BookingsPage() {
     if (targets.length === 0) {
       toast.info(`รายการที่เลือกเป็นสถานะ “${bulkTargetStatus}” อยู่แล้ว`);
       return;
-    }
-
-    if (bulkTargetStatus === "สำเร็จ") {
-      const missingCost = targets.find((booking) => booking.cost == null);
-      if (missingCost) {
-        setCostEditorOpen(true);
-        setCostDrafts(
-          Object.fromEntries(
-            targets.map((booking) => [booking.id, booking.cost ?? ""])
-          )
-        );
-        toast.warning("ยังเปลี่ยนเป็นสำเร็จไม่ได้", {
-          description: `กรุณาบันทึกต้นทุนของ ${missingCost.bookingCode} ก่อน`,
-        });
-        return;
-      }
     }
 
     setBulkUpdating(true);
@@ -800,7 +787,7 @@ export default function BookingsPage() {
       formatDeliveryAddress(b) || "—",
       b.productName,
       b.price,
-      b.cost ?? "—",
+      effectiveBookingCost(b) ?? "—",
       b.status,
       b.bookingDate,
       b.bookingWindowStart && b.bookingWindowEnd
@@ -1084,7 +1071,9 @@ export default function BookingsPage() {
                           );
                           setSharedCost(
                             first
-                              ? costDrafts[first.id] ?? first.cost ?? ""
+                              ? costDrafts[first.id] ||
+                                  effectiveBookingCost(first) ||
+                                  ""
                               : ""
                           );
                         }
@@ -1113,13 +1102,18 @@ export default function BookingsPage() {
               <div className="mt-3 space-y-2">
                 {selectedBookings.map((booking) => {
                   const locked = booking.status === "สำเร็จ";
+                  const existingCost = effectiveBookingCost(booking);
                   const draft = locked
                     ? booking.cost ?? ""
                     : useSharedCost
                       ? sharedCost
-                      : costDrafts[booking.id] ?? booking.cost ?? "";
+                      : costDrafts[booking.id] ?? "";
+                  const calculationCost =
+                    draft.trim() === "" ? existingCost : draft;
                   const draftNumber =
-                    draft.trim() === "" ? null : Number(draft);
+                    calculationCost == null || calculationCost.trim() === ""
+                      ? null
+                      : Number(calculationCost);
                   const profit =
                     draftNumber != null && Number.isFinite(draftNumber)
                       ? Number(booking.price) - draftNumber
@@ -1155,10 +1149,15 @@ export default function BookingsPage() {
                           ต้นทุนเดิม
                         </div>
                         <div className="mt-1 text-sm font-black text-brand-ink">
-                          {booking.cost == null
+                          {existingCost == null
                             ? "ยังไม่ระบุ"
-                            : `฿${Number(booking.cost).toLocaleString()}`}
+                            : `฿${Number(existingCost).toLocaleString()}`}
                         </div>
+                        {booking.cost == null && existingCost != null && (
+                          <div className="mt-0.5 text-[9.5px] font-bold text-brand-green">
+                            จากต้นทุนสินค้าปัจจุบัน
+                          </div>
+                        )}
                       </div>
                       <label className="text-[10px] font-black text-brand-ink-soft">
                         ต้นทุนใหม่
@@ -1174,7 +1173,13 @@ export default function BookingsPage() {
                               [booking.id]: event.target.value,
                             }))
                           }
-                          placeholder="0.00"
+                          placeholder={
+                            existingCost == null
+                              ? "กรอกต้นทุนใหม่"
+                              : `ไม่แก้ไข (ใช้ ฿${Number(
+                                  existingCost
+                                ).toLocaleString()})`
+                          }
                           className="mt-1 block w-full rounded-lg border border-brand-green-100 bg-brand-surface px-2.5 py-2 text-sm font-black text-brand-ink outline-none focus:border-brand-green disabled:cursor-not-allowed disabled:opacity-60"
                         />
                         <span className={`mt-1 block text-[10px] font-black ${
@@ -1323,9 +1328,11 @@ export default function BookingsPage() {
                         ฿{Number(b.price).toLocaleString()}
                         <div className="text-[9.5px] font-bold text-brand-ink-soft">
                           ต้นทุน:{" "}
-                          {b.cost == null
+                          {effectiveBookingCost(b) == null
                             ? "ยังไม่ระบุ"
-                            : `฿${Number(b.cost).toLocaleString()}`}
+                            : `฿${Number(
+                                effectiveBookingCost(b)
+                              ).toLocaleString()}`}
                         </div>
                       </TableCell>
                       <TableCell className="py-3 px-3 text-center">
@@ -1692,9 +1699,8 @@ export default function BookingsPage() {
                 />
               </label>
               <label className="text-xs font-black text-brand-ink">
-                ต้นทุนบัตรเงินสดที่ใช้จริง
+                ต้นทุนใหม่ (ไม่บังคับ)
                 <input
-                  required={editTargetStatus === "สำเร็จ"}
                   type="number"
                   min={0}
                   step="0.01"
@@ -1705,9 +1711,19 @@ export default function BookingsPage() {
                       cost: event.target.value,
                     }))
                   }
-                  placeholder="กรอกก่อนทำรายการสำเร็จ"
+                  placeholder={
+                    editingBooking &&
+                    effectiveBookingCost(editingBooking) != null
+                      ? `เว้นว่างเพื่อใช้ ฿${Number(
+                          effectiveBookingCost(editingBooking)
+                        ).toLocaleString()}`
+                      : "เว้นว่างเพื่อใช้ต้นทุนสินค้า"
+                  }
                   className="mt-2 w-full rounded-xl border border-brand-green-100 bg-brand-paper px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-green"
                 />
+                <span className="mt-1 block text-[10px] font-bold text-brand-ink-soft">
+                  กรอกเฉพาะเมื่อต้องการแก้ต้นทุนของออเดอร์นี้
+                </span>
               </label>
               <label className="text-xs font-black text-brand-ink sm:col-span-2">
                 บ้านเลขที่ หมู่ ซอย ถนน อาคาร หรือรายละเอียดเพิ่มเติม
