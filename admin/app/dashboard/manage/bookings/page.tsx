@@ -54,6 +54,8 @@ interface Booking {
   district: string | null;
   province: string | null;
   postalCode: string | null;
+  quantity: number;
+  unitPrice: string | null;
   price: string;
   cost: string | null;
   currentProductCost: string | null;
@@ -769,7 +771,7 @@ export default function BookingsPage() {
 
   // Handle Export to Excel (CSV with UTF-8 BOM for Thai character compatibility)
   const handleExport = () => {
-    const headers = ["รหัสการจอง", "ชื่อลูกค้า", "ผู้รับสินค้า", "เบอร์โทรศัพท์", "ที่อยู่จัดส่ง", "ชื่อสินค้า/บริการ", "ราคา", "ต้นทุนจริง", "สถานะ", "วันที่เปิดรับจอง", "ช่วงเวลาเปิดรับจอง", "รหัสรอบเติม", "ชื่อรอบเติม", "เวลารอบเติม", "หมายเหตุลูกค้า", "วันที่สั่งซื้อ"];
+    const headers = ["รหัสการจอง", "ชื่อลูกค้า", "ผู้รับสินค้า", "เบอร์โทรศัพท์", "ที่อยู่จัดส่ง", "ชื่อสินค้า/บริการ", "จำนวน", "ราคาต่อชิ้น", "ยอดรวม", "ต้นทุนจริง", "สถานะ", "วันที่เปิดรับจอง", "ช่วงเวลาเปิดรับจอง", "รหัสรอบเติม", "ชื่อรอบเติม", "เวลารอบเติม", "หมายเหตุลูกค้า", "วันที่สั่งซื้อ"];
     const rows = filtered.map(b => [
       b.bookingCode,
       b.username,
@@ -777,6 +779,8 @@ export default function BookingsPage() {
       b.phone,
       formatDeliveryAddress(b) || "—",
       b.productName,
+      b.quantity || 1,
+      b.unitPrice ?? b.price,
       b.price,
       effectiveBookingCost(b) ?? "—",
       b.status,
@@ -1276,6 +1280,9 @@ export default function BookingsPage() {
                         <div className="font-extrabold text-[12.5px] text-brand-ink line-clamp-1">
                           {b.productName}
                         </div>
+                        <div className="mt-0.5 text-[10.5px] font-black text-brand-green">
+                          จำนวน {b.quantity || 1} ชิ้น
+                        </div>
                         {(b.bookingWindowStart || b.bookingTime) && (
                           <div className="mt-0.5 text-[10.5px] text-brand-ink-soft font-bold flex items-center gap-1">
                             <Clock className="h-3 w-3" />
@@ -1447,6 +1454,9 @@ export default function BookingsPage() {
                   </div>
                   <div className="font-extrabold text-[13px] text-brand-ink line-clamp-1">
                     {b.productName}
+                  </div>
+                  <div className="mt-0.5 text-[10.5px] font-black text-brand-green">
+                    จำนวน {b.quantity || 1} ชิ้น
                   </div>
                   <div className="mt-0.5 flex items-center gap-1 text-[11px] font-bold text-brand-ink-soft">
                     <UserRound className="h-3 w-3" />

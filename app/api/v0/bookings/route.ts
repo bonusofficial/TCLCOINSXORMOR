@@ -112,6 +112,8 @@ function shape(b: {
   province: string | null;
   postalCode: string | null;
   content: string | null;
+  quantity: number;
+  unitPrice: { toString(): string } | null;
   price: { toString(): string };
   status: string;
   bookingDate: Date;
@@ -145,6 +147,8 @@ function shape(b: {
     province: b.province,
     postalCode: b.postalCode,
     content: b.content,
+    quantity: b.quantity,
+    unitPrice: b.unitPrice?.toString() ?? b.price.toString(),
     price: b.price.toString(),
     status: b.status,
     bookingDate: b.bookingDate.toISOString(),
@@ -224,6 +228,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       if (body.productId == null) {
         return code(400, { ok: false, message: "ต้องระบุสินค้าที่ต้องการจอง" });
       }
+      const quantity = body.quantity ?? 1;
 
       const delivery = {
         recipientFirstName: body.recipientFirstName?.trim() ?? "",
@@ -332,7 +337,8 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         isAgent || hasVipDiscount
           ? Number(prod.agentPrice)
           : Number(prod.price);
-      const price = hasVipDiscount ? Math.max(0, base - discountAmt) : base;
+      const unitPrice = hasVipDiscount ? Math.max(0, base - discountAmt) : base;
+      const price = Math.round(unitPrice * quantity * 100) / 100;
 
       let stockDelta = 0;
       let saved;
@@ -342,18 +348,20 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
             // ลิมิตเฉพาะสินค้านี้ต่อคน/วัน (product.maxPerUserPerDay) — 0 = ไม่จำกัด
             // อยู่ใต้ row lock เพื่อกันยิงหลาย request พร้อมกันแล้วหลุด quota
             if (prod.maxPerUserPerDay > 0) {
-              const prodCount = await tx.bookings.count({
+              const quantityAggregate = await tx.bookings.aggregate({
                 where: {
                   userId: user.id,
                   productId: prod.id,
                   bookingDate: { gte: startOfDay, lte: endOfDay },
                   status: { not: "ยกเลิก" },
                 },
+                _sum: { quantity: true },
               });
-              if (prodCount >= prod.maxPerUserPerDay) {
+              const bookedQuantity = quantityAggregate._sum.quantity ?? 0;
+              if (bookedQuantity + quantity > prod.maxPerUserPerDay) {
                 throw new BookingHttpError(400, {
                   ok: false,
-                  message: `ขออภัย สินค้านี้จำกัดจองได้ไม่เกิน ${prod.maxPerUserPerDay} แพ็ก/วัน/คน`,
+                  message: `ขออภัย สินค้านี้จำกัดจองได้ไม่เกิน ${prod.maxPerUserPerDay} ชิ้น/วัน/คน (จองแล้ว ${bookedQuantity} ชิ้น)`,
                 });
               }
             }
@@ -424,8 +432,12 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
             // ตัดสต็อกแบบ atomic ใน transaction เดียวกับการสร้าง booking
             if (stockState.stockEnabled) {
               const reserved = await tx.products.updateMany({
-                where: { id: prod.id, stockEnabled: true, stock: { gt: 0 } },
-                data: { stock: { decrement: 1 } },
+                where: {
+                  id: prod.id,
+                  stockEnabled: true,
+                  stock: { gte: quantity },
+                },
+                data: { stock: { decrement: quantity } },
               });
               if (reserved.count === 0) {
                 throw new BookingHttpError(409, {
@@ -433,7 +445,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
                   message: "สินค้าหมดสต็อก ไม่สามารถจองได้",
                 });
               }
-              stockDelta = -1;
+              stockDelta = -quantity;
             }
 
             // Generate code ที่ unique (retry กันชน)
@@ -458,8 +470,11 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
                 phone: body.phone,
                 ...delivery,
                 content: body.content ?? null,
+                quantity,
+                unitPrice,
                 price, // ราคาที่เซิร์ฟเวอร์คำนวณเอง
-                cost: stockState.cost, // Snapshot ต้นทุนสินค้าทันทีตอนจอง
+                cost:
+                  Math.round(Number(stockState.cost) * quantity * 100) / 100,
                 bookingDate: bookingDateUTC, // วันไทยของเซิร์ฟเวอร์
                 bookingTime,
                 bookingWindowStart: padHHMM(liveSchedule.bookingStart),
@@ -494,6 +509,8 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
           description: "ผู้ใช้สร้างรายการจอง",
           bookingCode: saved.bookingCode,
           productName: prod.name,
+          quantity,
+          unitPrice,
           price,
           costSnapshot: saved.cost?.toString() ?? null,
           bookingWindow: `${saved.bookingWindowStart}-${saved.bookingWindowEnd}`,
@@ -536,8 +553,8 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         data: { status: "ยกเลิก" },
       });
 
-      // คืนสต็อก +1 (booking นี้กิน stock ตอนสร้าง)
-      await adjustProductStock(before.productId, +1);
+      // คืนสต็อกตามจำนวนสินค้า (ความจุรอบยังนับ booking เป็น 1 รายการ)
+      await adjustProductStock(before.productId, before.quantity);
 
       logAudit({
         action: "BOOKING_CANCEL",
@@ -549,7 +566,8 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
           bookingCode: saved.bookingCode,
           beforeStatus: before.status,
           afterStatus: saved.status,
-          stockDelta: +1,
+          quantity: before.quantity,
+          stockDelta: before.quantity,
         },
         user,
         request,

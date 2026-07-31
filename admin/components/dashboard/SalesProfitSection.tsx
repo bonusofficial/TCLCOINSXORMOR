@@ -46,6 +46,8 @@ interface SalesRow {
   id: number;
   bookingCode: string;
   productName: string;
+  quantity: number;
+  unitPrice: string | null;
   username: string;
   recipientFirstName: string | null;
   recipientLastName: string | null;
@@ -283,6 +285,7 @@ export default function SalesProfitSection() {
       "ชื่อรอบเติม",
       "เวลารอบเติม",
       "สินค้า",
+      "จำนวน",
       "ราคาขาย",
       "ต้นทุน",
       "กำไร",
@@ -305,6 +308,7 @@ export default function SalesProfitSection() {
           ? `${r.topupRoundStart}–${r.topupRoundEnd}`
           : "—",
         r.productName,
+        r.quantity,
         r.salePrice,
         r.cost,
         r.profit,
@@ -554,7 +558,7 @@ export default function SalesProfitSection() {
                       <TableCell className="py-3 px-3 font-bold text-brand-ink">
                         <span className="line-clamp-1">{r.productName}</span>
                         <span className="text-[10.5px] font-semibold text-brand-ink-soft/70">
-                          #{r.bookingCode}
+                          จำนวน {r.quantity || 1} ชิ้น · #{r.bookingCode}
                         </span>
                       </TableCell>
                       <TableCell className="py-3 px-3 whitespace-nowrap">

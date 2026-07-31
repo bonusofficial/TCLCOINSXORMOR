@@ -33,6 +33,8 @@ function shape(b: {
   province: string | null;
   postalCode: string | null;
   content: string | null;
+  quantity: number;
+  unitPrice: { toString(): string } | null;
   price: { toString(): string };
   cost: { toString(): string } | null;
   status: string;
@@ -50,6 +52,7 @@ function shape(b: {
 }) {
   return {
     ...b,
+    unitPrice: b.unitPrice?.toString() ?? b.price.toString(),
     price: b.price.toString(),
     cost: b.cost != null ? b.cost.toString() : null,
     bookingDate: b.bookingDate.toISOString(),
@@ -111,7 +114,10 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
         costSnapshot =
           before.cost != null
             ? Number(before.cost)
-            : await resolveProductCost(before.productId, before.productName);
+            : (await resolveProductCost(
+                before.productId,
+                before.productName
+              )) * before.quantity;
       }
 
       const saved = await prisma.bookings.update({
@@ -146,8 +152,8 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
         },
       });
 
-      // ปรับสต็อกตาม transition: active→cancelled = +1, cancelled→active = -1
-      const delta = stockDeltaOnStatusChange(before.status, saved.status);
+      const delta =
+        stockDeltaOnStatusChange(before.status, saved.status) * saved.quantity;
       if (delta !== 0) {
         await adjustProductStock(saved.productId, delta);
       }
@@ -202,10 +208,9 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
 
       await prisma.bookings.delete({ where: { id: params.id } });
 
-      // ถ้าก่อนลบยัง active อยู่ → คืนสต็อก +1
       const wasActive = isActiveStatus(before.status);
       if (wasActive) {
-        await adjustProductStock(before.productId, +1);
+        await adjustProductStock(before.productId, before.quantity);
       }
 
       logAudit({
@@ -215,7 +220,8 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
         details: {
           bookingCode: before.bookingCode,
           productName: before.productName,
-          stockDelta: wasActive ? +1 : 0,
+          quantity: before.quantity,
+          stockDelta: wasActive ? before.quantity : 0,
         },
         user,
         request,

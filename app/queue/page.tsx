@@ -15,6 +15,8 @@ import {
   Users,
   Crown,
   Clock3,
+  Minus,
+  Plus,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
@@ -59,6 +61,7 @@ type BookingQuotaItem = {
   productId: number | null;
   status: string;
   bookingDate: string;
+  quantity: number;
 };
 
 type BookingProfile = {
@@ -90,10 +93,19 @@ function hasCompleteRecipientProfile(profile: BookingProfile) {
   );
 }
 
-function getQuotaExceededMessage(p: QueueProduct, bookedToday: number) {
-  if (p.maxPerUserPerDay <= 0 || bookedToday < p.maxPerUserPerDay) return null;
+function getQuotaExceededMessage(
+  p: QueueProduct,
+  bookedToday: number,
+  requestedQuantity = 1
+) {
+  if (
+    p.maxPerUserPerDay <= 0 ||
+    bookedToday + requestedQuantity <= p.maxPerUserPerDay
+  ) {
+    return null;
+  }
 
-  return `แพ็กเกจนี้จำกัดซื้อได้ไม่เกิน ${p.maxPerUserPerDay} แพ็ก/วัน/คน คุณจองครบโควต้าของวันนี้แล้ว`;
+  return `แพ็กเกจนี้จำกัดซื้อได้ไม่เกิน ${p.maxPerUserPerDay} ชิ้น/วัน/คน คุณจองแล้ว ${bookedToday} ชิ้น`;
 }
 
 function getApiErrorMessage(error: unknown, fallback: string) {
@@ -167,6 +179,7 @@ function QueueContent() {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [selectedRoundCode, setSelectedRoundCode] = useState("");
+  const [quantity, setQuantity] = useState(1);
   const [phone, setPhone] = useState("");
   const [recipientFirstName, setRecipientFirstName] = useState("");
   const [recipientLastName, setRecipientLastName] = useState("");
@@ -195,6 +208,7 @@ function QueueContent() {
     code: string;
     productName: string;
     price: string;
+    quantity: number;
     date: string;
     time: string;
     bookedAt: string;
@@ -405,7 +419,8 @@ function QueueContent() {
           if (booking.productId == null || booking.status === "ยกเลิก") continue;
           if (formatApiDate(booking.bookingDate).slice(0, 10) !== today) continue;
 
-          counts[booking.productId] = (counts[booking.productId] ?? 0) + 1;
+          counts[booking.productId] =
+            (counts[booking.productId] ?? 0) + (booking.quantity ?? 1);
         }
         setDailyBookingCountState({ userId: currentUserId, counts });
       })
@@ -419,7 +434,11 @@ function QueueContent() {
   }, [isLoggedIn, user?.id]);
 
   const showQuotaToast = (p: QueueProduct) => {
-    const message = getQuotaExceededMessage(p, dailyBookingCounts[p.id] ?? 0);
+    const message = getQuotaExceededMessage(
+      p,
+      dailyBookingCounts[p.id] ?? 0,
+      p.id === selectedProductId ? quantity : 1
+    );
     if (!message) return false;
 
     showBookingNotice({
@@ -527,6 +546,7 @@ function QueueContent() {
     showQuotaToast(p);
 
     setSelectedProductId(p.id);
+    setQuantity(1);
     void loadBookingProfile();
     // เลือกวันแรกที่ยังไม่ผ่าน (>= วันนี้) เป็นค่าเริ่มต้น — ไม่ดีฟอลต์เป็นวันที่หมดเวลาไปแล้ว
     const today = todayISO();
@@ -566,8 +586,33 @@ function QueueContent() {
 
   // โควต้าของ "สินค้าที่เลือกอยู่" ในฟอร์ม — ใช้โชว์ banner ถาวร + ปิดปุ่มเมื่อจองครบ
   const selectedQuotaMessage = selectedProduct
-    ? getQuotaExceededMessage(selectedProduct, dailyBookingCounts[selectedProduct.id] ?? 0)
+    ? getQuotaExceededMessage(
+        selectedProduct,
+        dailyBookingCounts[selectedProduct.id] ?? 0,
+        quantity
+      )
     : null;
+  const remainingDailyQuota =
+    selectedProduct && selectedProduct.maxPerUserPerDay > 0
+      ? Math.max(
+          0,
+          selectedProduct.maxPerUserPerDay -
+            (dailyBookingCounts[selectedProduct.id] ?? 0)
+        )
+      : 2;
+  const quantityLimit = selectedProduct
+    ? Math.max(
+        1,
+        Math.min(
+          2,
+          remainingDailyQuota || 1,
+          selectedProduct.stockEnabled ? selectedProduct.stock : 2
+        )
+      )
+    : 1;
+  const totalPrice = effectivePrice
+    ? Math.round(effectivePrice.amount * quantity * 100) / 100
+    : 0;
 
   const formValid =
     isLoggedIn &&
@@ -618,6 +663,7 @@ function QueueContent() {
         postalCode: address.postalCode,
         topupRoundCode: selectedRoundCode || undefined,
         content: notes.trim() || undefined,
+        quantity,
         price: effectivePrice.amount,
         bookingDate: selectedDate,
         bookingTime: selectedTime,
@@ -709,6 +755,7 @@ function QueueContent() {
         code: booking.bookingCode,
         productName: booking.productName,
         price: booking.price,
+        quantity: booking.quantity,
         date: formatApiDate(booking.bookingDate),
         time: booking.bookingTime ?? "",
         bookedAt: formatApiDate(booking.createdAt),
@@ -721,7 +768,8 @@ function QueueContent() {
           userId: currentUserId,
           counts: {
             ...counts,
-            [selectedProduct.id]: (counts[selectedProduct.id] ?? 0) + 1,
+            [selectedProduct.id]:
+              (counts[selectedProduct.id] ?? 0) + quantity,
           },
         };
       });
@@ -729,6 +777,7 @@ function QueueContent() {
       // reset form
       setSelectedProductId(null);
       setSelectedRoundCode("");
+      setQuantity(1);
       setNotes("");
       setRedirectingToOrders(true);
     } catch (err) {
@@ -903,6 +952,7 @@ function QueueContent() {
             </div>
             <div className="mt-3 text-xs font-bold text-brand-ink-soft">
               <b className="text-brand-ink">{result.productName}</b> ·{" "}
+              {result.quantity} ชิ้น ·{" "}
               {fmtThaiDate((typeof result.date === "string" ? result.date : String(result.date)).slice(0, 10))} · {result.time} ·{" "}
               <span className="text-brand-green font-extrabold">฿{fmt(result.price)}</span>
             </div>
@@ -1256,6 +1306,58 @@ function QueueContent() {
                     ) : (
                       <span className="text-brand-ink-soft/60">ราคาจะแสดงอัตโนมัติ</span>
                     )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-brand-green-100 bg-brand-paper p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <label className="block text-[12.5px] font-extrabold text-brand-ink">
+                      จำนวนสินค้า
+                    </label>
+                    <p className="mt-1 text-[10.5px] font-bold text-brand-ink-soft">
+                      เลือกได้สูงสุด 2 ชิ้นต่อรายการ โดยไม่เปลี่ยนจำนวนที่รับต่อรอบ
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between gap-5 sm:justify-end">
+                    <div className="inline-flex items-center rounded-xl border border-brand-green-100 bg-brand-surface p-1">
+                      <button
+                        type="button"
+                        aria-label="ลดจำนวนสินค้า"
+                        onClick={() =>
+                          setQuantity((current) => Math.max(1, current - 1))
+                        }
+                        disabled={quantity <= 1}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-green transition hover:bg-brand-green/10 disabled:cursor-not-allowed disabled:opacity-35"
+                      >
+                        <Minus className="h-4 w-4" strokeWidth={3} />
+                      </button>
+                      <output className="min-w-12 text-center font-display text-lg font-black text-brand-ink">
+                        {quantity}
+                      </output>
+                      <button
+                        type="button"
+                        aria-label="เพิ่มจำนวนสินค้า"
+                        onClick={() =>
+                          setQuantity((current) =>
+                            Math.min(quantityLimit, current + 1)
+                          )
+                        }
+                        disabled={!selectedProduct || quantity >= quantityLimit}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-green text-white transition hover:bg-brand-green-600 disabled:cursor-not-allowed disabled:bg-brand-green-50 disabled:text-brand-green/35"
+                      >
+                        <Plus className="h-4 w-4" strokeWidth={3} />
+                      </button>
+                    </div>
+                    <div className="min-w-28 text-right">
+                      <p className="text-[10px] font-extrabold text-brand-ink-soft">
+                        ยอดรวม
+                      </p>
+                      <p className="font-display text-xl font-black text-brand-green">
+                        ฿{fmt(totalPrice)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

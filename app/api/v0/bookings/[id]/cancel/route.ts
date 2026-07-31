@@ -19,6 +19,8 @@ function shape(b: {
   username: string;
   phone: string;
   content: string | null;
+  quantity: number;
+  unitPrice: { toString(): string } | null;
   price: { toString(): string };
   status: string;
   bookingDate: Date;
@@ -28,6 +30,7 @@ function shape(b: {
 }) {
   return {
     ...b,
+    unitPrice: b.unitPrice?.toString() ?? b.price.toString(),
     price: b.price.toString(),
     bookingDate: b.bookingDate.toISOString(),
     createdAt: b.createdAt.toISOString(),
@@ -63,8 +66,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         data: { status: "ยกเลิก" },
       });
 
-      // คืนสต็อก +1
-      await adjustProductStock(before.productId, +1);
+      await adjustProductStock(before.productId, before.quantity);
 
       logAudit({
         action: "BOOKING_CANCEL",
@@ -76,7 +78,8 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
           bookingCode: saved.bookingCode,
           beforeStatus: before.status,
           afterStatus: saved.status,
-          stockDelta: +1,
+          quantity: before.quantity,
+          stockDelta: before.quantity,
         },
         user,
         request,

@@ -256,6 +256,7 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
           where: { status: { in: SUCCESS_STATUSES } },
           select: {
             productName: true,
+            quantity: true,
             price: true,
             userId: true,
             username: true,
@@ -360,6 +361,7 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
         id: b.id,
         bookingCode: b.bookingCode,
         productName: b.productName,
+        quantity: b.quantity,
         username: b.username,
         price: b.price.toString(),
         status: b.status,
@@ -374,12 +376,12 @@ const app = new Elysia({ prefix: "/api/v1/dashboard" })
       for (const b of allSuccessBookings) {
         const existing = pkgMap.get(b.productName);
         if (existing) {
-          existing.count++;
+          existing.count += b.quantity;
           existing.revenue += Number(b.price);
         } else {
           pkgMap.set(b.productName, {
             name: b.productName,
-            count: 1,
+            count: b.quantity,
             revenue: Number(b.price),
           });
         }

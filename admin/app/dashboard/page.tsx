@@ -52,6 +52,7 @@ interface BookingItem {
   id: number;
   bookingCode: string;
   productName: string;
+  quantity: number;
   username: string;
   price: string;
   status: string;
@@ -563,7 +564,8 @@ export default function DashboardPage() {
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] font-bold text-brand-ink-soft truncate">
                             <Coins className="h-3 w-3 text-brand-gold-deep flex-shrink-0" />
-                            {b.productName} · ฿{fmtMoney(Number(b.price))}
+                            {b.productName} · {b.quantity || 1} ชิ้น · ฿
+                            {fmtMoney(Number(b.price))}
                           </div>
                           {b.topupRoundName && (
                             <div className="mt-0.5 truncate text-[10px] font-black text-brand-green">

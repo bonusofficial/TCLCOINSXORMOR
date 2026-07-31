@@ -29,6 +29,8 @@ function shape(
     province: string | null;
     postalCode: string | null;
     content: string | null;
+    quantity: number;
+    unitPrice: { toString(): string } | null;
     price: { toString(): string };
     cost: { toString(): string } | null;
     status: string;
@@ -48,10 +50,13 @@ function shape(
 ) {
   return {
     ...b,
+    unitPrice: b.unitPrice?.toString() ?? b.price.toString(),
     price: b.price.toString(),
     cost: b.cost != null ? b.cost.toString() : null,
     currentProductCost:
-      currentProductCost != null ? currentProductCost.toString() : null,
+      currentProductCost != null
+        ? (Number(currentProductCost) * b.quantity).toFixed(2)
+        : null,
     bookingDate: b.bookingDate.toISOString(),
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
@@ -106,8 +111,9 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
   .post(
     "/",
     async ({ body, user, request, status: httpStatus }) => {
+      const quantity = body.quantity ?? 1;
       // เช็คสต็อกก่อน
-      const ok = await hasAvailableStock(body.productId ?? null);
+      const ok = await hasAvailableStock(body.productId ?? null, quantity);
       if (!ok) {
         return httpStatus(409, {
           ok: false,
@@ -154,16 +160,20 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
           province: body.province?.trim() || null,
           postalCode: body.postalCode?.trim() || null,
           content: body.content ?? null,
-          price: body.price,
-          cost: costProduct?.cost ?? null,
+          quantity,
+          unitPrice: body.price,
+          price: Math.round(body.price * quantity * 100) / 100,
+          cost:
+            costProduct?.cost != null
+              ? Math.round(Number(costProduct.cost) * quantity * 100) / 100
+              : null,
           bookingDate: new Date(body.bookingDate),
           bookingTime: body.bookingTime ?? null,
           status: "รอตรวจสอบ",
         },
       });
 
-      // ตัดสต็อก -1
-      await adjustProductStock(body.productId ?? null, -1);
+      await adjustProductStock(body.productId ?? null, -quantity);
 
       const responsePayload = {
         ok: true as const,
@@ -178,8 +188,10 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
         details: {
           bookingCode: code,
           productName: body.productName,
-          price: body.price,
-          stockDelta: -1,
+          quantity,
+          unitPrice: body.price,
+          price: Math.round(body.price * quantity * 100) / 100,
+          stockDelta: -quantity,
         },
         payload: body,
         response: responsePayload,

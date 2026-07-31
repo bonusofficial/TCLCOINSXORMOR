@@ -101,9 +101,12 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
       const rows = bookings.map((b) => {
         const salePrice = Number(b.price);
         const cost =
-          (b.productId != null ? costMap.get(b.productId) : undefined) ??
-          costByName.get(productNameKey(b.productName)) ??
-          0;
+          b.cost != null
+            ? Number(b.cost)
+            : (((b.productId != null ? costMap.get(b.productId) : undefined) ??
+                costByName.get(productNameKey(b.productName)) ??
+                0) *
+              b.quantity);
         const profit = salePrice - cost;
         const isToday = b.updatedAt >= startToday;
 
@@ -120,6 +123,8 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
           id: b.id,
           bookingCode: b.bookingCode,
           productName: b.productName,
+          quantity: b.quantity,
+          unitPrice: b.unitPrice?.toString() ?? null,
           username: b.username,
           recipientFirstName: b.recipientFirstName,
           recipientLastName: b.recipientLastName,

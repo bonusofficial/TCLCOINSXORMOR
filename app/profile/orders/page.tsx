@@ -66,6 +66,8 @@ interface BookingItem {
   province: string | null;
   postalCode: string | null;
   content: string | null;
+  quantity: number;
+  unitPrice: string | null;
   price: string;
   status: string;
   bookingDate: string;
@@ -246,7 +248,7 @@ export default function OrdersHistoryPage() {
 Username: ${usernameAndMemberId}
 เบอร์โทรศัพท์: ${b.phone || "-"}
 สินค้า: ${b.productName}
-จำนวน: 1 รายการ
+จำนวน: ${b.quantity || 1} ชิ้น
 ยอดชำระ: ${fmt(b.price)} บาท
 วันที่จองสินค้า: ${datePart}
 ช่วงเวลาเปิดรับจอง: ${bookingWindow} น.
@@ -733,6 +735,9 @@ Username: ${usernameAndMemberId}
                         <h3 className="font-display font-black text-lg text-brand-ink group-hover:text-brand-green transition duration-200">
                           {b.productName}
                         </h3>
+                        <span className="inline-flex rounded-full border border-brand-green/25 bg-brand-green/10 px-2 py-0.5 text-[10.5px] font-black text-brand-green">
+                          จำนวน {b.quantity || 1} ชิ้น
+                        </span>
                         <p className={`text-[12.5px] font-extrabold flex items-center gap-1.5 ${badge.statusColor}`}>
                           <span className="inline-flex w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                           {badge.detailText}

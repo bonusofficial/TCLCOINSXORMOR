@@ -60,7 +60,8 @@ export async function tryReserveStock(
  * - return false ถ้าหมด
  */
 export async function hasAvailableStock(
-  productId: number | null | undefined
+  productId: number | null | undefined,
+  quantity = 1
 ): Promise<boolean> {
   if (!productId) return true; // ไม่ผูกกับสินค้า → ปล่อย
   const product = await prisma.products.findUnique({
@@ -69,7 +70,7 @@ export async function hasAvailableStock(
   });
   if (!product) return true;
   if (!product.stockEnabled) return true;
-  return product.stock > 0;
+  return product.stock >= Math.max(1, quantity);
 }
 
 /**

@@ -33,6 +33,8 @@ export type AggregateBookings = {
 export type BookingsAvgAggregateOutputType = {
   id: number | null
   productId: number | null
+  quantity: number | null
+  unitPrice: runtime.Decimal | null
   price: runtime.Decimal | null
   cost: runtime.Decimal | null
   topupRoundCapacity: number | null
@@ -41,6 +43,8 @@ export type BookingsAvgAggregateOutputType = {
 export type BookingsSumAggregateOutputType = {
   id: number | null
   productId: number | null
+  quantity: number | null
+  unitPrice: runtime.Decimal | null
   price: runtime.Decimal | null
   cost: runtime.Decimal | null
   topupRoundCapacity: number | null
@@ -63,6 +67,8 @@ export type BookingsMinAggregateOutputType = {
   province: string | null
   postalCode: string | null
   content: string | null
+  quantity: number | null
+  unitPrice: runtime.Decimal | null
   price: runtime.Decimal | null
   cost: runtime.Decimal | null
   status: string | null
@@ -96,6 +102,8 @@ export type BookingsMaxAggregateOutputType = {
   province: string | null
   postalCode: string | null
   content: string | null
+  quantity: number | null
+  unitPrice: runtime.Decimal | null
   price: runtime.Decimal | null
   cost: runtime.Decimal | null
   status: string | null
@@ -129,6 +137,8 @@ export type BookingsCountAggregateOutputType = {
   province: number
   postalCode: number
   content: number
+  quantity: number
+  unitPrice: number
   price: number
   cost: number
   status: number
@@ -150,6 +160,8 @@ export type BookingsCountAggregateOutputType = {
 export type BookingsAvgAggregateInputType = {
   id?: true
   productId?: true
+  quantity?: true
+  unitPrice?: true
   price?: true
   cost?: true
   topupRoundCapacity?: true
@@ -158,6 +170,8 @@ export type BookingsAvgAggregateInputType = {
 export type BookingsSumAggregateInputType = {
   id?: true
   productId?: true
+  quantity?: true
+  unitPrice?: true
   price?: true
   cost?: true
   topupRoundCapacity?: true
@@ -180,6 +194,8 @@ export type BookingsMinAggregateInputType = {
   province?: true
   postalCode?: true
   content?: true
+  quantity?: true
+  unitPrice?: true
   price?: true
   cost?: true
   status?: true
@@ -213,6 +229,8 @@ export type BookingsMaxAggregateInputType = {
   province?: true
   postalCode?: true
   content?: true
+  quantity?: true
+  unitPrice?: true
   price?: true
   cost?: true
   status?: true
@@ -246,6 +264,8 @@ export type BookingsCountAggregateInputType = {
   province?: true
   postalCode?: true
   content?: true
+  quantity?: true
+  unitPrice?: true
   price?: true
   cost?: true
   status?: true
@@ -366,6 +386,8 @@ export type BookingsGroupByOutputType = {
   province: string | null
   postalCode: string | null
   content: string | null
+  quantity: number
+  unitPrice: runtime.Decimal | null
   price: runtime.Decimal
   cost: runtime.Decimal | null
   status: string
@@ -422,6 +444,8 @@ export type bookingsWhereInput = {
   province?: Prisma.StringNullableFilter<"bookings"> | string | null
   postalCode?: Prisma.StringNullableFilter<"bookings"> | string | null
   content?: Prisma.StringNullableFilter<"bookings"> | string | null
+  quantity?: Prisma.IntFilter<"bookings"> | number
+  unitPrice?: Prisma.DecimalNullableFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   price?: Prisma.DecimalFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.DecimalNullableFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFilter<"bookings"> | string
@@ -455,6 +479,8 @@ export type bookingsOrderByWithRelationInput = {
   province?: Prisma.SortOrderInput | Prisma.SortOrder
   postalCode?: Prisma.SortOrderInput | Prisma.SortOrder
   content?: Prisma.SortOrderInput | Prisma.SortOrder
+  quantity?: Prisma.SortOrder
+  unitPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -492,6 +518,8 @@ export type bookingsWhereUniqueInput = Prisma.AtLeast<{
   province?: Prisma.StringNullableFilter<"bookings"> | string | null
   postalCode?: Prisma.StringNullableFilter<"bookings"> | string | null
   content?: Prisma.StringNullableFilter<"bookings"> | string | null
+  quantity?: Prisma.IntFilter<"bookings"> | number
+  unitPrice?: Prisma.DecimalNullableFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   price?: Prisma.DecimalFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.DecimalNullableFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFilter<"bookings"> | string
@@ -525,6 +553,8 @@ export type bookingsOrderByWithAggregationInput = {
   province?: Prisma.SortOrderInput | Prisma.SortOrder
   postalCode?: Prisma.SortOrderInput | Prisma.SortOrder
   content?: Prisma.SortOrderInput | Prisma.SortOrder
+  quantity?: Prisma.SortOrder
+  unitPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -566,6 +596,8 @@ export type bookingsScalarWhereWithAggregatesInput = {
   province?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
   postalCode?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
   content?: Prisma.StringNullableWithAggregatesFilter<"bookings"> | string | null
+  quantity?: Prisma.IntWithAggregatesFilter<"bookings"> | number
+  unitPrice?: Prisma.DecimalNullableWithAggregatesFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   price?: Prisma.DecimalWithAggregatesFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.DecimalNullableWithAggregatesFilter<"bookings"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringWithAggregatesFilter<"bookings"> | string
@@ -598,6 +630,8 @@ export type bookingsCreateInput = {
   province?: string | null
   postalCode?: string | null
   content?: string | null
+  quantity?: number
+  unitPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: string
@@ -631,6 +665,8 @@ export type bookingsUncheckedCreateInput = {
   province?: string | null
   postalCode?: string | null
   content?: string | null
+  quantity?: number
+  unitPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: string
@@ -663,6 +699,8 @@ export type bookingsUpdateInput = {
   province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  unitPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -696,6 +734,8 @@ export type bookingsUncheckedUpdateInput = {
   province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  unitPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -729,6 +769,8 @@ export type bookingsCreateManyInput = {
   province?: string | null
   postalCode?: string | null
   content?: string | null
+  quantity?: number
+  unitPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: string
@@ -761,6 +803,8 @@ export type bookingsUpdateManyMutationInput = {
   province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  unitPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -794,6 +838,8 @@ export type bookingsUncheckedUpdateManyInput = {
   province?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   postalCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  unitPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   cost?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   status?: Prisma.StringFieldUpdateOperationsInput | string
@@ -833,6 +879,8 @@ export type bookingsCountOrderByAggregateInput = {
   province?: Prisma.SortOrder
   postalCode?: Prisma.SortOrder
   content?: Prisma.SortOrder
+  quantity?: Prisma.SortOrder
+  unitPrice?: Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -852,6 +900,8 @@ export type bookingsCountOrderByAggregateInput = {
 export type bookingsAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  quantity?: Prisma.SortOrder
+  unitPrice?: Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrder
   topupRoundCapacity?: Prisma.SortOrder
@@ -874,6 +924,8 @@ export type bookingsMaxOrderByAggregateInput = {
   province?: Prisma.SortOrder
   postalCode?: Prisma.SortOrder
   content?: Prisma.SortOrder
+  quantity?: Prisma.SortOrder
+  unitPrice?: Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -907,6 +959,8 @@ export type bookingsMinOrderByAggregateInput = {
   province?: Prisma.SortOrder
   postalCode?: Prisma.SortOrder
   content?: Prisma.SortOrder
+  quantity?: Prisma.SortOrder
+  unitPrice?: Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -926,21 +980,23 @@ export type bookingsMinOrderByAggregateInput = {
 export type bookingsSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  quantity?: Prisma.SortOrder
+  unitPrice?: Prisma.SortOrder
   price?: Prisma.SortOrder
   cost?: Prisma.SortOrder
   topupRoundCapacity?: Prisma.SortOrder
 }
 
-export type DecimalFieldUpdateOperationsInput = {
-  set?: runtime.Decimal | runtime.DecimalJsLike | number | string
+export type NullableDecimalFieldUpdateOperationsInput = {
+  set?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
   decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
   multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
   divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
-export type NullableDecimalFieldUpdateOperationsInput = {
-  set?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+export type DecimalFieldUpdateOperationsInput = {
+  set?: runtime.Decimal | runtime.DecimalJsLike | number | string
   increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
   decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
   multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -966,6 +1022,8 @@ export type bookingsSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   province?: boolean
   postalCode?: boolean
   content?: boolean
+  quantity?: boolean
+  unitPrice?: boolean
   price?: boolean
   cost?: boolean
   status?: boolean
@@ -1001,6 +1059,8 @@ export type bookingsSelectScalar = {
   province?: boolean
   postalCode?: boolean
   content?: boolean
+  quantity?: boolean
+  unitPrice?: boolean
   price?: boolean
   cost?: boolean
   status?: boolean
@@ -1017,7 +1077,7 @@ export type bookingsSelectScalar = {
   updatedAt?: boolean
 }
 
-export type bookingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "bookingCode" | "productId" | "productCode" | "productName" | "userId" | "username" | "phone" | "recipientFirstName" | "recipientLastName" | "addressLine" | "subdistrict" | "district" | "province" | "postalCode" | "content" | "price" | "cost" | "status" | "bookingDate" | "bookingTime" | "bookingWindowStart" | "bookingWindowEnd" | "topupRoundCode" | "topupRoundName" | "topupRoundStart" | "topupRoundEnd" | "topupRoundCapacity" | "createdAt" | "updatedAt", ExtArgs["result"]["bookings"]>
+export type bookingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "bookingCode" | "productId" | "productCode" | "productName" | "userId" | "username" | "phone" | "recipientFirstName" | "recipientLastName" | "addressLine" | "subdistrict" | "district" | "province" | "postalCode" | "content" | "quantity" | "unitPrice" | "price" | "cost" | "status" | "bookingDate" | "bookingTime" | "bookingWindowStart" | "bookingWindowEnd" | "topupRoundCode" | "topupRoundName" | "topupRoundStart" | "topupRoundEnd" | "topupRoundCapacity" | "createdAt" | "updatedAt", ExtArgs["result"]["bookings"]>
 
 export type $bookingsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "bookings"
@@ -1039,6 +1099,8 @@ export type $bookingsPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     province: string | null
     postalCode: string | null
     content: string | null
+    quantity: number
+    unitPrice: runtime.Decimal | null
     price: runtime.Decimal
     cost: runtime.Decimal | null
     status: string
@@ -1438,6 +1500,8 @@ export interface bookingsFieldRefs {
   readonly province: Prisma.FieldRef<"bookings", 'String'>
   readonly postalCode: Prisma.FieldRef<"bookings", 'String'>
   readonly content: Prisma.FieldRef<"bookings", 'String'>
+  readonly quantity: Prisma.FieldRef<"bookings", 'Int'>
+  readonly unitPrice: Prisma.FieldRef<"bookings", 'Decimal'>
   readonly price: Prisma.FieldRef<"bookings", 'Decimal'>
   readonly cost: Prisma.FieldRef<"bookings", 'Decimal'>
   readonly status: Prisma.FieldRef<"bookings", 'String'>

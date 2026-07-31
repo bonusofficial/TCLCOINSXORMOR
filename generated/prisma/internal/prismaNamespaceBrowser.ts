@@ -241,6 +241,8 @@ export const BookingsScalarFieldEnum = {
   province: 'province',
   postalCode: 'postalCode',
   content: 'content',
+  quantity: 'quantity',
+  unitPrice: 'unitPrice',
   price: 'price',
   cost: 'cost',
   status: 'status',
