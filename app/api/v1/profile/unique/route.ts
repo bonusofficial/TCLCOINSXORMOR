@@ -6,6 +6,7 @@ import {
   loggerPlugin,
 } from "@/lib/server/middleware";
 import { renameDiscountEligibleUsername } from "@/lib/server/discount-sync";
+import { logAudit } from "@/lib/server/audit";
 
 /**
  * ตรวจว่า "ชื่อผู้ใช้" / "ชื่อร้าน" / "ไอดีไลน์" ซ้ำกับผู้ใช้คนอื่นหรือไม่
@@ -74,7 +75,7 @@ const app = new Elysia({ prefix: "/api/v1/profile/unique" })
    */
   .post(
     "/sync-discount",
-    async ({ body, user }) => {
+    async ({ body, user, request }) => {
       const me = await prisma.user.findUnique({
         where: { id: user.id },
         select: { username: true },
@@ -101,6 +102,23 @@ const app = new Elysia({ prefix: "/api/v1/profile/unique" })
         previous,
         currentUsername
       );
+      if (updated > 0) {
+        logAudit({
+          action: "USER_UPDATE",
+          entityType: "user",
+          entityId: user.id,
+          user,
+          request,
+          details: {
+            activity: "PROFILE_DISCOUNT_IDENTITY_SYNC",
+            description:
+              "ระบบย้ายสิทธิ์ส่วนลดหลังผู้ใช้เปลี่ยน Username",
+            previousUsername: previous,
+            currentUsername,
+            updatedProducts: updated,
+          },
+        });
+      }
       return { ok: true as const, updated };
     },
     {

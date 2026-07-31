@@ -260,7 +260,6 @@ export default function BookingsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
-  const [bulkTargetStatus, setBulkTargetStatus] = useState<BookingStatus | "">("");
   const [costEditorOpen, setCostEditorOpen] = useState(false);
   const [costDrafts, setCostDrafts] = useState<Record<number, string>>({});
   const [useSharedCost, setUseSharedCost] = useState(false);
@@ -283,7 +282,6 @@ export default function BookingsPage() {
   const resetListView = () => {
     setCurrentPage(1);
     setSelectedIds(new Set());
-    setBulkTargetStatus("");
     setCostEditorOpen(false);
     setCostDrafts({});
     setUseSharedCost(false);
@@ -323,7 +321,7 @@ export default function BookingsPage() {
       province: booking.province ?? "",
       postalCode: booking.postalCode ?? "",
       content: booking.content ?? "",
-      cost: booking.cost ?? "",
+      cost: effectiveBookingCost(booking) ?? "",
     });
   };
 
@@ -592,7 +590,6 @@ export default function BookingsPage() {
 
   const handleClearSelection = () => {
     setSelectedIds(new Set());
-    setBulkTargetStatus("");
     setCostEditorOpen(false);
     setCostDrafts({});
     setUseSharedCost(false);
@@ -701,22 +698,17 @@ export default function BookingsPage() {
     });
   };
 
-  const handleBulkStatusChange = async () => {
-    if (!bulkTargetStatus) {
-      toast.warning("กรุณาเลือกสถานะใหม่");
-      return;
-    }
-
+  const handleBulkComplete = async () => {
+    const targetStatus: BookingStatus = "สำเร็จ";
     const targets = selectedBookings.filter(
-      (booking) => booking.status !== bulkTargetStatus
+      (booking) => booking.status !== targetStatus
     );
     if (targets.length === 0) {
-      toast.info(`รายการที่เลือกเป็นสถานะ “${bulkTargetStatus}” อยู่แล้ว`);
+      toast.info("รายการที่เลือกเป็นสถานะ “สำเร็จ” อยู่แล้ว");
       return;
     }
 
     setBulkUpdating(true);
-    const targetStatus = bulkTargetStatus;
     const tId = toast.loading(
       `กำลังเปลี่ยน ${targets.length} รายการเป็น “${targetStatus}”...`
     );
@@ -748,7 +740,6 @@ export default function BookingsPage() {
 
     if (failedIds.length === 0) {
       setSelectedIds(new Set());
-      setBulkTargetStatus("");
       setCostEditorOpen(false);
       toast.success(`เปลี่ยนสถานะเป็น “${targetStatus}” แล้ว`, {
         id: tId,
@@ -1000,25 +991,6 @@ export default function BookingsPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <label className="relative min-w-[190px]">
-                <span className="sr-only">เลือกสถานะใหม่สำหรับรายการที่เลือก</span>
-                <select
-                  value={bulkTargetStatus}
-                  onChange={(event) =>
-                    setBulkTargetStatus(event.target.value as BookingStatus | "")
-                  }
-                  disabled={bulkUpdating}
-                  className="h-11 w-full appearance-none rounded-xl border border-brand-green-100 bg-brand-surface py-2 pl-3 pr-9 text-sm font-black text-brand-ink outline-none transition hover:border-brand-green focus:border-brand-green focus:ring-2 focus:ring-brand-green/15 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-                >
-                  <option value="">เลือกสถานะใหม่</option>
-                  {BOOKING_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink-soft" />
-              </label>
               <button
                 type="button"
                 onClick={handleOpenCostEditor}
@@ -1030,8 +1002,8 @@ export default function BookingsPage() {
               </button>
               <button
                 type="button"
-                onClick={handleBulkStatusChange}
-                disabled={bulkUpdating || !bulkTargetStatus}
+                onClick={handleBulkComplete}
+                disabled={bulkUpdating}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-green px-4 py-2.5 text-sm font-black text-white shadow-md shadow-brand-green/25 hover:bg-brand-green-600 transition cursor-pointer disabled:opacity-60"
               >
                 {bulkUpdating ? (
@@ -1039,9 +1011,7 @@ export default function BookingsPage() {
                 ) : (
                   <Check className="h-4 w-4" strokeWidth={3.2} />
                 )}
-                {bulkTargetStatus
-                  ? `เปลี่ยนเป็น${bulkTargetStatus}`
-                  : "เปลี่ยนสถานะ"}
+                เปลี่ยนเป็นสำเร็จ
               </button>
             </div>
           </div>
@@ -1422,7 +1392,7 @@ export default function BookingsPage() {
                                   <br />
                                   รอบเติม:{" "}
                                   <span className="font-black text-brand-green">
-                                    {b.topupRoundName || "รายการเดิม"}
+                                    {b.topupRoundName || "ไม่กำหนดรอบเติม"}
                                     {b.topupRoundStart && b.topupRoundEnd
                                       ? ` ${b.topupRoundStart}–${b.topupRoundEnd} น.`
                                       : ""}
@@ -1490,7 +1460,7 @@ export default function BookingsPage() {
                   <div className="mt-1.5 rounded-lg bg-brand-paper px-2 py-1.5 text-[10.5px] font-bold text-brand-ink-soft">
                     รอบเติม:{" "}
                     <span className="font-black text-brand-green">
-                      {b.topupRoundName || "รายการเดิม"}
+                      {b.topupRoundName || "ไม่กำหนดรอบเติม"}
                       {b.topupRoundStart && b.topupRoundEnd
                         ? ` ${b.topupRoundStart}–${b.topupRoundEnd} น.`
                         : ""}
@@ -1643,7 +1613,7 @@ export default function BookingsPage() {
                   รอบเติม Snapshot
                 </p>
                 <p className="mt-1 text-sm font-black text-brand-green">
-                  {editingBooking.topupRoundName || "รายการเดิม"}
+                  {editingBooking.topupRoundName || "ไม่กำหนดรอบเติม"}
                   {editingBooking.topupRoundStart &&
                   editingBooking.topupRoundEnd
                     ? ` · ${editingBooking.topupRoundStart}–${editingBooking.topupRoundEnd} น.`
@@ -1699,7 +1669,7 @@ export default function BookingsPage() {
                 />
               </label>
               <label className="text-xs font-black text-brand-ink">
-                ต้นทุนใหม่ (ไม่บังคับ)
+                ต้นทุนบัตรเงินสดที่ใช้จริง (แก้ไขได้)
                 <input
                   type="number"
                   min={0}
@@ -1722,7 +1692,7 @@ export default function BookingsPage() {
                   className="mt-2 w-full rounded-xl border border-brand-green-100 bg-brand-paper px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-green"
                 />
                 <span className="mt-1 block text-[10px] font-bold text-brand-ink-soft">
-                  กรอกเฉพาะเมื่อต้องการแก้ต้นทุนของออเดอร์นี้
+                  ระบบดึงจากต้นทุนสินค้าให้อัตโนมัติ แก้เฉพาะเมื่อใช้ต้นทุนจริงต่างจากเดิม
                 </span>
               </label>
               <label className="text-xs font-black text-brand-ink sm:col-span-2">

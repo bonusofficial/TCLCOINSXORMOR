@@ -38,8 +38,14 @@ const LINE_GROUPS = {
     href: "https://line.me/R/ti/p/@ormorcoins",
     badge: "@ormorcoins"
   },
+  vip: {
+    label: "สมาชิก VIP",
+    desc: "รับข่าวสารราคา VIP สิทธิพิเศษ และประกาศสำหรับสมาชิก VIP",
+    href: "",
+    badge: "VIP"
+  },
   agent: {
-    label: "ตัวแทนจำหน่าย",
+    label: "ตัวแทน",
     desc: "เข้าถึงเรท VIP ส่วนลด 5% ทุกออเดอร์ และคิวพิเศษเฉพาะตัวแทน",
     href: "https://line.me/R/ti/p/@ormoragent",
     badge: "@ormoragent"
@@ -52,13 +58,24 @@ export default function HeroSection({
   userRole = "member",
 }: HeroSectionProps) {
   const { config } = useConfig();
-  // ตัวแทน/แอดมิน = เห็น QR กลุ่มตัวแทน · ลูกค้าทั่วไป = เห็นข้อความชวนสมัครแทน
-  const isAgentViewer = userRole === "agent" || userRole === "admin";
+  // สิทธิ์แบบลำดับขั้น: ทั่วไป < ตัวแทน < VIP (แอดมินตรวจสอบได้ทุกกลุ่ม)
+  const canViewVipGroup = userRole === "vip" || userRole === "admin";
+  const canViewAgentGroup =
+    userRole === "agent" || userRole === "vip" || userRole === "admin";
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loadingBanners, setLoadingBanners] = useState(true);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [bannerPaused, setBannerPaused] = useState(false);
-  const [qrTab, setQrTab] = useState<"member" | "agent">("member");
+  const roleDefaultQrTab: "member" | "vip" | "agent" =
+    userRole === "vip"
+      ? "vip"
+      : userRole === "agent" || userRole === "admin"
+        ? "agent"
+        : "member";
+  const [selectedQrTab, setSelectedQrTab] = useState<
+    "member" | "vip" | "agent" | null
+  >(null);
+  const qrTab = selectedQrTab ?? roleDefaultQrTab;
   const [authOpening, setAuthOpening] = useState<"login" | "register" | null>(null);
   const authOpeningTimerRef = useRef<number | null>(null);
 
@@ -110,17 +127,39 @@ export default function HeroSection({
     setBannerIndex((i) => (i - 1 + banners.length) % banners.length);
   const goNext = () => setBannerIndex((i) => (i + 1) % banners.length);
 
-  // ── ตรรกะ QR กลุ่มตัวแทน ──
+  // ── ตรรกะ QR กลุ่มสมาชิก ──
+  const isVipTab = qrTab === "vip";
   const isAgentTab = qrTab === "agent";
-  // ลูกค้าทั่วไปเปิดแท็บตัวแทน → ซ่อน QR + ชวนสมัครตัวแทน
-  const lockAgentQr = isAgentTab && !isAgentViewer;
-  const qrDescription = isAgentTab
-    ? isAgentViewer
-      ? "ได้รับสิทธิพิเศษ Update ก่อนใคร และส่วนลดมากมาย"
-      : "สมัครสมาชิก 199฿"
-    : LINE_GROUPS.member.desc;
-  const agentRegisterUrl =
-    config.agentLink?.trim() || LINE_GROUPS.agent.href;
+  const lockVipQr = isVipTab && !canViewVipGroup;
+  const lockAgentQr = isAgentTab && !canViewAgentGroup;
+  const lockRestrictedQr = lockVipQr || lockAgentQr;
+  const agentLockedMessage =
+    config.lineGroupAgentLockedMessage?.trim() ||
+    "สิทธิ์สำหรับตัวแทน กรุณายืนยันตัวตนกับทีมงานเพื่อรับสิทธิ์";
+  const vipLockedMessage =
+    config.lineGroupVipLockedMessage?.trim() ||
+    "สิทธิ์เฉพาะสมาชิก VIP สมัครตัวแทน VIP ราคา 199 บาท";
+  const qrDescription = isVipTab
+    ? canViewVipGroup
+      ? LINE_GROUPS.vip.desc
+      : vipLockedMessage
+    : isAgentTab
+      ? canViewAgentGroup
+        ? LINE_GROUPS.agent.desc
+        : agentLockedMessage
+      : LINE_GROUPS.member.desc;
+  const selectedQrImage =
+    qrTab === "member"
+      ? config.qrcodenormal || "/qrcode.jpeg"
+      : qrTab === "agent"
+        ? config.qrcodeagent
+        : config.qrcodevip;
+  const selectedLineGroupUrl =
+    qrTab === "member"
+      ? config.lineGroupNormal?.trim() || LINE_GROUPS.member.href
+      : qrTab === "agent"
+        ? config.lineGroupAgent?.trim() || LINE_GROUPS.agent.href
+        : config.lineGroupVip?.trim() || LINE_GROUPS.vip.href;
 
   return (
     <section className="relative pt-10 md:pt-14 pb-20 overflow-hidden bg-brand-surface" style={{ contentVisibility: 'auto' }}>
@@ -172,7 +211,7 @@ export default function HeroSection({
           {/* Eyebrow badge — soft mint with gold sparkle */}
           <div className="inline-flex items-center gap-1.5 bg-brand-mint/45 border border-brand-green text-brand-green font-extrabold text-[11.5px] py-1.5 px-4 rounded-full shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-500">
             <Sparkles className="h-3 w-3 fill-brand-gold text-brand-gold-deep" strokeWidth={2} />
-            รองรับตัวแทน & ลูกค้าทั่วไป
+            รองรับ VIP ตัวแทน และลูกค้าทั่วไป
           </div>
 
           {/* Headline */}
@@ -357,21 +396,30 @@ export default function HeroSection({
           <div className="flex flex-col md:flex-row md:items-center gap-5 md:gap-6">
             {/* QR with scanner corner ticks */}
             <div className="relative flex-shrink-0 p-2.5 bg-brand-surface border-2 border-brand-green-100 rounded-2xl self-center md:self-start">
-              {lockAgentQr ? (
+              {lockRestrictedQr ? (
                 <div className="w-32 h-32 md:w-36 md:h-36 rounded-lg bg-brand-green-50/60 border border-dashed border-brand-green-100 flex flex-col items-center justify-center gap-2 text-center px-3">
                   <Lock className="h-7 w-7 text-brand-green" />
                   <span className="text-[11px] font-extrabold text-brand-ink-soft leading-tight">
-                    เฉพาะตัวแทน
+                    {isVipTab ? "เฉพาะสมาชิก VIP" : "เฉพาะตัวแทน"}
                     <br />
                     เท่านั้น
                   </span>
                 </div>
-              ) : (
+              ) : selectedQrImage ? (
                 <img
-                  src={qrTab === "member" ? (config.qrcodenormal || "/qrcode.jpeg") : (config.qrcodeagent || "/qrcode.jpeg")}
+                  src={selectedQrImage}
                   alt={`QR เข้ากลุ่ม LINE ${LINE_GROUPS[qrTab].label}`}
                   className="w-32 h-32 md:w-36 md:h-36 object-contain rounded-lg"
                 />
+              ) : (
+                <div className="w-32 h-32 md:w-36 md:h-36 rounded-lg bg-brand-green-50/60 border border-dashed border-brand-green-100 flex flex-col items-center justify-center gap-2 text-center px-3">
+                  <AlertOctagon className="h-7 w-7 text-amber-400" />
+                  <span className="text-[11px] font-extrabold text-brand-ink-soft leading-tight">
+                    แอดมินยังไม่ได้ตั้งค่า
+                    <br />
+                    QR กลุ่มนี้
+                  </span>
+                </div>
               )}
               <span className="absolute top-1 left-1 w-3.5 h-3.5 border-l-[2.5px] border-t-[2.5px] border-brand-green-600 rounded-tl-md" />
               <span className="absolute top-1 right-1 w-3.5 h-3.5 border-r-[2.5px] border-t-[2.5px] border-brand-green-600 rounded-tr-md" />
@@ -390,7 +438,7 @@ export default function HeroSection({
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setQrTab(key)}
+                      onClick={() => setSelectedQrTab(key)}
                       className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-extrabold text-[11px] transition-all duration-200 cursor-pointer ${
                         isActive
                           ? "bg-brand-surface text-brand-green shadow-sm"
@@ -398,7 +446,11 @@ export default function HeroSection({
                       }`}
                     >
                       <Icon className="h-3 w-3" strokeWidth={2.5} />
-                      {key === "member" ? "ทั่วไป" : "ตัวแทน"}
+                      {key === "member"
+                        ? "ทั่วไป"
+                        : key === "vip"
+                          ? "VIP"
+                          : "ตัวแทน"}
                     </button>
                   );
                 })}
@@ -416,24 +468,18 @@ export default function HeroSection({
               </p>
 
               {lockAgentQr ? (
-                /* ลูกค้าทั่วไปบนแท็บตัวแทน → ปุ่มชวนสมัครเป็นตัวแทน */
+                <div className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-green-100 bg-brand-green-50/70 px-3 py-2.5 text-center text-[12px] font-black text-brand-ink">
+                  <Lock className="h-4 w-4 shrink-0 text-brand-green" strokeWidth={2.5} />
+                  {agentLockedMessage}
+                </div>
+              ) : lockVipQr ? (
+                <div className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2.5 text-center text-[12px] font-black text-amber-500">
+                  <Lock className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+                  {vipLockedMessage}
+                </div>
+              ) : selectedLineGroupUrl ? (
                 <a
-                  href={agentRegisterUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-gold-light to-brand-gold-deep py-2.5 text-[13px] font-black text-brand-ink shadow-md shadow-brand-gold/30 transition hover:-translate-y-0.5"
-                >
-                  <Crown className="h-4 w-4" strokeWidth={2.5} />
-                  สมัครเป็นตัวแทน 199฿
-                </a>
-              ) : (
-                /* ปุ่มกดเข้ากลุ่ม LINE — ลิงก์แก้ได้ในแอดมิน (lineGroupNormal/lineGroupAgent) */
-                <a
-                  href={
-                    qrTab === "member"
-                      ? config.lineGroupNormal?.trim() || LINE_GROUPS.member.href
-                      : config.lineGroupAgent?.trim() || LINE_GROUPS.agent.href
-                  }
+                  href={selectedLineGroupUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#06C755] py-2.5 text-[13px] font-black text-white shadow-md shadow-[#06C755]/30 transition hover:-translate-y-0.5 hover:bg-[#05b34c]"
@@ -441,6 +487,11 @@ export default function HeroSection({
                   <svg className="w-[24px] h-auto" fill="#ffff" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>LINE</title><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
                   กดเพื่อเข้ากลุ่ม LINE
                 </a>
+              ) : (
+                <div className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-green-100 bg-brand-green-50/70 py-2.5 text-[12px] font-black text-brand-ink-soft">
+                  <AlertOctagon className="h-4 w-4" strokeWidth={2.5} />
+                  แอดมินยังไม่ได้ตั้งค่าลิงก์กลุ่ม LINE
+                </div>
               )}
 
             </div>

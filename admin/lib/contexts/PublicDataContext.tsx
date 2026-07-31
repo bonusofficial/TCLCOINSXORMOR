@@ -25,11 +25,15 @@ export interface PublicConfig {
   phone: string;
   qrcodenormal: string;
   qrcodeagent: string;
+  qrcodevip: string;
   qrcodesupport: string;
   warningMessage: string;
   agentPrivileges: string;
   lineGroupNormal: string;
   lineGroupAgent: string;
+  lineGroupVip: string;
+  lineGroupAgentLockedMessage: string;
+  lineGroupVipLockedMessage: string;
   welcomeTitle: string;
   welcomeAgentDesc: string;
   welcomeMemberDesc: string;
@@ -135,11 +139,15 @@ const DEFAULT_CONFIG: PublicConfig = {
   phone: "",
   qrcodenormal: "",
   qrcodeagent: "",
+  qrcodevip: "",
   qrcodesupport: "",
   warningMessage: "",
   agentPrivileges: "",
   lineGroupNormal: "",
   lineGroupAgent: "",
+  lineGroupVip: "",
+  lineGroupAgentLockedMessage: "",
+  lineGroupVipLockedMessage: "",
   welcomeTitle: "",
   welcomeAgentDesc: "",
   welcomeMemberDesc: "",

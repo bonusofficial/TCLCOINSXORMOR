@@ -74,7 +74,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       };
 
       await logAudit({
-        action: "BOOKING_UPDATE",
+        action: "BOOKING_CANCEL",
         entityType: "booking",
         entityId: saved.id,
         details: {

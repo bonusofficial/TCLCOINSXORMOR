@@ -284,16 +284,17 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         });
       }
       const requestedRoundCode = body.topupRoundCode?.trim();
-      if (!requestedRoundCode) {
+      const requiresTopupRound = todaySchedule.rounds.length > 0;
+      if (requiresTopupRound && !requestedRoundCode) {
         return code(400, {
           ok: false,
           message: "กรุณาเลือกรอบเติมที่ต้องการ",
         });
       }
-      const requestedRound = todaySchedule.rounds.find(
-        (round) => round.code === requestedRoundCode
-      );
-      if (!requestedRound || !requestedRound.enabled) {
+      const requestedRound = requestedRoundCode
+        ? todaySchedule.rounds.find((round) => round.code === requestedRoundCode)
+        : null;
+      if (requiresTopupRound && (!requestedRound || !requestedRound.enabled)) {
         return code(409, {
           ok: false,
           message: "รอบเติมที่เลือกปิดรับจองแล้ว กรุณาเลือกรอบอื่น",
@@ -310,7 +311,6 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       // ── ราคา คำนวณใหม่ฝั่งเซิร์ฟเวอร์เสมอ (ไม่เชื่อราคาที่ client ส่งมา) ──
       const role = ((user as { role?: string | null }).role ?? "member").toLowerCase();
       const isAgent = role === "agent" || role === "admin";
-      const base = isAgent ? Number(prod.agentPrice) : Number(prod.price);
       const accountLoginUsername = (user as { username?: string | null }).username ?? null;
       const accountDisplayUsername =
         (user as { displayUsername?: string | null }).displayUsername ?? null;
@@ -324,9 +324,14 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         .map((u) => u.toLowerCase());
       const discountAmt = Number(prod.discountAmount);
       const hasVipDiscount =
+        role === "vip" &&
         discountAmt > 0 &&
         matchUsername !== "" &&
         discountUsers.includes(matchUsername);
+      const base =
+        isAgent || hasVipDiscount
+          ? Number(prod.agentPrice)
+          : Number(prod.price);
       const price = hasVipDiscount ? Math.max(0, base - discountAmt) : base;
 
       let stockDelta = 0;
@@ -357,6 +362,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
               where: { id: prod.id },
               select: {
                 stockEnabled: true,
+                cost: true,
                 saleSchedules: true,
                 saleDates: true,
                 timeSlots: true,
@@ -373,34 +379,46 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
               stockState.saleDates,
               stockState.timeSlots
             ).find((schedule) => schedule.date === today);
-            const liveRound = liveSchedule?.rounds.find(
-              (round) => round.code === requestedRoundCode
-            );
             if (
               !liveSchedule ||
               nowHHMM < padHHMM(liveSchedule.bookingStart) ||
-              nowHHMM > padHHMM(liveSchedule.bookingEnd) ||
-              !liveRound ||
-              !liveRound.enabled
+              nowHHMM > padHHMM(liveSchedule.bookingEnd)
+            ) {
+              throw new BookingHttpError(409, {
+                ok: false,
+                message: "ช่วงเวลาเปิดรับจองสิ้นสุดแล้ว กรุณาเลือกรายการใหม่",
+              });
+            }
+            const liveRequiresTopupRound = liveSchedule.rounds.length > 0;
+            const liveRound = requestedRoundCode
+              ? liveSchedule.rounds.find(
+                  (round) => round.code === requestedRoundCode
+                ) ?? null
+              : null;
+            if (
+              liveRequiresTopupRound &&
+              (!liveRound || !liveRound.enabled)
             ) {
               throw new BookingHttpError(409, {
                 ok: false,
                 message: "รอบเติมที่เลือกปิดรับจองแล้ว กรุณาเลือกรอบอื่น",
               });
             }
-            const roundBookingCount = await tx.bookings.count({
-              where: {
-                productId: prod.id,
-                bookingDate: { gte: startOfDay, lte: endOfDay },
-                topupRoundCode: liveRound.code,
-                status: { not: "ยกเลิก" },
-              },
-            });
-            if (roundBookingCount >= liveRound.capacity) {
-              throw new BookingHttpError(409, {
-                ok: false,
-                message: `${liveRound.name} เต็มแล้ว กรุณาเลือกรอบเติมอื่น`,
+            if (liveRound) {
+              const roundBookingCount = await tx.bookings.count({
+                where: {
+                  productId: prod.id,
+                  bookingDate: { gte: startOfDay, lte: endOfDay },
+                  topupRoundCode: liveRound.code,
+                  status: { not: "ยกเลิก" },
+                },
               });
+              if (roundBookingCount >= liveRound.capacity) {
+                throw new BookingHttpError(409, {
+                  ok: false,
+                  message: `${liveRound.name} เต็มแล้ว กรุณาเลือกรอบเติมอื่น`,
+                });
+              }
             }
 
             // ตัดสต็อกแบบ atomic ใน transaction เดียวกับการสร้าง booking
@@ -441,15 +459,16 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
                 ...delivery,
                 content: body.content ?? null,
                 price, // ราคาที่เซิร์ฟเวอร์คำนวณเอง
+                cost: stockState.cost, // Snapshot ต้นทุนสินค้าทันทีตอนจอง
                 bookingDate: bookingDateUTC, // วันไทยของเซิร์ฟเวอร์
                 bookingTime,
                 bookingWindowStart: padHHMM(liveSchedule.bookingStart),
                 bookingWindowEnd: padHHMM(liveSchedule.bookingEnd),
-                topupRoundCode: liveRound.code,
-                topupRoundName: liveRound.name,
-                topupRoundStart: padHHMM(liveRound.start),
-                topupRoundEnd: padHHMM(liveRound.end),
-                topupRoundCapacity: liveRound.capacity,
+                topupRoundCode: liveRound?.code ?? null,
+                topupRoundName: liveRound?.name ?? null,
+                topupRoundStart: liveRound ? padHHMM(liveRound.start) : null,
+                topupRoundEnd: liveRound ? padHHMM(liveRound.end) : null,
+                topupRoundCapacity: liveRound?.capacity ?? null,
                 status: "รอตรวจสอบ",
               },
           });
@@ -461,29 +480,35 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         throw err;
       }
 
+      const responsePayload = {
+        ok: true as const,
+        message: "จองสำเร็จ",
+        data: shape(saved),
+      };
       logAudit({
-        action: "PRODUCT_CREATE",
-        entityType: "product",
+        action: "BOOKING_CREATE",
+        entityType: "booking",
         entityId: saved.id,
         details: {
+          activity: "USER_BOOKING_CREATE",
+          description: "ผู้ใช้สร้างรายการจอง",
           bookingCode: saved.bookingCode,
           productName: prod.name,
           price,
+          costSnapshot: saved.cost?.toString() ?? null,
           bookingWindow: `${saved.bookingWindowStart}-${saved.bookingWindowEnd}`,
           topupRoundCode: saved.topupRoundCode,
           topupRoundName: saved.topupRoundName,
           topupRoundTime: `${saved.topupRoundStart}-${saved.topupRoundEnd}`,
           stockDelta,
         },
+        payload: body,
+        response: responsePayload,
         user,
         request,
       });
 
-      return {
-        ok: true as const,
-        message: "จองสำเร็จ",
-        data: shape(saved),
-      };
+      return responsePayload;
     },
     { body: BookingCreateBody, requireAuth: true }
   )
@@ -515,12 +540,15 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       await adjustProductStock(before.productId, +1);
 
       logAudit({
-        action: "PRODUCT_UPDATE",
-        entityType: "product",
+        action: "BOOKING_CANCEL",
+        entityType: "booking",
         entityId: saved.id,
         details: {
+          activity: "USER_BOOKING_CANCEL",
+          description: "ผู้ใช้ยกเลิกรายการจองของตนเอง",
           bookingCode: saved.bookingCode,
-          action: "USER_CANCEL",
+          beforeStatus: before.status,
+          afterStatus: saved.status,
           stockDelta: +1,
         },
         user,

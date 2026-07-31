@@ -28,6 +28,7 @@ const initialForm = {
   phone: "",
   qrcodenormal: "",
   qrcodeagent: "",
+  qrcodevip: "",
   qrcodesupport: "",
   warningMessage: "",
 };
@@ -68,6 +69,7 @@ export default function DemoSettingPage() {
         phone: c.phone,
         qrcodenormal: c.qrcodenormal,
         qrcodeagent: c.qrcodeagent,
+        qrcodevip: c.qrcodevip,
         qrcodesupport: c.qrcodesupport,
         warningMessage: c.warningMessage,
       });

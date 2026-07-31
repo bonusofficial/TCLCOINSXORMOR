@@ -1,6 +1,10 @@
 import { Elysia } from "elysia";
 import { prisma } from "@/lib/prisma";
-import { errorPlugin, loggerPlugin } from "@/lib/server/middleware";
+import {
+  authPlugin,
+  errorPlugin,
+  loggerPlugin,
+} from "@/lib/server/middleware";
 
 /**
  * Public Config endpoint — สำหรับเว็บฝั่งผู้ใช้
@@ -10,10 +14,16 @@ import { errorPlugin, loggerPlugin } from "@/lib/server/middleware";
 const app = new Elysia({ prefix: "/api/v0/config" })
   .use(loggerPlugin)
   .use(errorPlugin)
+  .use(authPlugin)
 
   /** GET — โหลด config ทั่วไป พร้อมสถานะระบบ Real-time */
-  .get("/", async ({ set }) => {
+  .get("/", async ({ set, user }) => {
     set.headers["Cache-Control"] = "private, no-store";
+    const userRole = (
+      (user as { role?: string } | null)?.role ?? "member"
+    ).toLowerCase();
+    const canViewAgentGroup = ["agent", "vip", "admin"].includes(userRole);
+    const canViewVipGroup = ["vip", "admin"].includes(userRole);
 
     // นับตรงจาก DB ด้วย count() — แม่นยำ ไม่ติดเพดาน (กันกรณีออเดอร์เกิน 200)
     const [config, activeQueues, totalCompleted, cancelledCount, totalBookings, totalUsers, stockAgg] =
@@ -58,11 +68,15 @@ const app = new Elysia({ prefix: "/api/v0/config" })
           phone: "",
           qrcodenormal: "",
           qrcodeagent: "",
+          qrcodevip: "",
           qrcodesupport: "",
           warningMessage: "",
           agentPrivileges: "",
           lineGroupNormal: "",
           lineGroupAgent: "",
+          lineGroupVip: "",
+          lineGroupAgentLockedMessage: "",
+          lineGroupVipLockedMessage: "",
           welcomeTitle: "",
           welcomeAgentDesc: "",
           welcomeMemberDesc: "",
@@ -98,12 +112,17 @@ const app = new Elysia({ prefix: "/api/v0/config" })
         contactLine: config.contactLine,
         phone: config.phone,
         qrcodenormal: config.qrcodenormal,
-        qrcodeagent: config.qrcodeagent,
+        qrcodeagent: canViewAgentGroup ? config.qrcodeagent : "",
+        qrcodevip: canViewVipGroup ? config.qrcodevip : "",
         qrcodesupport: config.qrcodesupport,
         warningMessage: config.warningMessage,
         agentPrivileges: config.agentPrivileges ?? "",
         lineGroupNormal: config.lineGroupNormal ?? "",
-        lineGroupAgent: config.lineGroupAgent ?? "",
+        lineGroupAgent: canViewAgentGroup ? config.lineGroupAgent ?? "" : "",
+        lineGroupVip: canViewVipGroup ? config.lineGroupVip ?? "" : "",
+        lineGroupAgentLockedMessage:
+          config.lineGroupAgentLockedMessage ?? "",
+        lineGroupVipLockedMessage: config.lineGroupVipLockedMessage ?? "",
         welcomeTitle: config.welcomeTitle ?? "",
         welcomeAgentDesc: config.welcomeAgentDesc ?? "",
         welcomeMemberDesc: config.welcomeMemberDesc ?? "",

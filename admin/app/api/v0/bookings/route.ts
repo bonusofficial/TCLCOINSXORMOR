@@ -226,7 +226,6 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       // ── ราคา คำนวณใหม่ฝั่งเซิร์ฟเวอร์เสมอ (ไม่เชื่อราคาที่ client ส่งมา) ──
       const role = ((user as { role?: string | null }).role ?? "member").toLowerCase();
       const isAgent = role === "agent" || role === "admin";
-      const base = isAgent ? Number(prod.agentPrice) : Number(prod.price);
       const accountUsername = (user as { username?: string | null }).username ?? null;
       const matchUsername = (accountUsername ?? body.username ?? "")
         .toLowerCase()
@@ -236,9 +235,14 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         .map((u) => u.toLowerCase());
       const discountAmt = Number(prod.discountAmount);
       const hasVipDiscount =
+        role === "vip" &&
         discountAmt > 0 &&
         matchUsername !== "" &&
         discountUsers.includes(matchUsername);
+      const base =
+        isAgent || hasVipDiscount
+          ? Number(prod.agentPrice)
+          : Number(prod.price);
       const price = hasVipDiscount ? Math.max(0, base - discountAmt) : base;
 
       let stockDelta = 0;
@@ -270,7 +274,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
 
             const stockState = await tx.products.findUnique({
               where: { id: prod.id },
-              select: { stockEnabled: true },
+              select: { stockEnabled: true, cost: true },
             });
             if (!stockState) {
               throw new BookingHttpError(404, {
@@ -317,6 +321,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
                 ...delivery,
                 content: body.content ?? null,
                 price, // ราคาที่เซิร์ฟเวอร์คำนวณเอง
+                cost: stockState.cost, // Snapshot ต้นทุนสินค้าทันทีตอนจอง
                 bookingDate: bookingDateUTC, // วันไทยของเซิร์ฟเวอร์
                 bookingTime,
                 status: "รอตรวจสอบ",

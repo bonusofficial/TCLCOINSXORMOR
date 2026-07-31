@@ -277,6 +277,7 @@ function QueueContent() {
   const selectedRound =
     selectedSchedule?.rounds.find((round) => round.code === selectedRoundCode) ??
     null;
+  const requiresTopupRound = (selectedSchedule?.rounds.length ?? 0) > 0;
 
   const effectivePrice = useMemo(
     () =>
@@ -284,7 +285,7 @@ function QueueContent() {
         ? getEffectivePrice(
             selectedProduct,
             userRole,
-            user?.displayUsername || user?.username || null
+            user?.username || user?.displayUsername || null
           )
         : null,
     [selectedProduct, userRole, user?.displayUsername, user?.username]
@@ -451,9 +452,10 @@ function QueueContent() {
       return true;
     }
     if (
-      !selectedRound ||
-      selectedRound.status === "full" ||
-      selectedRound.status === "closed"
+      requiresTopupRound &&
+      (!selectedRound ||
+        selectedRound.status === "full" ||
+        selectedRound.status === "closed")
     ) {
       toast.warning("กรุณาเลือกรอบเติม", {
         description: "ต้องเลือกรอบเติมที่ยังเปิดรับจองก่อนยืนยันรายการ",
@@ -572,9 +574,10 @@ function QueueContent() {
     selectedProduct !== null &&
     selectedDate !== "" &&
     selectedTime !== "" &&
-    selectedRound !== null &&
-    selectedRound.status !== "full" &&
-    selectedRound.status !== "closed" &&
+    (!requiresTopupRound ||
+      (selectedRound !== null &&
+        selectedRound.status !== "full" &&
+        selectedRound.status !== "closed")) &&
     profileLoadState !== "loading" &&
     /^\d{10}$/.test(phone) &&
     recipientFirstName.trim() !== "" &&
@@ -613,7 +616,7 @@ function QueueContent() {
         district: address.district,
         province: address.province,
         postalCode: address.postalCode,
-        topupRoundCode: selectedRoundCode,
+        topupRoundCode: selectedRoundCode || undefined,
         content: notes.trim() || undefined,
         price: effectivePrice.amount,
         bookingDate: selectedDate,
@@ -955,7 +958,7 @@ function QueueContent() {
                 idx={i + 1}
                 product={p}
                 userRole={userRole}
-                username={user?.displayUsername || user?.username || null}
+                username={user?.username || user?.displayUsername || null}
                 maxQueueCount={maxQueueCount}
                 onSelect={() => handlePickProduct(p)}
               />
@@ -1009,7 +1012,7 @@ function QueueContent() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">
+                  <label className="mb-2 flex h-5 items-center text-[12.5px] font-extrabold text-brand-ink">
                     วันที่ต้องการจอง
                   </label>
                   <select
@@ -1051,7 +1054,7 @@ function QueueContent() {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5 flex-wrap">
+                  <label className="mb-2 flex h-5 items-center gap-1.5 text-[12.5px] font-extrabold text-brand-ink">
                     ช่วงเวลาเปิดรับจอง
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand-green/10 text-brand-green text-[10px] font-black ring-1 ring-brand-green/30">
                       เวลาไทย
@@ -1074,18 +1077,26 @@ function QueueContent() {
                 className="mt-5 border-t border-brand-green-100/70 pt-5"
               >
                 <h4 className="font-display text-base font-black text-brand-ink">
-                  เลือกรอบเติมที่ต้องการ <span className="text-rose-400">*</span>
+                  รอบเติม
+                  {requiresTopupRound && (
+                    <>
+                      {" "}
+                      <span className="text-rose-400">*</span>
+                    </>
+                  )}
                 </h4>
                 <p className="mt-1 text-[11px] font-bold text-brand-ink-soft">
-                  รอบเติมคือช่วงเวลาที่ร้านดำเนินการเติมสินค้า เลือกได้ 1 รอบต่อการจอง
+                  {requiresTopupRound
+                    ? "รอบเติมคือช่วงเวลาที่ร้านดำเนินการเติมสินค้า เลือกได้ 1 รอบต่อการจอง"
+                    : "สินค้าที่ไม่กำหนดรอบเติมสามารถจองได้ตามช่วงเวลาเปิดรับจอง"}
                 </p>
                 {!selectedSchedule ? (
                   <div className="mt-3 rounded-xl border border-dashed border-brand-green-100 bg-brand-paper px-4 py-5 text-center text-xs font-bold text-brand-ink-soft">
                     กรุณาเลือกแพ็กเกจและวันที่ก่อน
                   </div>
                 ) : selectedSchedule.rounds.length === 0 ? (
-                  <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-xs font-black text-amber-500">
-                    วันนี้ยังไม่มีรอบเติมที่เปิดให้เลือก
+                  <div className="mt-3 rounded-xl border border-brand-green/30 bg-brand-green/10 px-4 py-4 text-xs font-black text-brand-green">
+                    ไม่กำหนดรอบเติมสำหรับสินค้านี้ สามารถยืนยันการจองได้ทันที
                   </div>
                 ) : (
                   <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -1191,15 +1202,22 @@ function QueueContent() {
                     {products
                       .filter((p) => getProductAvailability(p).status === "open")
                       .sort(sortByMostBooked)
-                      .map((p) => (
-                        <option
-                          key={p.id}
-                          value={p.id}
-                          className="bg-brand-surface text-brand-ink"
-                        >
-                          {p.name} · ฿{fmt(p.price)}
-                        </option>
-                      ))}
+                      .map((p) => {
+                        const optionPrice = getEffectivePrice(
+                          p,
+                          userRole,
+                          user?.username || user?.displayUsername || null
+                        ).amount;
+                        return (
+                          <option
+                            key={p.id}
+                            value={p.id}
+                            className="bg-brand-surface text-brand-ink"
+                          >
+                            {p.name} · ฿{fmt(optionPrice)}
+                          </option>
+                        );
+                      })}
                   </select>
                   <p className="text-[10.5px] font-bold text-brand-ink-soft mt-1.5">
                     ช่องนี้แสดงเฉพาะแพ็กเกจที่<span className="text-brand-green">เปิดจองอยู่</span>เท่านั้น — แพ็กที่ยังไม่ถึงเวลาหรือปิดจองแล้วจะแสดงในการ์ดด้านบน
@@ -1223,9 +1241,15 @@ function QueueContent() {
                             </span>
                           )}
                           {effectivePrice.hasVipDiscount && (
-                            <span className="text-[10px] font-black bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded ring-1 ring-amber-500/30">
-                              VIP -฿{fmt(selectedProduct?.discountAmount ?? 0)}
-                            </span>
+                            <>
+                              <span className="text-[10px] font-black text-brand-ink-soft">
+                                ฐาน Agent ฿
+                                {fmt(selectedProduct?.agentPrice ?? 0)}
+                              </span>
+                              <span className="text-[10px] font-black bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded ring-1 ring-amber-500/30">
+                                VIP -฿{fmt(selectedProduct?.discountAmount ?? 0)}
+                              </span>
+                            </>
                           )}
                         </div>
                       </div>

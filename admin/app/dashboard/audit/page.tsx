@@ -32,6 +32,7 @@ interface AuditLog {
   details: unknown;
   ipAddress: string | null;
   userAgent: string | null;
+  actorType: "user" | "admin" | "system";
   createdAt: string;
 }
 
@@ -89,6 +90,9 @@ export default function AuditPage() {
 
   const [actionFilter, setActionFilter] = useState<string>("");
   const [entityFilter, setEntityFilter] = useState<string>("");
+  const [actorFilter, setActorFilter] = useState<
+    "" | "user" | "admin" | "system"
+  >("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const load = useCallback(
@@ -105,6 +109,7 @@ export default function AuditPage() {
           ...(cursor && !reset ? { cursor } : {}),
           ...(actionFilter ? { action: actionFilter } : {}),
           ...(entityFilter ? { entityType: entityFilter } : {}),
+          ...(actorFilter ? { actorType: actorFilter } : {}),
         },
       });
       if (error) {
@@ -126,6 +131,7 @@ export default function AuditPage() {
           details: d.details,
           ipAddress: d.ipAddress,
           userAgent: d.userAgent,
+          actorType: d.actorType as AuditLog["actorType"],
           createdAt: d.createdAt,
         }));
         setItems((prev) => (reset ? mapped : [...prev, ...mapped]));
@@ -135,13 +141,13 @@ export default function AuditPage() {
       setLoading(false);
       setLoadingMore(false);
     },
-    [cursor, actionFilter, entityFilter]
+    [cursor, actionFilter, entityFilter, actorFilter]
   );
 
   useEffect(() => {
     load(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actionFilter, entityFilter]);
+  }, [actionFilter, entityFilter, actorFilter]);
 
   return (
     <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] w-full mx-auto">
@@ -169,6 +175,20 @@ export default function AuditPage() {
       <div className="bg-brand-surface border border-brand-green-100 rounded-2xl p-3 mb-4 flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
         <Filter className="hidden sm:block h-4 w-4 text-brand-ink-soft flex-shrink-0 ml-1" />
         <select
+          value={actorFilter}
+          onChange={(e) =>
+            setActorFilter(
+              e.target.value as "" | "user" | "admin" | "system"
+            )
+          }
+          className="flex-1 rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green text-brand-ink cursor-pointer"
+        >
+          <option value="">ผู้กระทำทั้งหมด</option>
+          <option value="user">ผู้ใช้</option>
+          <option value="admin">แอดมิน</option>
+          <option value="system">ระบบ</option>
+        </select>
+        <select
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value)}
           className="flex-1 rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green text-brand-ink cursor-pointer"
@@ -192,11 +212,12 @@ export default function AuditPage() {
             </option>
           ))}
         </select>
-        {(actionFilter || entityFilter) && (
+        {(actionFilter || entityFilter || actorFilter) && (
           <button
             onClick={() => {
               setActionFilter("");
               setEntityFilter("");
+              setActorFilter("");
             }}
             className="px-3 py-2.5 rounded-xl text-[12px] font-extrabold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 cursor-pointer"
           >
@@ -220,7 +241,7 @@ export default function AuditPage() {
             ยังไม่มีบันทึกระบบ
           </p>
           <p className="text-xs text-brand-ink-soft font-bold">
-            การกระทำของ admin จะถูกบันทึกที่นี่อัตโนมัติ
+            การกระทำของผู้ใช้ แอดมิน และระบบจะถูกบันทึกที่นี่อัตโนมัติ
           </p>
         </div>
       ) : (
@@ -230,6 +251,18 @@ export default function AuditPage() {
             const isExpanded = expandedId === log.id;
             const actionLabel = ACTION_LABEL[log.action] ?? log.action;
             const entityLabel = ENTITY_LABEL[log.entityType] ?? log.entityType;
+            const actorLabel =
+              log.actorType === "admin"
+                ? "แอดมิน"
+                : log.actorType === "user"
+                  ? "ผู้ใช้"
+                  : "ระบบ";
+            const actorClass =
+              log.actorType === "admin"
+                ? "bg-sky-500/10 text-sky-600 ring-sky-500/20"
+                : log.actorType === "user"
+                  ? "bg-brand-green-50 text-brand-green ring-brand-green/20"
+                  : "bg-slate-500/10 text-slate-500 ring-slate-500/20";
             const http = getHttpDetails(log.details);
             const method = http?.request?.method;
             const path = http?.request?.path ?? http?.authRoute;
@@ -258,6 +291,11 @@ export default function AuditPage() {
                     <div className="flex items-center gap-2 flex-wrap mb-0.5">
                       <span className="font-display font-extrabold text-[13px] text-brand-ink">
                         {log.userName || log.userEmail || "ระบบ"}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[9.5px] font-black ring-1 ${actorClass}`}
+                      >
+                        {actorLabel}
                       </span>
                       <span className="text-brand-ink-soft text-[11.5px] font-bold">
                         → {entityLabel}
@@ -332,6 +370,14 @@ export default function AuditPage() {
                         <div className="text-brand-ink-soft/70 font-bold">Log ID</div>
                         <div className="text-brand-ink font-mono font-extrabold">
                           #{log.id}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-brand-ink-soft/70 font-bold">
+                          ประเภทผู้กระทำ
+                        </div>
+                        <div className="text-brand-ink font-extrabold">
+                          {actorLabel}
                         </div>
                       </div>
                       {log.userEmail && (

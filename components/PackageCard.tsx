@@ -80,8 +80,8 @@ export function PackageCard({
     strikePrice = Number(p.price);
     strikeLabel = "ราคาทั่วไป";
   } else if (price.hasVipDiscount) {
-    strikePrice = Number(p.price);
-    strikeLabel = "ราคาทั่วไป";
+    strikePrice = Number(p.agentPrice);
+    strikeLabel = "ราคา Agent";
   }
 
   const discountPercent = strikePrice > 0 ? Math.round(((strikePrice - sellingPrice) / strikePrice) * 100) : 0;
@@ -279,8 +279,12 @@ export function PackageCard({
           </p>
         )}
         <p className="text-[10.5px] font-bold text-brand-ink-soft">
-          รอบเติมที่กำหนด:{" "}
-          <span className="font-black text-brand-green">{availableRoundCount} รอบ</span>
+          รอบเติม:{" "}
+          <span className="font-black text-brand-green">
+            {availableRoundCount > 0
+              ? `${availableRoundCount} รอบ`
+              : "ไม่กำหนดรอบเติม"}
+          </span>
         </p>
       </div>
 

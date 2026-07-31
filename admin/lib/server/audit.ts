@@ -6,6 +6,7 @@ export type AuditAction =
   | "USER_DELETE"
   | "USER_ROLE_CHANGE"
   | "USER_PASSWORD_RESET"
+  | "USER_PASSWORD_CHANGE"
   | "PRODUCT_CREATE"
   | "PRODUCT_UPDATE"
   | "PRODUCT_DELETE"
@@ -17,6 +18,7 @@ export type AuditAction =
   | "REVIEW_DELETE"
   | "BOOKING_CREATE"
   | "BOOKING_UPDATE"
+  | "BOOKING_CANCEL"
   | "BOOKING_DELETE"
   | "ACCOUNT_CREATE"
   | "ACCOUNT_UPDATE"
@@ -52,6 +54,7 @@ export interface AuditUserSnapshot {
   email?: string | null;
   name?: string | null;
   username?: string | null;
+  role?: string | null;
 }
 
 interface LogAuditOptions {
@@ -220,15 +223,30 @@ function prepareDetails(value: unknown): unknown {
 }
 
 function buildDetails(opts: LogAuditOptions): unknown {
+  const actor = {
+    role: opts.user?.role ?? null,
+    category:
+      opts.user?.role?.toLowerCase() === "admin"
+        ? "admin"
+        : opts.user?.id || opts.user?.email
+          ? "user"
+          : "system",
+  };
   const hasExchange =
     opts.payload !== undefined ||
     opts.response !== undefined ||
     opts.responseStatus !== undefined;
-  if (!hasExchange) return opts.details ?? null;
+  if (!hasExchange) {
+    return {
+      actor,
+      summary: opts.details ?? null,
+    };
+  }
 
   const url = opts.request ? new URL(opts.request.url) : null;
   const status = opts.responseStatus ?? 200;
   return {
+    actor,
     summary: opts.details ?? null,
     request: {
       method: opts.request?.method ?? null,

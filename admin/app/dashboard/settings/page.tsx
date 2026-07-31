@@ -696,6 +696,7 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("02-123-4567");
   const [qrGeneral, setQrGeneral] = useState<string | null>(null);
   const [qrAgent, setQrAgent] = useState<string | null>(null);
+  const [qrVip, setQrVip] = useState<string | null>(null);
   const [qrSupport, setQrSupport] = useState<string | null>(null);
   const [warning, setWarning] = useState(
     "ห้ามกดจองเล่น ๆ หากตรวจพบ ปรับ 50 บาท / 1 ครั้ง • กรุณาจองเฉพาะที่ต้องการเติมจริงเท่านั้น"
@@ -705,6 +706,11 @@ export default function SettingsPage() {
   // เนื้อหาเว็บที่แก้ไขได้ (config ใหม่)
   const [lineGroupNormal, setLineGroupNormal] = useState("");
   const [lineGroupAgent, setLineGroupAgent] = useState("");
+  const [lineGroupVip, setLineGroupVip] = useState("");
+  const [lineGroupAgentLockedMessage, setLineGroupAgentLockedMessage] =
+    useState("");
+  const [lineGroupVipLockedMessage, setLineGroupVipLockedMessage] =
+    useState("");
   const [reviewLink, setReviewLink] = useState("");
   const [welcomeTitle, setWelcomeTitle] = useState("");
   const [welcomeAgentDesc, setWelcomeAgentDesc] = useState("");
@@ -797,12 +803,18 @@ export default function SettingsPage() {
         setPhone(c.phone);
         setQrGeneral(c.qrcodenormal || null);
         setQrAgent(c.qrcodeagent || null);
+        setQrVip(c.qrcodevip || null);
         setQrSupport(c.qrcodesupport || null);
         setWarning(c.warningMessage);
         setMarqueeText(c.marqueeText ?? "");
         setAgentPrivileges(c.agentPrivileges ?? "");
         setLineGroupNormal(c.lineGroupNormal ?? "");
         setLineGroupAgent(c.lineGroupAgent ?? "");
+        setLineGroupVip(c.lineGroupVip ?? "");
+        setLineGroupAgentLockedMessage(
+          c.lineGroupAgentLockedMessage ?? ""
+        );
+        setLineGroupVipLockedMessage(c.lineGroupVipLockedMessage ?? "");
         setReviewLink(c.reviewLink ?? "");
         setWelcomeTitle(c.welcomeTitle ?? "");
         setWelcomeAgentDesc(c.welcomeAgentDesc ?? "");
@@ -842,12 +854,16 @@ export default function SettingsPage() {
         phone,
         qrcodenormal: qrGeneral ?? "",
         qrcodeagent: qrAgent ?? "",
+        qrcodevip: qrVip ?? "",
         qrcodesupport: qrSupport ?? "",
         warningMessage: warning,
         marqueeText,
         agentPrivileges: agentPrivileges,
         lineGroupNormal,
         lineGroupAgent,
+        lineGroupVip,
+        lineGroupAgentLockedMessage,
+        lineGroupVipLockedMessage,
         reviewLink,
         welcomeTitle,
         welcomeAgentDesc,
@@ -1220,7 +1236,7 @@ export default function SettingsPage() {
                   </p>
                 </header>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                   <ImageUpload
                     value={qrGeneral}
                     onChange={setQrGeneral}
@@ -1230,6 +1246,11 @@ export default function SettingsPage() {
                     value={qrAgent}
                     onChange={setQrAgent}
                     label="QR กลุ่มตัวแทน"
+                  />
+                  <ImageUpload
+                    value={qrVip}
+                    onChange={setQrVip}
+                    label="QR กลุ่ม VIP"
                   />
                   <ImageUpload
                     value={qrSupport}
@@ -1311,7 +1332,7 @@ export default function SettingsPage() {
                 </header>
 
                 {/* LINE group links */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Field label="ลิงก์เข้ากลุ่ม LINE — ลูกค้าทั่วไป" helper='ปุ่ม "กดเพื่อเข้ากลุ่ม LINE" ใต้ QR (แท็บทั่วไป)'>
                     <input
                       type="text"
@@ -1328,6 +1349,46 @@ export default function SettingsPage() {
                       onChange={(e) => setLineGroupAgent(e.target.value)}
                       placeholder="https://line.me/ti/g/..."
                       className={inputCls}
+                    />
+                  </Field>
+                  <Field label="ลิงก์เข้ากลุ่ม LINE — VIP" helper='ปุ่ม "กดเพื่อเข้ากลุ่ม LINE" ใต้ QR (แท็บ VIP)'>
+                    <input
+                      type="text"
+                      value={lineGroupVip}
+                      onChange={(e) => setLineGroupVip(e.target.value)}
+                      placeholder="https://line.me/ti/g/..."
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field
+                    label="ข้อความเมื่อไม่มีสิทธิ์ — กลุ่มตัวแทน"
+                    helper="แสดงทั้งใต้หัวข้อและในกล่องล็อกสิทธิ์ของแท็บตัวแทน"
+                  >
+                    <textarea
+                      rows={3}
+                      value={lineGroupAgentLockedMessage}
+                      onChange={(e) =>
+                        setLineGroupAgentLockedMessage(e.target.value)
+                      }
+                      placeholder="สิทธิ์สำหรับตัวแทน กรุณายืนยันตัวตนกับทีมงานเพื่อรับสิทธิ์"
+                      className={textareaCls}
+                    />
+                  </Field>
+                  <Field
+                    label="ข้อความเมื่อไม่มีสิทธิ์ — กลุ่ม VIP"
+                    helper="แสดงทั้งใต้หัวข้อและในกล่องล็อกสิทธิ์ของแท็บ VIP"
+                  >
+                    <textarea
+                      rows={3}
+                      value={lineGroupVipLockedMessage}
+                      onChange={(e) =>
+                        setLineGroupVipLockedMessage(e.target.value)
+                      }
+                      placeholder="สิทธิ์เฉพาะสมาชิก VIP สมัครตัวแทน VIP ราคา 199 บาท"
+                      className={textareaCls}
                     />
                   </Field>
                 </div>

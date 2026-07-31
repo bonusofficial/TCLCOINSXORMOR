@@ -82,6 +82,17 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
           message: "สินค้าหมดสต็อก ไม่สามารถจองได้",
         });
       }
+      const costProduct =
+        body.productId != null
+          ? await prisma.products.findUnique({
+              where: { id: body.productId },
+              select: { cost: true },
+            })
+          : await prisma.products.findFirst({
+              where: { name: body.productName.trim() },
+              select: { cost: true },
+              orderBy: { id: "desc" },
+            });
 
       // Generate code ที่ unique (retry ถ้าชน)
       let code = generateBookingCode(user.role as string | null);
@@ -112,6 +123,7 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
           postalCode: body.postalCode?.trim() || null,
           content: body.content ?? null,
           price: body.price,
+          cost: costProduct?.cost ?? null,
           bookingDate: new Date(body.bookingDate),
           bookingTime: body.bookingTime ?? null,
           status: "รอตรวจสอบ",
@@ -122,8 +134,8 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       await adjustProductStock(body.productId ?? null, -1);
 
       logAudit({
-        action: "PRODUCT_CREATE", // booking-related — เก็บใน entity booking
-        entityType: "product",
+        action: "BOOKING_CREATE",
+        entityType: "booking",
         entityId: saved.id,
         details: {
           bookingCode: code,

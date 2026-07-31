@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/server/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -166,6 +167,7 @@ export async function PUT(request: Request) {
   }
 
   try {
+    const before = await readDeliveryAddress(session.user.id);
     let saved: DeliveryAddress | null;
     const updateData = hasAnyAddress
       ? {
@@ -259,6 +261,27 @@ export async function PUT(request: Request) {
         { status: 404 }
       );
     }
+
+    await logAudit({
+      action: "USER_UPDATE",
+      entityType: "user",
+      entityId: session.user.id,
+      user: session.user as {
+        id: string;
+        email?: string | null;
+        name?: string | null;
+        username?: string | null;
+        role?: string | null;
+      },
+      request,
+      details: {
+        activity: "PROFILE_DELIVERY_UPDATE",
+        description: "ผู้ใช้แก้ไขชื่อ เบอร์โทรศัพท์ หรือที่อยู่จัดส่งในโปรไฟล์",
+        changedFields: Object.keys(updateData),
+        before,
+        after: saved,
+      },
+    });
 
     return Response.json({ ok: true, data: saved });
   } catch (error) {

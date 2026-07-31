@@ -153,8 +153,8 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       }
 
       logAudit({
-        action: "PRODUCT_UPDATE",
-        entityType: "product",
+        action: "BOOKING_UPDATE",
+        entityType: "booking",
         entityId: saved.id,
         details: {
           bookingCode: saved.bookingCode,
@@ -209,8 +209,8 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       }
 
       logAudit({
-        action: "PRODUCT_DELETE",
-        entityType: "product",
+        action: "BOOKING_DELETE",
+        entityType: "booking",
         entityId: before.id,
         details: {
           bookingCode: before.bookingCode,

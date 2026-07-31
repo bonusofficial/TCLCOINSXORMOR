@@ -52,6 +52,7 @@ function userFromPayload(payload: unknown): AuditUserSnapshot | null {
     email: typeof user.email === "string" ? user.email : null,
     name: typeof user.name === "string" ? user.name : null,
     username: typeof user.username === "string" ? user.username : null,
+    role: typeof user.role === "string" ? user.role : null,
   };
 }
 

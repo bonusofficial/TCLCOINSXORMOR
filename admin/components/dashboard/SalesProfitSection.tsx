@@ -559,12 +559,12 @@ export default function SalesProfitSection() {
                       </TableCell>
                       <TableCell className="py-3 px-3 whitespace-nowrap">
                         <span className="block font-black text-brand-green">
-                          {r.topupRoundName ?? "ไม่ระบุชื่อรอบ"}
+                          {r.topupRoundName ?? "ไม่กำหนดรอบเติม"}
                         </span>
                         <span className="mt-0.5 block text-[10.5px] font-bold text-brand-ink-soft">
                           {r.topupRoundStart && r.topupRoundEnd
                             ? `${r.topupRoundStart}–${r.topupRoundEnd} น.`
-                            : "ไม่ระบุเวลารอบ"}
+                            : "—"}
                         </span>
                       </TableCell>
                       <TableCell className="py-3 px-3 text-right whitespace-nowrap font-extrabold text-brand-ink">

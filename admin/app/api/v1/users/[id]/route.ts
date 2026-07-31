@@ -27,6 +27,33 @@ const UserUpdateBody = t.Object({
       t.Null(),
     ])
   ),
+  firstName: t.Optional(
+    t.Union([t.String({ maxLength: 120 }), t.Null()])
+  ),
+  lastName: t.Optional(
+    t.Union([t.String({ maxLength: 120 }), t.Null()])
+  ),
+  addressLine: t.Optional(
+    t.Union([t.String({ maxLength: 1000 }), t.Null()])
+  ),
+  subdistrict: t.Optional(
+    t.Union([t.String({ maxLength: 120 }), t.Null()])
+  ),
+  district: t.Optional(
+    t.Union([t.String({ maxLength: 120 }), t.Null()])
+  ),
+  province: t.Optional(
+    t.Union([t.String({ maxLength: 120 }), t.Null()])
+  ),
+  postalCode: t.Optional(
+    t.Union([
+      t.String({
+        pattern: "^\\d{5}$",
+        error: "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก",
+      }),
+      t.Null(),
+    ])
+  ),
   emailVerified: t.Optional(t.Boolean()),
   role: t.Optional(
     t.Union([
@@ -50,6 +77,13 @@ function shape(u: {
   image: string | null;
   role: string | null;
   phone: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  addressLine: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
   emailVerified: boolean;
   shopName: string | null;
   lineId: string | null;
@@ -145,6 +179,34 @@ const app = new Elysia({ prefix: "/api/v1/users" })
         body.image === undefined ? undefined : body.image?.trim() || null;
       const nextPhone =
         body.phone === undefined ? undefined : body.phone?.trim() || null;
+      const nextFirstName =
+        body.firstName === undefined
+          ? undefined
+          : body.firstName?.trim() || null;
+      const nextLastName =
+        body.lastName === undefined
+          ? undefined
+          : body.lastName?.trim() || null;
+      const nextAddressLine =
+        body.addressLine === undefined
+          ? undefined
+          : body.addressLine?.trim() || null;
+      const nextSubdistrict =
+        body.subdistrict === undefined
+          ? undefined
+          : body.subdistrict?.trim() || null;
+      const nextDistrict =
+        body.district === undefined
+          ? undefined
+          : body.district?.trim() || null;
+      const nextProvince =
+        body.province === undefined
+          ? undefined
+          : body.province?.trim() || null;
+      const nextPostalCode =
+        body.postalCode === undefined
+          ? undefined
+          : body.postalCode?.trim() || null;
       const nextShopName =
         body.shopName === undefined ? undefined : body.shopName?.trim() || null;
       const nextLineId =
@@ -190,6 +252,13 @@ const app = new Elysia({ prefix: "/api/v1/users" })
           }),
           ...(nextImage !== undefined && { image: nextImage }),
           ...(nextPhone !== undefined && { phone: nextPhone }),
+          ...(nextFirstName !== undefined && { firstName: nextFirstName }),
+          ...(nextLastName !== undefined && { lastName: nextLastName }),
+          ...(nextAddressLine !== undefined && { addressLine: nextAddressLine }),
+          ...(nextSubdistrict !== undefined && { subdistrict: nextSubdistrict }),
+          ...(nextDistrict !== undefined && { district: nextDistrict }),
+          ...(nextProvince !== undefined && { province: nextProvince }),
+          ...(nextPostalCode !== undefined && { postalCode: nextPostalCode }),
           ...(body.emailVerified !== undefined && {
             emailVerified: body.emailVerified,
           }),
@@ -229,6 +298,13 @@ const app = new Elysia({ prefix: "/api/v1/users" })
             displayUsername: before.displayUsername,
             image: before.image,
             phone: before.phone,
+            firstName: before.firstName,
+            lastName: before.lastName,
+            addressLine: before.addressLine,
+            subdistrict: before.subdistrict,
+            district: before.district,
+            province: before.province,
+            postalCode: before.postalCode,
             emailVerified: before.emailVerified,
             role: before.role,
             shopName: before.shopName,
@@ -242,6 +318,13 @@ const app = new Elysia({ prefix: "/api/v1/users" })
             displayUsername: saved.displayUsername,
             image: saved.image,
             phone: saved.phone,
+            firstName: saved.firstName,
+            lastName: saved.lastName,
+            addressLine: saved.addressLine,
+            subdistrict: saved.subdistrict,
+            district: saved.district,
+            province: saved.province,
+            postalCode: saved.postalCode,
             emailVerified: saved.emailVerified,
             role: saved.role,
             shopName: saved.shopName,

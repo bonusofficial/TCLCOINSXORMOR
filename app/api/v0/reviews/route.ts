@@ -6,6 +6,7 @@ import {
   loggerPlugin,
 } from "@/lib/server/middleware";
 import { CustomerReviewBody } from "@/lib/server/schemas/review";
+import { logAudit } from "@/lib/server/audit";
 
 /**
  * Public Reviews — สำหรับเว็บฝั่งผู้ใช้ (หน้าแรก)
@@ -45,7 +46,7 @@ const app = new Elysia({ prefix: "/api/v0/reviews" })
   /** POST — ลูกค้าส่งรีวิว (รออนุมัติ) — ชื่อ/รูป ดึงจากบัญชีจริง */
   .post(
     "/",
-    async ({ body, user }) => {
+    async ({ body, user, request }) => {
       const u = user as {
         name?: string | null;
         username?: string | null;
@@ -68,11 +69,27 @@ const app = new Elysia({ prefix: "/api/v0/reviews" })
           timeUnit: "hour",
         },
       });
-      return {
+      const responsePayload = {
         ok: true as const,
         message: "ส่งรีวิวเรียบร้อย รอแอดมินอนุมัติก่อนแสดงผล",
         data: { id: saved.id },
       };
+      logAudit({
+        action: "REVIEW_CREATE",
+        entityType: "review",
+        entityId: saved.id,
+        user,
+        request,
+        details: {
+          activity: "USER_REVIEW_CREATE",
+          description: "ผู้ใช้ส่งรีวิวและรอแอดมินอนุมัติ",
+          rating: saved.rating,
+          status: saved.status,
+        },
+        payload: body,
+        response: responsePayload,
+      });
+      return responsePayload;
     },
     { body: CustomerReviewBody, requireAuth: true }
   );

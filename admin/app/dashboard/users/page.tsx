@@ -25,6 +25,7 @@ import {
   TriangleAlert,
   BarChart3,
   Users as UsersIcon,
+  MapPin,
 } from "lucide-react";
 import { usersApi } from "@/lib/eden";
 import { timeAgo } from "@/lib/audit-labels";
@@ -58,6 +59,13 @@ interface AppUser {
   image: string | null;
   role: string | null;
   phone: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  addressLine: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
   emailVerified: boolean;
   shopName: string | null;
   lineId: string | null;
@@ -1403,6 +1411,13 @@ function UserEditModal({
   const [username, setUsername] = useState(user.username ?? "");
   const [displayUsername, setDisplayUsername] = useState(userDisplayName(user));
   const [phone, setPhone] = useState(normalizePhoneInput(user.phone ?? ""));
+  const [firstName, setFirstName] = useState(user.firstName ?? "");
+  const [lastName, setLastName] = useState(user.lastName ?? "");
+  const [addressLine, setAddressLine] = useState(user.addressLine ?? "");
+  const [subdistrict, setSubdistrict] = useState(user.subdistrict ?? "");
+  const [district, setDistrict] = useState(user.district ?? "");
+  const [province, setProvince] = useState(user.province ?? "");
+  const [postalCode, setPostalCode] = useState(user.postalCode ?? "");
   const [shopName, setShopName] = useState(user.shopName ?? "");
   const [lineId, setLineId] = useState(user.lineId ?? "");
   const [role, setRole] = useState<UserRole>(normalizeRole(user.role));
@@ -1437,6 +1452,10 @@ function UserEditModal({
       toast.warning("เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลัก");
       return;
     }
+    if (postalCode && !/^\d{5}$/.test(postalCode)) {
+      toast.warning("รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก");
+      return;
+    }
 
     setSaving(true);
     const tId = toast.loading("กำลังบันทึก...");
@@ -1449,6 +1468,13 @@ function UserEditModal({
           displayUsername: nextDisplayUsername,
           name: nextDisplayUsername,
           phone: phone.trim() || null,
+          firstName: firstName.trim() || null,
+          lastName: lastName.trim() || null,
+          addressLine: addressLine.trim() || null,
+          subdistrict: subdistrict.trim() || null,
+          district: district.trim() || null,
+          province: province.trim() || null,
+          postalCode: postalCode.trim() || null,
           role,
           shopName: shopName.trim() || null,
           lineId: lineId.trim() || null,
@@ -1579,6 +1605,102 @@ function UserEditModal({
               />
             </div>
           </div>
+
+          <section className="rounded-2xl border border-brand-green-100 bg-brand-surface p-4">
+            <div className="mb-4 flex items-start gap-2">
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-brand-green-50 text-brand-green">
+                <MapPin className="h-4.5 w-4.5" />
+              </span>
+              <div>
+                <h4 className="text-sm font-black text-brand-ink">
+                  ชื่อและที่อยู่สำหรับการจอง
+                </h4>
+                <p className="mt-0.5 text-[10.5px] font-bold text-brand-ink-soft">
+                  เป็นข้อมูลเริ่มต้นในโปรไฟล์ ไม่เปลี่ยนข้อมูล Snapshot ของออเดอร์เก่า
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className={editLabelCls}>ชื่อจริง</label>
+                <input
+                  value={firstName}
+                  onChange={(event) => setFirstName(event.target.value)}
+                  maxLength={120}
+                  placeholder="ยังไม่ได้ระบุชื่อจริง"
+                  className={editInputCls}
+                />
+              </div>
+              <div>
+                <label className={editLabelCls}>นามสกุล</label>
+                <input
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
+                  maxLength={120}
+                  placeholder="ยังไม่ได้ระบุนามสกุล"
+                  className={editInputCls}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className={editLabelCls}>ที่อยู่</label>
+                <textarea
+                  value={addressLine}
+                  onChange={(event) => setAddressLine(event.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="บ้านเลขที่ หมู่ ซอย ถนน อาคาร หรือรายละเอียดเพิ่มเติม"
+                  className={`${editInputCls} resize-y`}
+                />
+              </div>
+              <div>
+                <label className={editLabelCls}>จังหวัด</label>
+                <input
+                  value={province}
+                  onChange={(event) => setProvince(event.target.value)}
+                  maxLength={120}
+                  placeholder="ยังไม่ได้ระบุจังหวัด"
+                  className={editInputCls}
+                />
+              </div>
+              <div>
+                <label className={editLabelCls}>อำเภอ / เขต</label>
+                <input
+                  value={district}
+                  onChange={(event) => setDistrict(event.target.value)}
+                  maxLength={120}
+                  placeholder="ยังไม่ได้ระบุอำเภอ / เขต"
+                  className={editInputCls}
+                />
+              </div>
+              <div>
+                <label className={editLabelCls}>ตำบล / แขวง</label>
+                <input
+                  value={subdistrict}
+                  onChange={(event) => setSubdistrict(event.target.value)}
+                  maxLength={120}
+                  placeholder="ยังไม่ได้ระบุตำบล / แขวง"
+                  className={editInputCls}
+                />
+              </div>
+              <div>
+                <label className={editLabelCls}>รหัสไปรษณีย์</label>
+                <input
+                  value={postalCode}
+                  onChange={(event) =>
+                    setPostalCode(
+                      event.target.value.replace(/\D/g, "").slice(0, 5)
+                    )
+                  }
+                  inputMode="numeric"
+                  maxLength={5}
+                  pattern="[0-9]{5}"
+                  placeholder="รหัสไปรษณีย์ 5 หลัก"
+                  className={editInputCls}
+                />
+              </div>
+            </div>
+          </section>
 
           <div>
             <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2">Role</label>

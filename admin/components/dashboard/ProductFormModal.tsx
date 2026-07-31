@@ -39,6 +39,7 @@ type DiscountUserOption = {
   displayUsername: string | null;
   name: string;
   email: string;
+  role: string | null;
 };
 
 interface Props {
@@ -206,6 +207,13 @@ function normalizeDiscountUsernames(
   const normalized: string[] = [];
 
   for (const username of usernames) {
+    const matchedUser = findCurrentDiscountUser(users, username);
+    if (
+      matchedUser &&
+      normalizeIdentity(matchedUser.role) !== "vip"
+    ) {
+      continue;
+    }
     const currentUsername = canonicalDiscountUsername(username, users);
     const key = normalizeIdentity(currentUsername);
     if (!key || seen.has(key)) continue;
@@ -258,6 +266,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             displayUsername: u.displayUsername ?? null,
             name: u.name ?? "",
             email: u.email,
+            role: u.role,
           }))
         );
       })
@@ -534,6 +543,10 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
       toast.warning("ต้องกำหนดวันเปิดรับจองอย่างน้อย 1 วัน");
       return;
     }
+    if (Number(discountAmount) > Number(agentPrice)) {
+      toast.warning("ส่วนลด VIP ต้องไม่เกินราคา Agent");
+      return;
+    }
     const seenDates = new Set<string>();
     for (const schedule of saleSchedules) {
       if (!schedule.date || seenDates.has(schedule.date)) {
@@ -551,10 +564,6 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
         schedule.bookingStart >= schedule.bookingEnd
       ) {
         toast.warning(`ช่วงเวลาเปิดรับจองวันที่ ${schedule.date} ไม่ถูกต้อง`);
-        return;
-      }
-      if (schedule.rounds.length === 0) {
-        toast.warning(`วันที่ ${schedule.date} ต้องมีรอบเติมอย่างน้อย 1 รอบ`);
         return;
       }
       const seenCodes = new Set<string>();
@@ -674,6 +683,32 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
   // คำนวณกำไร
   const calculatedProfitGeneral = Math.max(0, Number(price) - Number(cost));
   const calculatedProfitAgent = Math.max(0, Number(agentPrice) - Number(cost));
+  const calculatedVipPrice = Math.max(
+    0,
+    Number(agentPrice) - Number(discountAmount)
+  );
+  const availableVipUsers = allUsers.filter((user) => {
+    if (
+      !user.username ||
+      normalizeIdentity(user.role) !== "vip"
+    ) {
+      return false;
+    }
+    const query = userSearch.toLowerCase().trim();
+    const isSelected = selectedUsernames.some(
+      (selected) =>
+        normalizeIdentity(canonicalDiscountUsername(selected, allUsers)) ===
+        normalizeIdentity(user.username)
+    );
+    if (isSelected) return false;
+    if (!query) return true;
+    return (
+      user.username.toLowerCase().includes(query) ||
+      (user.displayUsername ?? "").toLowerCase().includes(query) ||
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -832,7 +867,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
               <div>
                 <label className="block text-[12px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1">
                   <Crown className="h-3.5 w-3.5 text-brand-gold" />
-                  ราคา Agent (฿)
+                  ราคา Agent / ฐานราคา VIP (฿)
                 </label>
                 <input
                   type="number"
@@ -842,6 +877,9 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                   onChange={(e) => setAgentPrice(e.target.value)}
                   className={inputCls}
                 />
+                <p className="mt-1 text-[9.5px] font-bold text-brand-ink-soft">
+                  VIP ที่เลือกไว้จะลดเพิ่มจากราคานี้
+                </p>
               </div>
             </div>
 
@@ -1265,8 +1303,8 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                       </div>
                     ))}
                     {schedule.rounds.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-amber-500/30 p-4 text-center text-[11px] font-extrabold text-amber-500">
-                        ยังไม่มีรอบเติม ลูกค้าจะยังจองวันนี้ไม่ได้
+                      <div className="rounded-xl border border-dashed border-brand-green/30 bg-brand-green/5 p-4 text-center text-[11px] font-extrabold text-brand-green">
+                        ไม่กำหนดรอบเติม — ลูกค้าจองได้ตามช่วงเวลาเปิดรับจอง
                       </div>
                     )}
                   </div>
@@ -1280,7 +1318,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             <div className="bg-brand-paper/40 p-4 border border-brand-green-100 rounded-2xl">
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5 text-brand-green" />
-                สมาชิกที่มีสิทธิ์ได้รับส่วนลดพิเศษ
+                สมาชิกยศ VIP ที่ได้รับส่วนลดพิเศษ
                 <span className="text-brand-ink-soft font-bold">
                   (ไม่จำกัดจำนวน)
                 </span>
@@ -1316,7 +1354,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                 })}
                 {selectedUsernames.length === 0 && (
                   <span className="text-xs text-brand-ink-soft/60 font-bold py-1 select-none">
-                    ยังไม่มีการเลือกสมาชิก (ใช้ราคาขายปกติทั่วไป)
+                    ยังไม่ได้เลือก VIP (สมาชิกทั่วไปใช้ราคาขายปกติ)
                   </span>
                 )}
               </div>
@@ -1332,74 +1370,40 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                   }}
                   onFocus={() => setDropdownOpen(true)}
                   className={inputCls}
-                  placeholder="พิมพ์เพื่อค้นหาชื่อ Username, ชื่อแสดงผล หรืออีเมลสมาชิก..."
+                  placeholder="ค้นหา Username, ชื่อแสดงผล หรืออีเมลของสมาชิก VIP..."
                 />
                 
                 {dropdownOpen && (
                   <div className="absolute left-0 right-0 top-full mt-1.5 max-h-48 overflow-y-auto bg-brand-surface border border-brand-green-100 rounded-xl shadow-2xl z-10 p-1 divide-y divide-brand-green-100/40 animate-in fade-in duration-100">
-                    {allUsers.filter((u) => {
-                      if (!u.username) return false;
-                      const q = userSearch.toLowerCase().trim();
-                      const isSelected = selectedUsernames.some(
-                        (selected) =>
-                          normalizeIdentity(canonicalDiscountUsername(selected, allUsers)) ===
-                          normalizeIdentity(u.username)
-                      );
-                      if (!q) return !isSelected;
-                      return (
-                        (u.username.toLowerCase().includes(q) ||
-                         (u.displayUsername ?? "").toLowerCase().includes(q) ||
-                         u.name.toLowerCase().includes(q) ||
-                         u.email.toLowerCase().includes(q)) &&
-                        !isSelected
-                      );
-                    }).length === 0 ? (
+                    {availableVipUsers.length === 0 ? (
                       <div className="p-3 text-center text-xs text-brand-ink-soft font-bold select-none">
-                        ไม่พบรายชื่อสมาชิก หรือสมาชิกถูกเลือกครบแล้ว
+                        ไม่พบสมาชิกยศ VIP หรือถูกเลือกครบแล้ว
                       </div>
                     ) : (
-                      allUsers
-                        .filter((u) => {
-                          if (!u.username) return false;
-                          const q = userSearch.toLowerCase().trim();
-                          const isSelected = selectedUsernames.some(
-                            (selected) =>
-                              normalizeIdentity(canonicalDiscountUsername(selected, allUsers)) ===
-                              normalizeIdentity(u.username)
-                          );
-                          if (!q) return !isSelected;
-                          return (
-                            (u.username.toLowerCase().includes(q) ||
-                             (u.displayUsername ?? "").toLowerCase().includes(q) ||
-                             u.name.toLowerCase().includes(q) ||
-                             u.email.toLowerCase().includes(q)) &&
-                            !isSelected
-                          );
-                        })
-                        .map((u) => {
-                          const label = displayUserLabel(u, u.username ?? "");
+                      availableVipUsers.map((u) => {
+                        const label = displayUserLabel(u, u.username ?? "");
 
-                          return (
-                            <button
-                              key={u.username}
-                              type="button"
-                              onClick={() => {
-                                if (u.username) {
-                                  setSelectedUsernames([...selectedUsernames, u.username]);
-                                  setUserSearch("");
-                                  setDropdownOpen(false);
-                                }
-                              }}
-                              className="w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold text-brand-ink hover:bg-brand-green-50 hover:text-brand-green transition flex items-center justify-between cursor-pointer"
-                            >
-                              <div className="min-w-0">
-                                <div className="font-extrabold text-[12.5px] truncate">{label}</div>
-                                <div className="text-[10px] text-brand-ink-soft mt-0.5 truncate">@{u.username} · {u.email}</div>
-                              </div>
-                              <Plus className="h-4 w-4 text-brand-green flex-shrink-0" />
-                            </button>
-                          );
-                        })
+                        return (
+                          <button
+                            key={u.username}
+                            type="button"
+                            onClick={() => {
+                              if (u.username) {
+                                setSelectedUsernames([...selectedUsernames, u.username]);
+                                setUserSearch("");
+                                setDropdownOpen(false);
+                              }
+                            }}
+                            className="w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold text-brand-ink hover:bg-brand-green-50 hover:text-brand-green transition flex items-center justify-between cursor-pointer"
+                          >
+                            <div className="min-w-0">
+                              <div className="font-extrabold text-[12.5px] truncate">{label}</div>
+                              <div className="text-[10px] text-brand-ink-soft mt-0.5 truncate">@{u.username} · {u.email}</div>
+                            </div>
+                            <Plus className="h-4 w-4 text-brand-green flex-shrink-0" />
+                          </button>
+                        );
+                      })
                     )}
                   </div>
                 )}
@@ -1415,7 +1419,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             <div>
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
                 <Percent className="h-3.5 w-3.5 text-brand-gold" />
-                จำนวนส่วนลดสำหรับผู้มีสิทธิ์ (บาท)
+                ส่วนลด VIP จากราคา Agent (บาท)
               </label>
               <input
                 type="number"
@@ -1425,6 +1429,14 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                 onChange={(e) => setDiscountAmount(e.target.value)}
                 className={inputCls}
               />
+              <div className="mt-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-xs font-bold text-brand-ink-soft">
+                ราคา VIP = ราคา Agent ฿
+                {Number(agentPrice).toLocaleString()} − ส่วนลด ฿
+                {Number(discountAmount).toLocaleString()} ={" "}
+                <b className="text-amber-500">
+                  ฿{calculatedVipPrice.toLocaleString()}
+                </b>
+              </div>
             </div>
           </div>
 

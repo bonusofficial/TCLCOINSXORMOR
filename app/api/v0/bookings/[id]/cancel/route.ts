@@ -67,12 +67,15 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       await adjustProductStock(before.productId, +1);
 
       logAudit({
-        action: "PRODUCT_UPDATE",
-        entityType: "product",
+        action: "BOOKING_CANCEL",
+        entityType: "booking",
         entityId: saved.id,
         details: {
+          activity: "USER_BOOKING_CANCEL",
+          description: "ผู้ใช้ยกเลิกรายการจองของตนเอง",
           bookingCode: saved.bookingCode,
-          action: "USER_CANCEL",
+          beforeStatus: before.status,
+          afterStatus: saved.status,
           stockDelta: +1,
         },
         user,

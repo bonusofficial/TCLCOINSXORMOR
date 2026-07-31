@@ -239,7 +239,13 @@ export default function Navbar({
     if (isAdmin) {
       items.push({ href: adminDashboardHref, icon: Settings2, label: "จัดการระบบ" });
     }
-    if (userRole === "agent" || userRole === "admin") {
+    if (userRole === "vip") {
+      items.push({
+        href: "/profile/benefits",
+        icon: Crown,
+        label: "สิทธิพิเศษสำหรับ VIP",
+      });
+    } else if (userRole === "agent" || userRole === "admin") {
       items.push({ href: "/profile/benefits", icon: Crown, label: "สิทธิพิเศษตัวแทน" });
     }
     items.push(

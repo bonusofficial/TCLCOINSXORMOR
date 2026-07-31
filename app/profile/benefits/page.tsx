@@ -8,8 +8,6 @@ import {
   Crown,
   Lock,
   Loader2,
-  Sparkles,
-  ArrowRight,
   ShieldAlert,
   Coins,
   CheckCircle,
@@ -58,14 +56,16 @@ export default function AgentBenefitsPage() {
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
   const isLoggedIn = !!user;
   const userRole = resolveUserRole(user);
-  const isAgentOrAdmin = userRole === "agent" || userRole === "admin";
+  const isVip = userRole === "vip";
+  const canViewBenefits =
+    isVip || userRole === "agent" || userRole === "admin";
 
   // Loading state
   if (isPending) {
     return (
       <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col justify-center items-center gap-3">
         <Loader2 className="w-10 h-10 text-brand-green animate-spin" />
-        <p className="text-sm font-extrabold text-brand-ink-soft">กำลังโหลดสิทธิพิเศษตัวแทน...</p>
+        <p className="text-sm font-extrabold text-brand-ink-soft">กำลังโหลดสิทธิพิเศษ...</p>
       </div>
     );
   }
@@ -95,7 +95,7 @@ export default function AgentBenefitsPage() {
               ต้องเข้าสู่ระบบก่อน
             </h2>
             <p className="text-sm text-brand-ink-soft font-medium mb-6">
-              กรุณาเข้าสู่ระบบด้วยบัญชีตัวแทนเพื่อดูข้อมูลสิทธิพิเศษและส่วนลดของคุณ
+              กรุณาเข้าสู่ระบบเพื่อดูข้อมูลสิทธิพิเศษและส่วนลดของบัญชีคุณ
             </p>
             <button
               onClick={() => {
@@ -113,8 +113,8 @@ export default function AgentBenefitsPage() {
     );
   }
 
-  // Non-agent unauthorized gate
-  if (!isAgentOrAdmin) {
+  // Member unauthorized gate
+  if (!canViewBenefits) {
     return (
       <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col">
         <Navbar
@@ -138,10 +138,10 @@ export default function AgentBenefitsPage() {
               <ShieldAlert className="h-7 w-7 text-brand-gold-deep" />
             </div>
             <h2 className="font-display font-black text-xl text-brand-ink mb-2">
-              เฉพาะตัวแทนจำหน่ายเท่านั้น
+              เฉพาะสมาชิก VIP และตัวแทนจำหน่าย
             </h2>
             <p className="text-sm text-brand-ink-soft font-medium mb-6">
-              ขออภัย หน้าสิทธิพิเศษนี้อนุญาตให้เข้าถึงเฉพาะตัวแทนจำหน่ายที่เปิดบริการกับทางแบรนด์เท่านั้น
+              หน้านี้สำหรับสมาชิก VIP ตัวแทนจำหน่าย และผู้ดูแลระบบเท่านั้น
             </p>
             {config?.agentLink && (
               <a
@@ -160,12 +160,17 @@ export default function AgentBenefitsPage() {
     );
   }
 
-  // Split agentPrivileges text by newline for rendering lists beautifully
-  const benefitsText = config?.agentPrivileges ?? "";
-  const benefitsList = benefitsText
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  const benefitsList = isVip
+    ? [
+        "รับราคา VIP สำหรับสินค้าที่บัญชีของคุณได้รับสิทธิ์",
+        "ราคา VIP คำนวณจากราคา Agent หักส่วนลดพิเศษที่กำหนดไว้",
+        "ระบบจะแสดงราคาพิเศษให้อัตโนมัติในหน้าจอง",
+        "รหัสการจองของสมาชิก VIP จะขึ้นต้นด้วย VIP-",
+      ]
+    : (config?.agentPrivileges ?? "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
 
   return (
     <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col">
@@ -205,10 +210,15 @@ export default function AgentBenefitsPage() {
             สิทธิพิเศษระดับ VIP & AGENT
           </div>
           <h1 className="font-display font-black text-3xl sm:text-4xl text-brand-ink leading-tight mt-2">
-            สิทธิพิเศษของ <span className="text-brand-gold-deep">ตัวแทนจำหน่าย</span>
+            สิทธิพิเศษสำหรับ{" "}
+            <span className="text-brand-gold-deep">
+              {isVip ? "VIP" : "ตัวแทนจำหน่าย"}
+            </span>
           </h1>
           <p className="text-sm text-brand-ink-soft font-bold">
-            ข้อมูลเรทส่วนลดพิเศษ และบริการพิเศษส่วนตัวสำหรับสมาชิกกลุ่มตัวแทน
+            {isVip
+              ? "ข้อมูลราคาและสิทธิพิเศษที่บัญชี VIP ของคุณได้รับ"
+              : "ข้อมูลเรทส่วนลดพิเศษ และบริการพิเศษส่วนตัวสำหรับสมาชิกกลุ่มตัวแทน"}
           </p>
         </div>
 
@@ -227,7 +237,7 @@ export default function AgentBenefitsPage() {
                   ขณะนี้แอดมินยังไม่ได้ลงรายละเอียดสิทธิพิเศษเพิ่มเติม
                 </p>
                 <p className="text-xs font-bold text-brand-ink-soft/75">
-                  เรทส่วนลดของคุณจะถูกปรับและแสดงผลโดยอัตโนมัติที่หน้าจองคิวเติมเงินแล้วครับ
+                  ราคาสำหรับบัญชีของคุณจะแสดงโดยอัตโนมัติที่หน้าจอง
                 </p>
               </div>
             ) : (

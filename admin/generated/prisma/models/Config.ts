@@ -45,11 +45,15 @@ export type ConfigMinAggregateOutputType = {
   phone: string | null
   qrcodenormal: string | null
   qrcodeagent: string | null
+  qrcodevip: string | null
   qrcodesupport: string | null
   warningMessage: string | null
   agentPrivileges: string | null
   lineGroupNormal: string | null
   lineGroupAgent: string | null
+  lineGroupVip: string | null
+  lineGroupAgentLockedMessage: string | null
+  lineGroupVipLockedMessage: string | null
   welcomeTitle: string | null
   welcomeAgentDesc: string | null
   welcomeMemberDesc: string | null
@@ -79,11 +83,15 @@ export type ConfigMaxAggregateOutputType = {
   phone: string | null
   qrcodenormal: string | null
   qrcodeagent: string | null
+  qrcodevip: string | null
   qrcodesupport: string | null
   warningMessage: string | null
   agentPrivileges: string | null
   lineGroupNormal: string | null
   lineGroupAgent: string | null
+  lineGroupVip: string | null
+  lineGroupAgentLockedMessage: string | null
+  lineGroupVipLockedMessage: string | null
   welcomeTitle: string | null
   welcomeAgentDesc: string | null
   welcomeMemberDesc: string | null
@@ -113,11 +121,15 @@ export type ConfigCountAggregateOutputType = {
   phone: number
   qrcodenormal: number
   qrcodeagent: number
+  qrcodevip: number
   qrcodesupport: number
   warningMessage: number
   agentPrivileges: number
   lineGroupNormal: number
   lineGroupAgent: number
+  lineGroupVip: number
+  lineGroupAgentLockedMessage: number
+  lineGroupVipLockedMessage: number
   welcomeTitle: number
   welcomeAgentDesc: number
   welcomeMemberDesc: number
@@ -160,11 +172,15 @@ export type ConfigMinAggregateInputType = {
   phone?: true
   qrcodenormal?: true
   qrcodeagent?: true
+  qrcodevip?: true
   qrcodesupport?: true
   warningMessage?: true
   agentPrivileges?: true
   lineGroupNormal?: true
   lineGroupAgent?: true
+  lineGroupVip?: true
+  lineGroupAgentLockedMessage?: true
+  lineGroupVipLockedMessage?: true
   welcomeTitle?: true
   welcomeAgentDesc?: true
   welcomeMemberDesc?: true
@@ -194,11 +210,15 @@ export type ConfigMaxAggregateInputType = {
   phone?: true
   qrcodenormal?: true
   qrcodeagent?: true
+  qrcodevip?: true
   qrcodesupport?: true
   warningMessage?: true
   agentPrivileges?: true
   lineGroupNormal?: true
   lineGroupAgent?: true
+  lineGroupVip?: true
+  lineGroupAgentLockedMessage?: true
+  lineGroupVipLockedMessage?: true
   welcomeTitle?: true
   welcomeAgentDesc?: true
   welcomeMemberDesc?: true
@@ -228,11 +248,15 @@ export type ConfigCountAggregateInputType = {
   phone?: true
   qrcodenormal?: true
   qrcodeagent?: true
+  qrcodevip?: true
   qrcodesupport?: true
   warningMessage?: true
   agentPrivileges?: true
   lineGroupNormal?: true
   lineGroupAgent?: true
+  lineGroupVip?: true
+  lineGroupAgentLockedMessage?: true
+  lineGroupVipLockedMessage?: true
   welcomeTitle?: true
   welcomeAgentDesc?: true
   welcomeMemberDesc?: true
@@ -352,11 +376,15 @@ export type ConfigGroupByOutputType = {
   phone: string
   qrcodenormal: string
   qrcodeagent: string
+  qrcodevip: string
   qrcodesupport: string
   warningMessage: string
   agentPrivileges: string | null
   lineGroupNormal: string | null
   lineGroupAgent: string | null
+  lineGroupVip: string | null
+  lineGroupAgentLockedMessage: string | null
+  lineGroupVipLockedMessage: string | null
   welcomeTitle: string | null
   welcomeAgentDesc: string | null
   welcomeMemberDesc: string | null
@@ -412,11 +440,15 @@ export type ConfigWhereInput = {
   phone?: Prisma.StringFilter<"Config"> | string
   qrcodenormal?: Prisma.StringFilter<"Config"> | string
   qrcodeagent?: Prisma.StringFilter<"Config"> | string
+  qrcodevip?: Prisma.StringFilter<"Config"> | string
   qrcodesupport?: Prisma.StringFilter<"Config"> | string
   warningMessage?: Prisma.StringFilter<"Config"> | string
   agentPrivileges?: Prisma.StringNullableFilter<"Config"> | string | null
   lineGroupNormal?: Prisma.StringNullableFilter<"Config"> | string | null
   lineGroupAgent?: Prisma.StringNullableFilter<"Config"> | string | null
+  lineGroupVip?: Prisma.StringNullableFilter<"Config"> | string | null
+  lineGroupAgentLockedMessage?: Prisma.StringNullableFilter<"Config"> | string | null
+  lineGroupVipLockedMessage?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeTitle?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeAgentDesc?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeMemberDesc?: Prisma.StringNullableFilter<"Config"> | string | null
@@ -449,11 +481,15 @@ export type ConfigOrderByWithRelationInput = {
   phone?: Prisma.SortOrder
   qrcodenormal?: Prisma.SortOrder
   qrcodeagent?: Prisma.SortOrder
+  qrcodevip?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
   agentPrivileges?: Prisma.SortOrderInput | Prisma.SortOrder
   lineGroupNormal?: Prisma.SortOrderInput | Prisma.SortOrder
   lineGroupAgent?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineGroupVip?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineGroupAgentLockedMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineGroupVipLockedMessage?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeAgentDesc?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeMemberDesc?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -490,11 +526,15 @@ export type ConfigWhereUniqueInput = Prisma.AtLeast<{
   phone?: Prisma.StringFilter<"Config"> | string
   qrcodenormal?: Prisma.StringFilter<"Config"> | string
   qrcodeagent?: Prisma.StringFilter<"Config"> | string
+  qrcodevip?: Prisma.StringFilter<"Config"> | string
   qrcodesupport?: Prisma.StringFilter<"Config"> | string
   warningMessage?: Prisma.StringFilter<"Config"> | string
   agentPrivileges?: Prisma.StringNullableFilter<"Config"> | string | null
   lineGroupNormal?: Prisma.StringNullableFilter<"Config"> | string | null
   lineGroupAgent?: Prisma.StringNullableFilter<"Config"> | string | null
+  lineGroupVip?: Prisma.StringNullableFilter<"Config"> | string | null
+  lineGroupAgentLockedMessage?: Prisma.StringNullableFilter<"Config"> | string | null
+  lineGroupVipLockedMessage?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeTitle?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeAgentDesc?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeMemberDesc?: Prisma.StringNullableFilter<"Config"> | string | null
@@ -527,11 +567,15 @@ export type ConfigOrderByWithAggregationInput = {
   phone?: Prisma.SortOrder
   qrcodenormal?: Prisma.SortOrder
   qrcodeagent?: Prisma.SortOrder
+  qrcodevip?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
   agentPrivileges?: Prisma.SortOrderInput | Prisma.SortOrder
   lineGroupNormal?: Prisma.SortOrderInput | Prisma.SortOrder
   lineGroupAgent?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineGroupVip?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineGroupAgentLockedMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  lineGroupVipLockedMessage?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeAgentDesc?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeMemberDesc?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -572,11 +616,15 @@ export type ConfigScalarWhereWithAggregatesInput = {
   phone?: Prisma.StringWithAggregatesFilter<"Config"> | string
   qrcodenormal?: Prisma.StringWithAggregatesFilter<"Config"> | string
   qrcodeagent?: Prisma.StringWithAggregatesFilter<"Config"> | string
+  qrcodevip?: Prisma.StringWithAggregatesFilter<"Config"> | string
   qrcodesupport?: Prisma.StringWithAggregatesFilter<"Config"> | string
   warningMessage?: Prisma.StringWithAggregatesFilter<"Config"> | string
   agentPrivileges?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   lineGroupNormal?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   lineGroupAgent?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  lineGroupVip?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  lineGroupAgentLockedMessage?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  lineGroupVipLockedMessage?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   welcomeTitle?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   welcomeAgentDesc?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   welcomeMemberDesc?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
@@ -608,11 +656,15 @@ export type ConfigCreateInput = {
   phone: string
   qrcodenormal: string
   qrcodeagent: string
+  qrcodevip?: string
   qrcodesupport: string
   warningMessage: string
   agentPrivileges?: string | null
   lineGroupNormal?: string | null
   lineGroupAgent?: string | null
+  lineGroupVip?: string | null
+  lineGroupAgentLockedMessage?: string | null
+  lineGroupVipLockedMessage?: string | null
   welcomeTitle?: string | null
   welcomeAgentDesc?: string | null
   welcomeMemberDesc?: string | null
@@ -645,11 +697,15 @@ export type ConfigUncheckedCreateInput = {
   phone: string
   qrcodenormal: string
   qrcodeagent: string
+  qrcodevip?: string
   qrcodesupport: string
   warningMessage: string
   agentPrivileges?: string | null
   lineGroupNormal?: string | null
   lineGroupAgent?: string | null
+  lineGroupVip?: string | null
+  lineGroupAgentLockedMessage?: string | null
+  lineGroupVipLockedMessage?: string | null
   welcomeTitle?: string | null
   welcomeAgentDesc?: string | null
   welcomeMemberDesc?: string | null
@@ -681,11 +737,15 @@ export type ConfigUpdateInput = {
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodenormal?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
+  qrcodevip?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
   agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupVip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupAgentLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupVipLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -718,11 +778,15 @@ export type ConfigUncheckedUpdateInput = {
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodenormal?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
+  qrcodevip?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
   agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupVip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupAgentLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupVipLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -755,11 +819,15 @@ export type ConfigCreateManyInput = {
   phone: string
   qrcodenormal: string
   qrcodeagent: string
+  qrcodevip?: string
   qrcodesupport: string
   warningMessage: string
   agentPrivileges?: string | null
   lineGroupNormal?: string | null
   lineGroupAgent?: string | null
+  lineGroupVip?: string | null
+  lineGroupAgentLockedMessage?: string | null
+  lineGroupVipLockedMessage?: string | null
   welcomeTitle?: string | null
   welcomeAgentDesc?: string | null
   welcomeMemberDesc?: string | null
@@ -791,11 +859,15 @@ export type ConfigUpdateManyMutationInput = {
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodenormal?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
+  qrcodevip?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
   agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupVip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupAgentLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupVipLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -828,11 +900,15 @@ export type ConfigUncheckedUpdateManyInput = {
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodenormal?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodeagent?: Prisma.StringFieldUpdateOperationsInput | string
+  qrcodevip?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodesupport?: Prisma.StringFieldUpdateOperationsInput | string
   warningMessage?: Prisma.StringFieldUpdateOperationsInput | string
   agentPrivileges?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupNormal?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lineGroupAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupVip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupAgentLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lineGroupVipLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -871,11 +947,15 @@ export type ConfigCountOrderByAggregateInput = {
   phone?: Prisma.SortOrder
   qrcodenormal?: Prisma.SortOrder
   qrcodeagent?: Prisma.SortOrder
+  qrcodevip?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
   agentPrivileges?: Prisma.SortOrder
   lineGroupNormal?: Prisma.SortOrder
   lineGroupAgent?: Prisma.SortOrder
+  lineGroupVip?: Prisma.SortOrder
+  lineGroupAgentLockedMessage?: Prisma.SortOrder
+  lineGroupVipLockedMessage?: Prisma.SortOrder
   welcomeTitle?: Prisma.SortOrder
   welcomeAgentDesc?: Prisma.SortOrder
   welcomeMemberDesc?: Prisma.SortOrder
@@ -912,11 +992,15 @@ export type ConfigMaxOrderByAggregateInput = {
   phone?: Prisma.SortOrder
   qrcodenormal?: Prisma.SortOrder
   qrcodeagent?: Prisma.SortOrder
+  qrcodevip?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
   agentPrivileges?: Prisma.SortOrder
   lineGroupNormal?: Prisma.SortOrder
   lineGroupAgent?: Prisma.SortOrder
+  lineGroupVip?: Prisma.SortOrder
+  lineGroupAgentLockedMessage?: Prisma.SortOrder
+  lineGroupVipLockedMessage?: Prisma.SortOrder
   welcomeTitle?: Prisma.SortOrder
   welcomeAgentDesc?: Prisma.SortOrder
   welcomeMemberDesc?: Prisma.SortOrder
@@ -946,11 +1030,15 @@ export type ConfigMinOrderByAggregateInput = {
   phone?: Prisma.SortOrder
   qrcodenormal?: Prisma.SortOrder
   qrcodeagent?: Prisma.SortOrder
+  qrcodevip?: Prisma.SortOrder
   qrcodesupport?: Prisma.SortOrder
   warningMessage?: Prisma.SortOrder
   agentPrivileges?: Prisma.SortOrder
   lineGroupNormal?: Prisma.SortOrder
   lineGroupAgent?: Prisma.SortOrder
+  lineGroupVip?: Prisma.SortOrder
+  lineGroupAgentLockedMessage?: Prisma.SortOrder
+  lineGroupVipLockedMessage?: Prisma.SortOrder
   welcomeTitle?: Prisma.SortOrder
   welcomeAgentDesc?: Prisma.SortOrder
   welcomeMemberDesc?: Prisma.SortOrder
@@ -994,11 +1082,15 @@ export type ConfigSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   phone?: boolean
   qrcodenormal?: boolean
   qrcodeagent?: boolean
+  qrcodevip?: boolean
   qrcodesupport?: boolean
   warningMessage?: boolean
   agentPrivileges?: boolean
   lineGroupNormal?: boolean
   lineGroupAgent?: boolean
+  lineGroupVip?: boolean
+  lineGroupAgentLockedMessage?: boolean
+  lineGroupVipLockedMessage?: boolean
   welcomeTitle?: boolean
   welcomeAgentDesc?: boolean
   welcomeMemberDesc?: boolean
@@ -1033,11 +1125,15 @@ export type ConfigSelectScalar = {
   phone?: boolean
   qrcodenormal?: boolean
   qrcodeagent?: boolean
+  qrcodevip?: boolean
   qrcodesupport?: boolean
   warningMessage?: boolean
   agentPrivileges?: boolean
   lineGroupNormal?: boolean
   lineGroupAgent?: boolean
+  lineGroupVip?: boolean
+  lineGroupAgentLockedMessage?: boolean
+  lineGroupVipLockedMessage?: boolean
   welcomeTitle?: boolean
   welcomeAgentDesc?: boolean
   welcomeMemberDesc?: boolean
@@ -1059,7 +1155,7 @@ export type ConfigSelectScalar = {
   footerCopyright?: boolean
 }
 
-export type ConfigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logo" | "title" | "description" | "keywords" | "agentLink" | "contactLine" | "phone" | "qrcodenormal" | "qrcodeagent" | "qrcodesupport" | "warningMessage" | "agentPrivileges" | "lineGroupNormal" | "lineGroupAgent" | "welcomeTitle" | "welcomeAgentDesc" | "welcomeMemberDesc" | "howItWorks" | "termsContent" | "privacyContent" | "reviewLink" | "announceEnabled" | "announceBanner" | "announceBadge" | "announceTitle" | "announceContent" | "marqueeText" | "footerDescription" | "footerLinks" | "footerServices" | "footerLineUrl" | "footerFacebook" | "footerCopyright", ExtArgs["result"]["config"]>
+export type ConfigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logo" | "title" | "description" | "keywords" | "agentLink" | "contactLine" | "phone" | "qrcodenormal" | "qrcodeagent" | "qrcodevip" | "qrcodesupport" | "warningMessage" | "agentPrivileges" | "lineGroupNormal" | "lineGroupAgent" | "lineGroupVip" | "lineGroupAgentLockedMessage" | "lineGroupVipLockedMessage" | "welcomeTitle" | "welcomeAgentDesc" | "welcomeMemberDesc" | "howItWorks" | "termsContent" | "privacyContent" | "reviewLink" | "announceEnabled" | "announceBanner" | "announceBadge" | "announceTitle" | "announceContent" | "marqueeText" | "footerDescription" | "footerLinks" | "footerServices" | "footerLineUrl" | "footerFacebook" | "footerCopyright", ExtArgs["result"]["config"]>
 
 export type $ConfigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Config"
@@ -1075,11 +1171,15 @@ export type $ConfigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     phone: string
     qrcodenormal: string
     qrcodeagent: string
+    qrcodevip: string
     qrcodesupport: string
     warningMessage: string
     agentPrivileges: string | null
     lineGroupNormal: string | null
     lineGroupAgent: string | null
+    lineGroupVip: string | null
+    lineGroupAgentLockedMessage: string | null
+    lineGroupVipLockedMessage: string | null
     welcomeTitle: string | null
     welcomeAgentDesc: string | null
     welcomeMemberDesc: string | null
@@ -1478,11 +1578,15 @@ export interface ConfigFieldRefs {
   readonly phone: Prisma.FieldRef<"Config", 'String'>
   readonly qrcodenormal: Prisma.FieldRef<"Config", 'String'>
   readonly qrcodeagent: Prisma.FieldRef<"Config", 'String'>
+  readonly qrcodevip: Prisma.FieldRef<"Config", 'String'>
   readonly qrcodesupport: Prisma.FieldRef<"Config", 'String'>
   readonly warningMessage: Prisma.FieldRef<"Config", 'String'>
   readonly agentPrivileges: Prisma.FieldRef<"Config", 'String'>
   readonly lineGroupNormal: Prisma.FieldRef<"Config", 'String'>
   readonly lineGroupAgent: Prisma.FieldRef<"Config", 'String'>
+  readonly lineGroupVip: Prisma.FieldRef<"Config", 'String'>
+  readonly lineGroupAgentLockedMessage: Prisma.FieldRef<"Config", 'String'>
+  readonly lineGroupVipLockedMessage: Prisma.FieldRef<"Config", 'String'>
   readonly welcomeTitle: Prisma.FieldRef<"Config", 'String'>
   readonly welcomeAgentDesc: Prisma.FieldRef<"Config", 'String'>
   readonly welcomeMemberDesc: Prisma.FieldRef<"Config", 'String'>

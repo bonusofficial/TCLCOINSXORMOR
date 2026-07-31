@@ -239,7 +239,7 @@ export default function OrdersHistoryPage() {
             ? ` เวลา ${b.topupRoundStart}–${b.topupRoundEnd} น.`
             : ""
         }`
-      : "-";
+      : "ไม่กำหนดรอบเติม";
 
     const textToCopy = `รหัสจอง: #${b.bookingCode}
 ชื่อผู้จอง: ${bookingName}
@@ -773,7 +773,7 @@ Username: ${usernameAndMemberId}
                         <Coins className="h-3.5 w-3.5 text-brand-green" />
                         <span>รอบเติม:</span>
                         <span className="text-brand-ink font-black">
-                          {b.topupRoundName || "รายการเดิม"}
+                          {b.topupRoundName || "ไม่กำหนดรอบเติม"}
                           {b.topupRoundStart && b.topupRoundEnd
                             ? ` ${b.topupRoundStart}–${b.topupRoundEnd} น.`
                             : ""}
