@@ -699,6 +699,7 @@ export default function SettingsPage() {
   const [agentRegLink, setAgentRegLink] = useState(
     "https://tclcoinsxormor.com/agent/apply"
   );
+  const [vipRegLink, setVipRegLink] = useState("");
   const [lineOA, setLineOA] = useState("https://line.me/R/ti/p/@tclcoinsxormor");
   const [phone, setPhone] = useState("02-123-4567");
   const [qrGeneral, setQrGeneral] = useState<string | null>(null);
@@ -722,7 +723,12 @@ export default function SettingsPage() {
   const [reviewLink, setReviewLink] = useState("");
   const [welcomeTitle, setWelcomeTitle] = useState("");
   const [welcomeAgentDesc, setWelcomeAgentDesc] = useState("");
+  const [welcomeVipDesc, setWelcomeVipDesc] = useState("");
   const [welcomeMemberDesc, setWelcomeMemberDesc] = useState("");
+  const [agentSignupTitle, setAgentSignupTitle] = useState("");
+  const [agentSignupDescription, setAgentSignupDescription] = useState("");
+  const [vipSignupTitle, setVipSignupTitle] = useState("");
+  const [vipSignupDescription, setVipSignupDescription] = useState("");
   const [howItWorks, setHowItWorks] = useState<HowItWorksStep[]>(DEFAULT_HOW_IT_WORKS);
   const updateStep = (i: number, key: "title" | "desc", value: string) =>
     setHowItWorks((prev) => prev.map((s, idx) => (idx === i ? { ...s, [key]: value } : s)));
@@ -807,6 +813,7 @@ export default function SettingsPage() {
         setDescription(c.description);
         setKeywords(c.keywords);
         setAgentRegLink(c.agentLink);
+        setVipRegLink(c.vipLink ?? "");
         setLineOA(c.contactLine);
         setPhone(c.phone);
         setQrGeneral(c.qrcodenormal || null);
@@ -827,7 +834,12 @@ export default function SettingsPage() {
         setReviewLink(c.reviewLink ?? "");
         setWelcomeTitle(c.welcomeTitle ?? "");
         setWelcomeAgentDesc(c.welcomeAgentDesc ?? "");
+        setWelcomeVipDesc(c.welcomeVipDesc ?? "");
         setWelcomeMemberDesc(c.welcomeMemberDesc ?? "");
+        setAgentSignupTitle(c.agentSignupTitle ?? "");
+        setAgentSignupDescription(c.agentSignupDescription ?? "");
+        setVipSignupTitle(c.vipSignupTitle ?? "");
+        setVipSignupDescription(c.vipSignupDescription ?? "");
         const parsedSteps = parseHowItWorks(c.howItWorks);
         setHowItWorks(parsedSteps.length ? parsedSteps : DEFAULT_HOW_IT_WORKS);
         setFooterDescription(c.footerDescription ?? "");
@@ -859,6 +871,7 @@ export default function SettingsPage() {
         description,
         keywords,
         agentLink: agentRegLink,
+        vipLink: vipRegLink,
         contactLine: lineOA,
         phone,
         qrcodenormal: qrGeneral ?? "",
@@ -877,7 +890,12 @@ export default function SettingsPage() {
         reviewLink,
         welcomeTitle,
         welcomeAgentDesc,
+        welcomeVipDesc,
         welcomeMemberDesc,
+        agentSignupTitle,
+        agentSignupDescription,
+        vipSignupTitle,
+        vipSignupDescription,
         howItWorks,
         termsContent,
         privacyContent,
@@ -1206,15 +1224,6 @@ export default function SettingsPage() {
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="ลิงก์สมัครตัวแทน" icon={LinkIcon}>
-                    <input
-                      type="url"
-                      value={agentRegLink}
-                      onChange={(e) => setAgentRegLink(e.target.value)}
-                      placeholder="https://..."
-                      className={inputCls}
-                    />
-                  </Field>
                   <Field label="ลิงก์ติดต่อ (LINE OA)" icon={MessageCircle}>
                     <input
                       type="url"
@@ -1417,7 +1426,7 @@ export default function SettingsPage() {
                       onChange={(e) =>
                         setLineGroupVipLockedMessage(e.target.value)
                       }
-                      placeholder="สิทธิ์เฉพาะสมาชิก VIP สมัครตัวแทน VIP ราคา 199 บาท"
+                      placeholder="สิทธิ์เฉพาะสมาชิก VIP สมัคร VIP ราคา 199 บาท"
                       className={textareaCls}
                     />
                   </Field>
@@ -1444,13 +1453,22 @@ export default function SettingsPage() {
                     className={inputCls}
                   />
                 </Field>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Field label="คำอธิบายบทบาทตัวแทน">
                     <textarea
                       rows={3}
                       value={welcomeAgentDesc}
                       onChange={(e) => setWelcomeAgentDesc(e.target.value)}
                       placeholder="ตัวแทนจำหน่าย: รับเรท VIP ส่วนลดพิเศษทุกออเดอร์..."
+                      className={textareaCls}
+                    />
+                  </Field>
+                  <Field label="คำอธิบายบทบาท VIP">
+                    <textarea
+                      rows={3}
+                      value={welcomeVipDesc}
+                      onChange={(e) => setWelcomeVipDesc(e.target.value)}
+                      placeholder="VIP: สมัคร 199 บาท เพื่อรับราคาและสิทธิพิเศษเฉพาะสมาชิก..."
                       className={textareaCls}
                     />
                   </Field>
@@ -1463,6 +1481,79 @@ export default function SettingsPage() {
                       className={textareaCls}
                     />
                   </Field>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-3 rounded-2xl border border-brand-green-100 bg-brand-paper p-4">
+                    <p className="text-sm font-black text-brand-ink">
+                      ข้อความปุ่มยืนยันตัวแทน
+                    </p>
+                    <Field label="หัวข้อปุ่ม">
+                      <input
+                        type="text"
+                        value={agentSignupTitle}
+                        onChange={(e) => setAgentSignupTitle(e.target.value)}
+                        placeholder="ยืนยันตัวตนเป็นตัวแทน"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="ข้อความใต้หัวข้อ">
+                      <input
+                        type="text"
+                        value={agentSignupDescription}
+                        onChange={(e) => setAgentSignupDescription(e.target.value)}
+                        placeholder="เพียงแค่ยืนยันตัวตน ก็รับสิทธิพิเศษไปเลย"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field
+                      label="ลิงก์เมื่อกดปุ่ม"
+                      helper="เปิดในแท็บใหม่ รองรับการกรอกแบบมีหรือไม่มี https://"
+                    >
+                      <input
+                        type="text"
+                        value={agentRegLink}
+                        onChange={(e) => setAgentRegLink(e.target.value)}
+                        placeholder="https://example.com/agent หรือ line.me/..."
+                        className={inputCls}
+                      />
+                    </Field>
+                  </div>
+                  <div className="space-y-3 rounded-2xl border border-amber-400/30 bg-brand-paper p-4">
+                    <p className="text-sm font-black text-amber-400">
+                      ข้อความปุ่มสมัคร VIP
+                    </p>
+                    <Field label="หัวข้อปุ่ม">
+                      <input
+                        type="text"
+                        value={vipSignupTitle}
+                        onChange={(e) => setVipSignupTitle(e.target.value)}
+                        placeholder="สมัคร VIP 199฿"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="ข้อความใต้หัวข้อ">
+                      <input
+                        type="text"
+                        value={vipSignupDescription}
+                        onChange={(e) => setVipSignupDescription(e.target.value)}
+                        placeholder="รับราคา VIP และสิทธิพิเศษเฉพาะสมาชิก"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field
+                      label="ลิงก์เมื่อกดปุ่ม"
+                      helper="เปิดลิงก์สมัคร VIP ในแท็บใหม่ หากเว้นว่างจะใช้ลิงก์ LINE OA"
+                    >
+                      <input
+                        type="text"
+                        value={vipRegLink}
+                        onChange={(e) => setVipRegLink(e.target.value)}
+                        placeholder="https://example.com/vip หรือ line.me/..."
+                        className={inputCls}
+                      />
+                    </Field>
+                  </div>
                 </div>
 
                 {/* How it works steps */}

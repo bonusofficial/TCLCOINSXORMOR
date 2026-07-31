@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Calendar, Clock, AlertTriangle, ArrowRight, ArrowLeft, Check, Ticket, ExternalLink, ShieldCheck, Copy } from "lucide-react";
+import { X, Calendar, Clock, AlertTriangle, ArrowRight, ArrowLeft, Check, ExternalLink, ShieldCheck, Copy } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import { generateBookingCode, formatBookingDateTime } from "@/lib/booking";
 import { toast } from "sonner";
@@ -38,7 +38,9 @@ export default function BookingModal({ isOpen, onClose, selectedPackage }: Booki
   const [bookedAt, setBookedAt] = useState<Date | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) return;
+
+    const timeoutId = window.setTimeout(() => {
       setStep(1);
       setAgreed(false);
       // Generate booking code ตาม role
@@ -55,7 +57,9 @@ export default function BookingModal({ isOpen, onClose, selectedPackage }: Booki
         ),
       }));
       setBookedAt(null);
-    }
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [isOpen, userRole, session]);
 
   const copyTicket = () => {
@@ -67,9 +71,7 @@ export default function BookingModal({ isOpen, onClose, selectedPackage }: Booki
 
   // Pricing calculations
   const originalPrice = parseFloat(selectedPackage.price.replace(/,/g, ""));
-  // Agents get a 5% discount
-  const discount = userType === "agent" ? originalPrice * 0.05 : 0;
-  const finalPrice = originalPrice - discount;
+  const finalPrice = originalPrice;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -189,7 +191,7 @@ export default function BookingModal({ isOpen, onClose, selectedPackage }: Booki
                       : "text-brand-ink-soft hover:text-brand-green"
                   }`}
                 >
-                  ตัวแทนรับราคาสมาชิก (ลด 5%)
+                  ตัวแทนจำหน่าย
                 </button>
               </div>
             </div>
@@ -378,13 +380,6 @@ export default function BookingModal({ isOpen, onClose, selectedPackage }: Booki
                 <span className="text-brand-ink-soft">เวลาดำเนินการจอง</span>
                 <span>{formData.reserveDate} ({formData.reserveTime})</span>
               </div>
-
-              {discount > 0 && (
-                <div className="flex justify-between items-center text-sm font-semibold text-brand-green">
-                  <span>ส่วนลดตัวแทน (5%)</span>
-                  <span>-{discount.toLocaleString()} บาท</span>
-                </div>
-              )}
 
               <div className="flex justify-between items-center border-t border-brand-green-100 pt-3 text-brand-ink">
                 <span className="text-sm font-extrabold">ยอดโอนชำระสุทธิ</span>

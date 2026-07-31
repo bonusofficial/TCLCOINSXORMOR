@@ -11,6 +11,7 @@ import { publicApi } from "@/lib/eden";
 import { toast } from "sonner";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
 import { normalizePhoneInput } from "@/lib/utils";
+import { normalizeExternalUrl } from "@/lib/external-url";
 import {
   X,
   User,
@@ -1021,35 +1022,60 @@ export default function AuthModal({
                     )}
                   </button>
 
-                  {/* Secondary Button — VIP Agent (dark green + gold border + glow) */}
+                  {/* สมัครตัวแทนและ VIP แยกสิทธิ์และราคาให้ชัดเจน */}
                   {activeTab !== "forgot" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (config?.agentLink) {
-                          window.open(config.agentLink, "_blank");
-                        } else {
-                          handleTabChange("register");
-                        }
-                      }}
-                      className="group/agent relative w-full rounded-2xl bg-gradient-to-br from-brand-green-700 via-brand-green-600 to-brand-leaf-deep border-2 border-brand-gold py-3.5 px-4 text-base font-extrabold text-brand-ink hover:scale-[1.01] shadow-lg shadow-brand-gold/25 hover:shadow-xl hover:shadow-brand-gold/45 transition duration-250 flex items-center justify-center gap-2.5 cursor-pointer overflow-hidden"
-                    >
-                      {/* Gold shimmer overlay */}
-                      <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-brand-gold-light/15 to-transparent translate-x-[-100%] group-hover/agent:translate-x-[100%] transition-transform duration-700" />
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const href = normalizeExternalUrl(config?.agentLink);
+                          if (href) {
+                            window.open(href, "_blank", "noopener,noreferrer");
+                          } else {
+                            handleTabChange("register");
+                          }
+                        }}
+                        className="group/agent relative flex w-full cursor-pointer items-center justify-center gap-2.5 overflow-hidden rounded-2xl border border-brand-green bg-brand-green/10 px-3 py-3.5 text-left transition duration-250 hover:scale-[1.01] hover:bg-brand-green/15"
+                      >
+                        <UserCheck className="h-5 w-5 flex-shrink-0 text-brand-green" strokeWidth={2.5} />
+                        <span className="flex min-w-0 flex-col items-start gap-1 leading-none">
+                          <span className="text-sm font-black text-brand-green">
+                            {config.agentSignupTitle?.trim() || "ยืนยันตัวตนเป็นตัวแทน"}
+                          </span>
+                          <span className="text-[9.5px] font-bold leading-tight text-brand-ink-soft">
+                            {config.agentSignupDescription?.trim() ||
+                              "เพียงแค่ยืนยันตัวตน ก็รับสิทธิพิเศษไปเลย"}
+                          </span>
+                        </span>
+                      </button>
 
-                      <Crown
-                        className="h-5 w-5 text-brand-gold drop-shadow-[0_1px_3px_rgba(240,168,0,0.6)] flex-shrink-0"
-                        strokeWidth={2.5}
-                      />
-                      <span className="flex flex-col items-start leading-none gap-1">
-                        <span className="text-white text-glow-gold">
-                          สมัครตัวแทน 199฿
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const href = normalizeExternalUrl(
+                            config?.vipLink || config?.contactLine
+                          );
+                          if (href) {
+                            window.open(href, "_blank", "noopener,noreferrer");
+                          } else {
+                            handleTabChange("register");
+                          }
+                        }}
+                        className="group/vip relative flex w-full cursor-pointer items-center justify-center gap-2.5 overflow-hidden rounded-2xl border-2 border-brand-gold bg-gradient-to-br from-brand-green-700 via-brand-green-600 to-brand-leaf-deep px-3 py-3.5 text-left shadow-lg shadow-brand-gold/20 transition duration-250 hover:scale-[1.01] hover:shadow-brand-gold/40"
+                      >
+                        <span className="pointer-events-none absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-brand-gold-light/15 to-transparent transition-transform duration-700 group-hover/vip:translate-x-[100%]" />
+                        <Crown className="h-5 w-5 flex-shrink-0 text-brand-gold" strokeWidth={2.5} />
+                        <span className="relative flex min-w-0 flex-col items-start gap-1 leading-none">
+                          <span className="text-sm font-black text-white">
+                            {config.vipSignupTitle?.trim() || "สมัคร VIP 199฿"}
+                          </span>
+                          <span className="text-[9.5px] font-bold leading-tight text-brand-gold-light">
+                            {config.vipSignupDescription?.trim() ||
+                              "รับราคา VIP และสิทธิพิเศษเฉพาะสมาชิก"}
+                          </span>
                         </span>
-                        <span className="text-[10px] text-brand-gold-light font-bold tracking-wide">
-                          สิทธิพิเศษ VIP • พร้อมส่วนลดมากมาย!
-                        </span>
-                      </span>
-                    </button>
+                      </button>
+                    </div>
                   )}
                 </div>
               </form>
@@ -1161,6 +1187,22 @@ export default function AuthModal({
                       ในกลุ่มโอเพนแชทที่คุณตั้งไว้ได้เลย
                     </>
                   )}
+                </span>
+              </div>
+            </div>
+
+            {/* Highlight Tag: VIP */}
+            <div className="flex gap-4 rounded-[28px] border border-brand-gold/35 bg-brand-surface-soft p-8 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl">
+              <div className="mt-0.5 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-brand-gold/10 text-brand-gold shadow-sm">
+                <Crown className="h-5.5 w-5.5" />
+              </div>
+              <div className="text-[12.5px] leading-relaxed">
+                <b className="mb-1 block text-[14.5px] font-black text-brand-gold">
+                  บทบาทสมาชิก VIP
+                </b>
+                <span className="whitespace-pre-line font-medium text-brand-ink-soft">
+                  {config.welcomeVipDesc?.trim() ||
+                    "สมัคร VIP ราคา 199 บาท เพื่อรับราคา VIP และสิทธิพิเศษเฉพาะสมาชิก"}
                 </span>
               </div>
             </div>

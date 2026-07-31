@@ -113,13 +113,17 @@ const app = new Elysia({ prefix: "/api/v0/products" })
         productId: true,
         bookingDate: true,
         topupRoundCode: true,
+        quantity: true,
       },
     });
     const roundCountMap = new Map<string, number>();
     for (const booking of roundBookings) {
       if (booking.productId == null || !booking.topupRoundCode) continue;
       const key = `${booking.productId}:${booking.bookingDate.toISOString().slice(0, 10)}:${booking.topupRoundCode}`;
-      roundCountMap.set(key, (roundCountMap.get(key) ?? 0) + 1);
+      roundCountMap.set(
+        key,
+        (roundCountMap.get(key) ?? 0) + Math.max(1, booking.quantity)
+      );
     }
 
     return {

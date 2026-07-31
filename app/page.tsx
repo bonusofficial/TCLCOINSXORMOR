@@ -16,6 +16,7 @@ import { useSession, signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
 import { getAdminDashboardHref } from "@/lib/admin-url";
+import { normalizeExternalUrl } from "@/lib/external-url";
 
 type UserRole = "member" | "vip" | "agent" | "admin";
 
@@ -55,6 +56,10 @@ export default function Home() {
   const isLoggedIn = !!sessionUser || roleOverride !== null;
   const userRole = roleOverride ?? resolveUserRole(sessionUser);
   const adminDashboardHref = getAdminDashboardHref();
+  const agentSignupHref = normalizeExternalUrl(config?.agentLink);
+  const vipSignupHref = normalizeExternalUrl(
+    config?.vipLink || config?.contactLine
+  );
 
   // Modal states
   const [authOpen, setAuthOpen] = useState(false);
@@ -158,7 +163,7 @@ export default function Home() {
         const description = isAdmin
           ? "คุณเข้าใช้งานในฐานะผู้ดูแลระบบ — เข้าถึงแดชบอร์ดและจัดการระบบได้เต็มรูปแบบ"
           : isAgent
-          ? "ยินดีต้อนรับ! คุณอยู่ในฐานะตัวแทนจำหน่าย รับส่วนลดพิเศษ 5% ทุกออเดอร์"
+          ? "ยินดีต้อนรับ! คุณอยู่ในฐานะตัวแทนจำหน่าย และได้รับเรทราคาพิเศษสำหรับตัวแทน"
           : isVip
           ? "บัญชีของคุณได้รับยศ VIP และรหัสการจองเฉพาะที่ขึ้นต้นด้วย VIP-"
           : "คุณเป็นสมาชิกทั่วไป สามารถอัปเกรดเพื่อรับเรทราคาสุดพิเศษของตัวแทนได้ทันที";
@@ -185,9 +190,20 @@ export default function Home() {
                   </a>
                 )}
                 {isAgent && (
-                  <div className="text-xs font-extrabold text-brand-gold bg-brand-gold/10 py-2 px-3 rounded-lg border border-brand-gold/30 text-center inline-flex items-center justify-center gap-1.5 w-full">
-                    <User className="h-4 w-4" strokeWidth={2.5} />
-                    ตัวแทนจำหน่าย · เปิดใช้งานแล้ว
+                  <div className="space-y-2">
+                    <div className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand-gold/30 bg-brand-gold/10 px-3 py-2 text-center text-xs font-extrabold text-brand-gold">
+                      <User className="h-4 w-4" strokeWidth={2.5} />
+                      ตัวแทนจำหน่าย · เปิดใช้งานแล้ว
+                    </div>
+                    <a
+                      href={vipSignupHref || "#"}
+                      target={vipSignupHref ? "_blank" : undefined}
+                      rel="noreferrer"
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-center text-xs font-black text-amber-400 transition hover:bg-amber-400/15"
+                    >
+                      <Crown className="h-4 w-4" strokeWidth={2.7} />
+                      หรืออัปเกรดเป็น VIP ได้ คลิกเลย
+                    </a>
                   </div>
                 )}
                 {isVip && (
@@ -201,8 +217,8 @@ export default function Home() {
                     onClick={(e) => {
                       e.preventDefault();
                       setShowAccountMenu(false);
-                      if (config?.agentLink?.trim()) {
-                        window.open(config.agentLink.trim(), "_blank", "noopener,noreferrer");
+                      if (agentSignupHref) {
+                        window.open(agentSignupHref, "_blank", "noopener,noreferrer");
                       }
                     }}
                     className="w-full text-center py-2.5 px-3 rounded-xl font-extrabold text-xs bg-gradient-to-r from-brand-gold-light via-brand-gold to-brand-gold-deep text-brand-ink shadow-md shadow-brand-gold/30 hover:shadow-lg hover:shadow-brand-gold/45 hover:-translate-y-0.5 transition cursor-pointer flex items-center justify-center gap-1.5"
@@ -240,8 +256,8 @@ export default function Home() {
 
               {isMember && (
                 <a
-                  href={config?.agentLink?.trim() || "#"}
-                  target={config?.agentLink?.trim() ? "_blank" : undefined}
+                  href={agentSignupHref || "#"}
+                  target={agentSignupHref ? "_blank" : undefined}
                   rel="noreferrer"
                   className="mt-2.5 pt-2 border-t border-brand-green-100/50 w-full text-center text-[10.5px] font-black text-brand-gold-deep hover:text-amber-500 transition cursor-pointer flex items-center justify-center gap-0.5"
                 >

@@ -21,6 +21,7 @@ export interface PublicConfig {
   description: string;
   keywords: string;
   agentLink: string;
+  vipLink: string;
   contactLine: string;
   phone: string;
   qrcodenormal: string;
@@ -37,7 +38,12 @@ export interface PublicConfig {
   lineGroupVipLockedMessage: string;
   welcomeTitle: string;
   welcomeAgentDesc: string;
+  welcomeVipDesc: string;
   welcomeMemberDesc: string;
+  agentSignupTitle: string;
+  agentSignupDescription: string;
+  vipSignupTitle: string;
+  vipSignupDescription: string;
   howItWorks: { title: string; desc: string }[];
   termsContent: string;
   privacyContent: string;
@@ -248,6 +254,7 @@ const DEFAULT_CONFIG: PublicConfig = {
   description: "",
   keywords: "",
   agentLink: "",
+  vipLink: "",
   contactLine: "",
   phone: "",
   qrcodenormal: "",
@@ -264,7 +271,12 @@ const DEFAULT_CONFIG: PublicConfig = {
   lineGroupVipLockedMessage: "",
   welcomeTitle: "",
   welcomeAgentDesc: "",
+  welcomeVipDesc: "",
   welcomeMemberDesc: "",
+  agentSignupTitle: "",
+  agentSignupDescription: "",
+  vipSignupTitle: "",
+  vipSignupDescription: "",
   howItWorks: [],
   termsContent: "",
   privacyContent: "",

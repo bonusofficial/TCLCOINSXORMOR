@@ -403,18 +403,28 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
               });
             }
             if (liveRound) {
-              const roundBookingCount = await tx.bookings.count({
+              const roundQuantityAggregate = await tx.bookings.aggregate({
                 where: {
                   productId: prod.id,
                   bookingDate: { gte: startOfDay, lte: endOfDay },
                   topupRoundCode: liveRound.code,
                   status: { not: "ยกเลิก" },
                 },
+                _sum: { quantity: true },
               });
-              if (roundBookingCount >= liveRound.capacity) {
+              const bookedRoundQuantity =
+                roundQuantityAggregate._sum.quantity ?? 0;
+              const remainingRoundQuantity = Math.max(
+                0,
+                liveRound.capacity - bookedRoundQuantity
+              );
+              if (quantity > remainingRoundQuantity) {
                 throw new BookingHttpError(409, {
                   ok: false,
-                  message: `${liveRound.name} เต็มแล้ว กรุณาเลือกรอบเติมอื่น`,
+                  message:
+                    remainingRoundQuantity <= 0
+                      ? `${liveRound.name} เต็มแล้ว กรุณาเลือกรอบเติมอื่น`
+                      : `${liveRound.name} เหลือ ${remainingRoundQuantity} ชิ้น กรุณาลดจำนวนสินค้าแล้วลองใหม่`,
                 });
               }
             }
@@ -543,7 +553,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         data: { status: "ยกเลิก" },
       });
 
-      // คืนสต็อกตามจำนวนสินค้า (ความจุรอบยังนับ booking เป็น 1 รายการ)
+      // คืนสต็อกตามจำนวนสินค้า ส่วนจำนวนว่างของรอบคำนวณใหม่จาก booking ที่ยังไม่ถูกยกเลิก
       await adjustProductStock(before.productId, before.quantity);
 
       logAudit({

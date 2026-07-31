@@ -15,7 +15,7 @@ export const BookingCreateBody = t.Object({
   postalCode: t.Optional(t.String({ pattern: "^\\d{5}$" })),
   topupRoundCode: t.Optional(t.String({ minLength: 1, maxLength: 80 })),
   content: t.Optional(t.String()),
-  quantity: t.Optional(t.Integer({ minimum: 1, maximum: 2 })),
+  quantity: t.Optional(t.Integer({ minimum: 1, maximum: 100000 })),
   price: t.Number({ minimum: 0 }),
   bookingDate: t.String({ pattern: "^\\d{4}-\\d{2}-\\d{2}$" }),
   bookingTime: t.Optional(t.String()),

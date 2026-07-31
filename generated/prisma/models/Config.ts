@@ -41,6 +41,7 @@ export type ConfigMinAggregateOutputType = {
   description: string | null
   keywords: string | null
   agentLink: string | null
+  vipLink: string | null
   contactLine: string | null
   phone: string | null
   qrcodenormal: string | null
@@ -57,7 +58,12 @@ export type ConfigMinAggregateOutputType = {
   lineGroupVipLockedMessage: string | null
   welcomeTitle: string | null
   welcomeAgentDesc: string | null
+  welcomeVipDesc: string | null
   welcomeMemberDesc: string | null
+  agentSignupTitle: string | null
+  agentSignupDescription: string | null
+  vipSignupTitle: string | null
+  vipSignupDescription: string | null
   termsContent: string | null
   privacyContent: string | null
   reviewLink: string | null
@@ -80,6 +86,7 @@ export type ConfigMaxAggregateOutputType = {
   description: string | null
   keywords: string | null
   agentLink: string | null
+  vipLink: string | null
   contactLine: string | null
   phone: string | null
   qrcodenormal: string | null
@@ -96,7 +103,12 @@ export type ConfigMaxAggregateOutputType = {
   lineGroupVipLockedMessage: string | null
   welcomeTitle: string | null
   welcomeAgentDesc: string | null
+  welcomeVipDesc: string | null
   welcomeMemberDesc: string | null
+  agentSignupTitle: string | null
+  agentSignupDescription: string | null
+  vipSignupTitle: string | null
+  vipSignupDescription: string | null
   termsContent: string | null
   privacyContent: string | null
   reviewLink: string | null
@@ -119,6 +131,7 @@ export type ConfigCountAggregateOutputType = {
   description: number
   keywords: number
   agentLink: number
+  vipLink: number
   contactLine: number
   phone: number
   qrcodenormal: number
@@ -135,7 +148,12 @@ export type ConfigCountAggregateOutputType = {
   lineGroupVipLockedMessage: number
   welcomeTitle: number
   welcomeAgentDesc: number
+  welcomeVipDesc: number
   welcomeMemberDesc: number
+  agentSignupTitle: number
+  agentSignupDescription: number
+  vipSignupTitle: number
+  vipSignupDescription: number
   howItWorks: number
   termsContent: number
   privacyContent: number
@@ -171,6 +189,7 @@ export type ConfigMinAggregateInputType = {
   description?: true
   keywords?: true
   agentLink?: true
+  vipLink?: true
   contactLine?: true
   phone?: true
   qrcodenormal?: true
@@ -187,7 +206,12 @@ export type ConfigMinAggregateInputType = {
   lineGroupVipLockedMessage?: true
   welcomeTitle?: true
   welcomeAgentDesc?: true
+  welcomeVipDesc?: true
   welcomeMemberDesc?: true
+  agentSignupTitle?: true
+  agentSignupDescription?: true
+  vipSignupTitle?: true
+  vipSignupDescription?: true
   termsContent?: true
   privacyContent?: true
   reviewLink?: true
@@ -210,6 +234,7 @@ export type ConfigMaxAggregateInputType = {
   description?: true
   keywords?: true
   agentLink?: true
+  vipLink?: true
   contactLine?: true
   phone?: true
   qrcodenormal?: true
@@ -226,7 +251,12 @@ export type ConfigMaxAggregateInputType = {
   lineGroupVipLockedMessage?: true
   welcomeTitle?: true
   welcomeAgentDesc?: true
+  welcomeVipDesc?: true
   welcomeMemberDesc?: true
+  agentSignupTitle?: true
+  agentSignupDescription?: true
+  vipSignupTitle?: true
+  vipSignupDescription?: true
   termsContent?: true
   privacyContent?: true
   reviewLink?: true
@@ -249,6 +279,7 @@ export type ConfigCountAggregateInputType = {
   description?: true
   keywords?: true
   agentLink?: true
+  vipLink?: true
   contactLine?: true
   phone?: true
   qrcodenormal?: true
@@ -265,7 +296,12 @@ export type ConfigCountAggregateInputType = {
   lineGroupVipLockedMessage?: true
   welcomeTitle?: true
   welcomeAgentDesc?: true
+  welcomeVipDesc?: true
   welcomeMemberDesc?: true
+  agentSignupTitle?: true
+  agentSignupDescription?: true
+  vipSignupTitle?: true
+  vipSignupDescription?: true
   howItWorks?: true
   termsContent?: true
   privacyContent?: true
@@ -378,6 +414,7 @@ export type ConfigGroupByOutputType = {
   description: string
   keywords: string
   agentLink: string
+  vipLink: string | null
   contactLine: string
   phone: string
   qrcodenormal: string
@@ -394,7 +431,12 @@ export type ConfigGroupByOutputType = {
   lineGroupVipLockedMessage: string | null
   welcomeTitle: string | null
   welcomeAgentDesc: string | null
+  welcomeVipDesc: string | null
   welcomeMemberDesc: string | null
+  agentSignupTitle: string | null
+  agentSignupDescription: string | null
+  vipSignupTitle: string | null
+  vipSignupDescription: string | null
   howItWorks: runtime.JsonValue | null
   termsContent: string | null
   privacyContent: string | null
@@ -443,6 +485,7 @@ export type ConfigWhereInput = {
   description?: Prisma.StringFilter<"Config"> | string
   keywords?: Prisma.StringFilter<"Config"> | string
   agentLink?: Prisma.StringFilter<"Config"> | string
+  vipLink?: Prisma.StringNullableFilter<"Config"> | string | null
   contactLine?: Prisma.StringFilter<"Config"> | string
   phone?: Prisma.StringFilter<"Config"> | string
   qrcodenormal?: Prisma.StringFilter<"Config"> | string
@@ -459,7 +502,12 @@ export type ConfigWhereInput = {
   lineGroupVipLockedMessage?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeTitle?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeAgentDesc?: Prisma.StringNullableFilter<"Config"> | string | null
+  welcomeVipDesc?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeMemberDesc?: Prisma.StringNullableFilter<"Config"> | string | null
+  agentSignupTitle?: Prisma.StringNullableFilter<"Config"> | string | null
+  agentSignupDescription?: Prisma.StringNullableFilter<"Config"> | string | null
+  vipSignupTitle?: Prisma.StringNullableFilter<"Config"> | string | null
+  vipSignupDescription?: Prisma.StringNullableFilter<"Config"> | string | null
   howItWorks?: Prisma.JsonNullableFilter<"Config">
   termsContent?: Prisma.StringNullableFilter<"Config"> | string | null
   privacyContent?: Prisma.StringNullableFilter<"Config"> | string | null
@@ -485,6 +533,7 @@ export type ConfigOrderByWithRelationInput = {
   description?: Prisma.SortOrder
   keywords?: Prisma.SortOrder
   agentLink?: Prisma.SortOrder
+  vipLink?: Prisma.SortOrderInput | Prisma.SortOrder
   contactLine?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   qrcodenormal?: Prisma.SortOrder
@@ -501,7 +550,12 @@ export type ConfigOrderByWithRelationInput = {
   lineGroupVipLockedMessage?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeAgentDesc?: Prisma.SortOrderInput | Prisma.SortOrder
+  welcomeVipDesc?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeMemberDesc?: Prisma.SortOrderInput | Prisma.SortOrder
+  agentSignupTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  agentSignupDescription?: Prisma.SortOrderInput | Prisma.SortOrder
+  vipSignupTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  vipSignupDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   howItWorks?: Prisma.SortOrderInput | Prisma.SortOrder
   termsContent?: Prisma.SortOrderInput | Prisma.SortOrder
   privacyContent?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -531,6 +585,7 @@ export type ConfigWhereUniqueInput = Prisma.AtLeast<{
   description?: Prisma.StringFilter<"Config"> | string
   keywords?: Prisma.StringFilter<"Config"> | string
   agentLink?: Prisma.StringFilter<"Config"> | string
+  vipLink?: Prisma.StringNullableFilter<"Config"> | string | null
   contactLine?: Prisma.StringFilter<"Config"> | string
   phone?: Prisma.StringFilter<"Config"> | string
   qrcodenormal?: Prisma.StringFilter<"Config"> | string
@@ -547,7 +602,12 @@ export type ConfigWhereUniqueInput = Prisma.AtLeast<{
   lineGroupVipLockedMessage?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeTitle?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeAgentDesc?: Prisma.StringNullableFilter<"Config"> | string | null
+  welcomeVipDesc?: Prisma.StringNullableFilter<"Config"> | string | null
   welcomeMemberDesc?: Prisma.StringNullableFilter<"Config"> | string | null
+  agentSignupTitle?: Prisma.StringNullableFilter<"Config"> | string | null
+  agentSignupDescription?: Prisma.StringNullableFilter<"Config"> | string | null
+  vipSignupTitle?: Prisma.StringNullableFilter<"Config"> | string | null
+  vipSignupDescription?: Prisma.StringNullableFilter<"Config"> | string | null
   howItWorks?: Prisma.JsonNullableFilter<"Config">
   termsContent?: Prisma.StringNullableFilter<"Config"> | string | null
   privacyContent?: Prisma.StringNullableFilter<"Config"> | string | null
@@ -573,6 +633,7 @@ export type ConfigOrderByWithAggregationInput = {
   description?: Prisma.SortOrder
   keywords?: Prisma.SortOrder
   agentLink?: Prisma.SortOrder
+  vipLink?: Prisma.SortOrderInput | Prisma.SortOrder
   contactLine?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   qrcodenormal?: Prisma.SortOrder
@@ -589,7 +650,12 @@ export type ConfigOrderByWithAggregationInput = {
   lineGroupVipLockedMessage?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeAgentDesc?: Prisma.SortOrderInput | Prisma.SortOrder
+  welcomeVipDesc?: Prisma.SortOrderInput | Prisma.SortOrder
   welcomeMemberDesc?: Prisma.SortOrderInput | Prisma.SortOrder
+  agentSignupTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  agentSignupDescription?: Prisma.SortOrderInput | Prisma.SortOrder
+  vipSignupTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  vipSignupDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   howItWorks?: Prisma.SortOrderInput | Prisma.SortOrder
   termsContent?: Prisma.SortOrderInput | Prisma.SortOrder
   privacyContent?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -623,6 +689,7 @@ export type ConfigScalarWhereWithAggregatesInput = {
   description?: Prisma.StringWithAggregatesFilter<"Config"> | string
   keywords?: Prisma.StringWithAggregatesFilter<"Config"> | string
   agentLink?: Prisma.StringWithAggregatesFilter<"Config"> | string
+  vipLink?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   contactLine?: Prisma.StringWithAggregatesFilter<"Config"> | string
   phone?: Prisma.StringWithAggregatesFilter<"Config"> | string
   qrcodenormal?: Prisma.StringWithAggregatesFilter<"Config"> | string
@@ -639,7 +706,12 @@ export type ConfigScalarWhereWithAggregatesInput = {
   lineGroupVipLockedMessage?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   welcomeTitle?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   welcomeAgentDesc?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  welcomeVipDesc?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   welcomeMemberDesc?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  agentSignupTitle?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  agentSignupDescription?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  vipSignupTitle?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
+  vipSignupDescription?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   howItWorks?: Prisma.JsonNullableWithAggregatesFilter<"Config">
   termsContent?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
   privacyContent?: Prisma.StringNullableWithAggregatesFilter<"Config"> | string | null
@@ -664,6 +736,7 @@ export type ConfigCreateInput = {
   description: string
   keywords: string
   agentLink: string
+  vipLink?: string | null
   contactLine: string
   phone: string
   qrcodenormal: string
@@ -680,7 +753,12 @@ export type ConfigCreateInput = {
   lineGroupVipLockedMessage?: string | null
   welcomeTitle?: string | null
   welcomeAgentDesc?: string | null
+  welcomeVipDesc?: string | null
   welcomeMemberDesc?: string | null
+  agentSignupTitle?: string | null
+  agentSignupDescription?: string | null
+  vipSignupTitle?: string | null
+  vipSignupDescription?: string | null
   howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   termsContent?: string | null
   privacyContent?: string | null
@@ -706,6 +784,7 @@ export type ConfigUncheckedCreateInput = {
   description: string
   keywords: string
   agentLink: string
+  vipLink?: string | null
   contactLine: string
   phone: string
   qrcodenormal: string
@@ -722,7 +801,12 @@ export type ConfigUncheckedCreateInput = {
   lineGroupVipLockedMessage?: string | null
   welcomeTitle?: string | null
   welcomeAgentDesc?: string | null
+  welcomeVipDesc?: string | null
   welcomeMemberDesc?: string | null
+  agentSignupTitle?: string | null
+  agentSignupDescription?: string | null
+  vipSignupTitle?: string | null
+  vipSignupDescription?: string | null
   howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   termsContent?: string | null
   privacyContent?: string | null
@@ -747,6 +831,7 @@ export type ConfigUpdateInput = {
   description?: Prisma.StringFieldUpdateOperationsInput | string
   keywords?: Prisma.StringFieldUpdateOperationsInput | string
   agentLink?: Prisma.StringFieldUpdateOperationsInput | string
+  vipLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contactLine?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodenormal?: Prisma.StringFieldUpdateOperationsInput | string
@@ -763,7 +848,12 @@ export type ConfigUpdateInput = {
   lineGroupVipLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeVipDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentSignupTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentSignupDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vipSignupTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vipSignupDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   termsContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   privacyContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -789,6 +879,7 @@ export type ConfigUncheckedUpdateInput = {
   description?: Prisma.StringFieldUpdateOperationsInput | string
   keywords?: Prisma.StringFieldUpdateOperationsInput | string
   agentLink?: Prisma.StringFieldUpdateOperationsInput | string
+  vipLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contactLine?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodenormal?: Prisma.StringFieldUpdateOperationsInput | string
@@ -805,7 +896,12 @@ export type ConfigUncheckedUpdateInput = {
   lineGroupVipLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeVipDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentSignupTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentSignupDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vipSignupTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vipSignupDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   termsContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   privacyContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -831,6 +927,7 @@ export type ConfigCreateManyInput = {
   description: string
   keywords: string
   agentLink: string
+  vipLink?: string | null
   contactLine: string
   phone: string
   qrcodenormal: string
@@ -847,7 +944,12 @@ export type ConfigCreateManyInput = {
   lineGroupVipLockedMessage?: string | null
   welcomeTitle?: string | null
   welcomeAgentDesc?: string | null
+  welcomeVipDesc?: string | null
   welcomeMemberDesc?: string | null
+  agentSignupTitle?: string | null
+  agentSignupDescription?: string | null
+  vipSignupTitle?: string | null
+  vipSignupDescription?: string | null
   howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   termsContent?: string | null
   privacyContent?: string | null
@@ -872,6 +974,7 @@ export type ConfigUpdateManyMutationInput = {
   description?: Prisma.StringFieldUpdateOperationsInput | string
   keywords?: Prisma.StringFieldUpdateOperationsInput | string
   agentLink?: Prisma.StringFieldUpdateOperationsInput | string
+  vipLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contactLine?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodenormal?: Prisma.StringFieldUpdateOperationsInput | string
@@ -888,7 +991,12 @@ export type ConfigUpdateManyMutationInput = {
   lineGroupVipLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeVipDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentSignupTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentSignupDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vipSignupTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vipSignupDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   termsContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   privacyContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -914,6 +1022,7 @@ export type ConfigUncheckedUpdateManyInput = {
   description?: Prisma.StringFieldUpdateOperationsInput | string
   keywords?: Prisma.StringFieldUpdateOperationsInput | string
   agentLink?: Prisma.StringFieldUpdateOperationsInput | string
+  vipLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contactLine?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   qrcodenormal?: Prisma.StringFieldUpdateOperationsInput | string
@@ -930,7 +1039,12 @@ export type ConfigUncheckedUpdateManyInput = {
   lineGroupVipLockedMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeAgentDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  welcomeVipDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   welcomeMemberDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentSignupTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  agentSignupDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vipSignupTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  vipSignupDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   howItWorks?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   termsContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   privacyContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -962,6 +1076,7 @@ export type ConfigCountOrderByAggregateInput = {
   description?: Prisma.SortOrder
   keywords?: Prisma.SortOrder
   agentLink?: Prisma.SortOrder
+  vipLink?: Prisma.SortOrder
   contactLine?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   qrcodenormal?: Prisma.SortOrder
@@ -978,7 +1093,12 @@ export type ConfigCountOrderByAggregateInput = {
   lineGroupVipLockedMessage?: Prisma.SortOrder
   welcomeTitle?: Prisma.SortOrder
   welcomeAgentDesc?: Prisma.SortOrder
+  welcomeVipDesc?: Prisma.SortOrder
   welcomeMemberDesc?: Prisma.SortOrder
+  agentSignupTitle?: Prisma.SortOrder
+  agentSignupDescription?: Prisma.SortOrder
+  vipSignupTitle?: Prisma.SortOrder
+  vipSignupDescription?: Prisma.SortOrder
   howItWorks?: Prisma.SortOrder
   termsContent?: Prisma.SortOrder
   privacyContent?: Prisma.SortOrder
@@ -1008,6 +1128,7 @@ export type ConfigMaxOrderByAggregateInput = {
   description?: Prisma.SortOrder
   keywords?: Prisma.SortOrder
   agentLink?: Prisma.SortOrder
+  vipLink?: Prisma.SortOrder
   contactLine?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   qrcodenormal?: Prisma.SortOrder
@@ -1024,7 +1145,12 @@ export type ConfigMaxOrderByAggregateInput = {
   lineGroupVipLockedMessage?: Prisma.SortOrder
   welcomeTitle?: Prisma.SortOrder
   welcomeAgentDesc?: Prisma.SortOrder
+  welcomeVipDesc?: Prisma.SortOrder
   welcomeMemberDesc?: Prisma.SortOrder
+  agentSignupTitle?: Prisma.SortOrder
+  agentSignupDescription?: Prisma.SortOrder
+  vipSignupTitle?: Prisma.SortOrder
+  vipSignupDescription?: Prisma.SortOrder
   termsContent?: Prisma.SortOrder
   privacyContent?: Prisma.SortOrder
   reviewLink?: Prisma.SortOrder
@@ -1047,6 +1173,7 @@ export type ConfigMinOrderByAggregateInput = {
   description?: Prisma.SortOrder
   keywords?: Prisma.SortOrder
   agentLink?: Prisma.SortOrder
+  vipLink?: Prisma.SortOrder
   contactLine?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   qrcodenormal?: Prisma.SortOrder
@@ -1063,7 +1190,12 @@ export type ConfigMinOrderByAggregateInput = {
   lineGroupVipLockedMessage?: Prisma.SortOrder
   welcomeTitle?: Prisma.SortOrder
   welcomeAgentDesc?: Prisma.SortOrder
+  welcomeVipDesc?: Prisma.SortOrder
   welcomeMemberDesc?: Prisma.SortOrder
+  agentSignupTitle?: Prisma.SortOrder
+  agentSignupDescription?: Prisma.SortOrder
+  vipSignupTitle?: Prisma.SortOrder
+  vipSignupDescription?: Prisma.SortOrder
   termsContent?: Prisma.SortOrder
   privacyContent?: Prisma.SortOrder
   reviewLink?: Prisma.SortOrder
@@ -1100,6 +1232,7 @@ export type ConfigSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   description?: boolean
   keywords?: boolean
   agentLink?: boolean
+  vipLink?: boolean
   contactLine?: boolean
   phone?: boolean
   qrcodenormal?: boolean
@@ -1116,7 +1249,12 @@ export type ConfigSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   lineGroupVipLockedMessage?: boolean
   welcomeTitle?: boolean
   welcomeAgentDesc?: boolean
+  welcomeVipDesc?: boolean
   welcomeMemberDesc?: boolean
+  agentSignupTitle?: boolean
+  agentSignupDescription?: boolean
+  vipSignupTitle?: boolean
+  vipSignupDescription?: boolean
   howItWorks?: boolean
   termsContent?: boolean
   privacyContent?: boolean
@@ -1144,6 +1282,7 @@ export type ConfigSelectScalar = {
   description?: boolean
   keywords?: boolean
   agentLink?: boolean
+  vipLink?: boolean
   contactLine?: boolean
   phone?: boolean
   qrcodenormal?: boolean
@@ -1160,7 +1299,12 @@ export type ConfigSelectScalar = {
   lineGroupVipLockedMessage?: boolean
   welcomeTitle?: boolean
   welcomeAgentDesc?: boolean
+  welcomeVipDesc?: boolean
   welcomeMemberDesc?: boolean
+  agentSignupTitle?: boolean
+  agentSignupDescription?: boolean
+  vipSignupTitle?: boolean
+  vipSignupDescription?: boolean
   howItWorks?: boolean
   termsContent?: boolean
   privacyContent?: boolean
@@ -1179,7 +1323,7 @@ export type ConfigSelectScalar = {
   footerCopyright?: boolean
 }
 
-export type ConfigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logo" | "title" | "description" | "keywords" | "agentLink" | "contactLine" | "phone" | "qrcodenormal" | "qrcodeagent" | "qrcodevip" | "qrcodesupport" | "warningMessage" | "agentPrivileges" | "vipPrivileges" | "lineGroupNormal" | "lineGroupAgent" | "lineGroupVip" | "lineGroupAgentLockedMessage" | "lineGroupVipLockedMessage" | "welcomeTitle" | "welcomeAgentDesc" | "welcomeMemberDesc" | "howItWorks" | "termsContent" | "privacyContent" | "reviewLink" | "announceEnabled" | "announceBanner" | "announceBadge" | "announceTitle" | "announceContent" | "marqueeText" | "footerDescription" | "footerLinks" | "footerServices" | "footerLineUrl" | "footerFacebook" | "footerCopyright", ExtArgs["result"]["config"]>
+export type ConfigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logo" | "title" | "description" | "keywords" | "agentLink" | "vipLink" | "contactLine" | "phone" | "qrcodenormal" | "qrcodeagent" | "qrcodevip" | "qrcodesupport" | "warningMessage" | "agentPrivileges" | "vipPrivileges" | "lineGroupNormal" | "lineGroupAgent" | "lineGroupVip" | "lineGroupAgentLockedMessage" | "lineGroupVipLockedMessage" | "welcomeTitle" | "welcomeAgentDesc" | "welcomeVipDesc" | "welcomeMemberDesc" | "agentSignupTitle" | "agentSignupDescription" | "vipSignupTitle" | "vipSignupDescription" | "howItWorks" | "termsContent" | "privacyContent" | "reviewLink" | "announceEnabled" | "announceBanner" | "announceBadge" | "announceTitle" | "announceContent" | "marqueeText" | "footerDescription" | "footerLinks" | "footerServices" | "footerLineUrl" | "footerFacebook" | "footerCopyright", ExtArgs["result"]["config"]>
 
 export type $ConfigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Config"
@@ -1191,6 +1335,7 @@ export type $ConfigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     description: string
     keywords: string
     agentLink: string
+    vipLink: string | null
     contactLine: string
     phone: string
     qrcodenormal: string
@@ -1207,7 +1352,12 @@ export type $ConfigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     lineGroupVipLockedMessage: string | null
     welcomeTitle: string | null
     welcomeAgentDesc: string | null
+    welcomeVipDesc: string | null
     welcomeMemberDesc: string | null
+    agentSignupTitle: string | null
+    agentSignupDescription: string | null
+    vipSignupTitle: string | null
+    vipSignupDescription: string | null
     howItWorks: runtime.JsonValue | null
     termsContent: string | null
     privacyContent: string | null
@@ -1599,6 +1749,7 @@ export interface ConfigFieldRefs {
   readonly description: Prisma.FieldRef<"Config", 'String'>
   readonly keywords: Prisma.FieldRef<"Config", 'String'>
   readonly agentLink: Prisma.FieldRef<"Config", 'String'>
+  readonly vipLink: Prisma.FieldRef<"Config", 'String'>
   readonly contactLine: Prisma.FieldRef<"Config", 'String'>
   readonly phone: Prisma.FieldRef<"Config", 'String'>
   readonly qrcodenormal: Prisma.FieldRef<"Config", 'String'>
@@ -1615,7 +1766,12 @@ export interface ConfigFieldRefs {
   readonly lineGroupVipLockedMessage: Prisma.FieldRef<"Config", 'String'>
   readonly welcomeTitle: Prisma.FieldRef<"Config", 'String'>
   readonly welcomeAgentDesc: Prisma.FieldRef<"Config", 'String'>
+  readonly welcomeVipDesc: Prisma.FieldRef<"Config", 'String'>
   readonly welcomeMemberDesc: Prisma.FieldRef<"Config", 'String'>
+  readonly agentSignupTitle: Prisma.FieldRef<"Config", 'String'>
+  readonly agentSignupDescription: Prisma.FieldRef<"Config", 'String'>
+  readonly vipSignupTitle: Prisma.FieldRef<"Config", 'String'>
+  readonly vipSignupDescription: Prisma.FieldRef<"Config", 'String'>
   readonly howItWorks: Prisma.FieldRef<"Config", 'Json'>
   readonly termsContent: Prisma.FieldRef<"Config", 'String'>
   readonly privacyContent: Prisma.FieldRef<"Config", 'String'>

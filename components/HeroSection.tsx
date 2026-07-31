@@ -46,7 +46,7 @@ const LINE_GROUPS = {
   },
   agent: {
     label: "ตัวแทน",
-    desc: "เข้าถึงเรท VIP ส่วนลด 5% ทุกออเดอร์ และคิวพิเศษเฉพาะตัวแทน",
+    desc: "เข้าถึงเรทราคาตัวแทน ข่าวสาร และสิทธิพิเศษเฉพาะตัวแทน",
     href: "https://line.me/R/ti/p/@ormoragent",
     badge: "@ormoragent"
   }
@@ -138,7 +138,10 @@ export default function HeroSection({
     "สิทธิ์สำหรับตัวแทน กรุณายืนยันตัวตนกับทีมงานเพื่อรับสิทธิ์";
   const vipLockedMessage =
     config.lineGroupVipLockedMessage?.trim() ||
-    "สิทธิ์เฉพาะสมาชิก VIP สมัครตัวแทน VIP ราคา 199 บาท";
+    "สิทธิ์เฉพาะสมาชิก VIP สมัคร VIP ราคา 199 บาท";
+  const warningText =
+    config.warningMessage?.trim() ||
+    "ห้ามกดจองเล่น ๆ หากตรวจพบ ปรับ 50 บาท / 1 ครั้ง • กรุณาจองเฉพาะที่ต้องการเติมจริงเท่านั้น • ขอบคุณที่ให้ความร่วมมือ";
   const qrDescription = isVipTab
     ? canViewVipGroup
       ? LINE_GROUPS.vip.desc
@@ -199,7 +202,7 @@ export default function HeroSection({
                   aria-hidden={i > 0}
                   className="px-8 font-bold text-xs text-[#C4382A]"
                 >
-                  ห้ามกดจองเล่น ๆ หากตรวจพบ ปรับ 50 บาท / 1 ครั้ง • กรุณาจองเฉพาะที่ต้องการเติมจริงเท่านั้น • ขอบคุณที่ให้ความร่วมมือ
+                  {warningText}
                 </span>
               ))}
             </div>

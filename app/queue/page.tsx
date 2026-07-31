@@ -495,6 +495,15 @@ function QueueContent() {
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return true;
     }
+    if (selectedRound && quantity > selectedRound.remaining) {
+      toast.warning("จำนวนสินค้าเกินที่ว่างของรอบ", {
+        description: `${selectedRound.name} เหลือ ${selectedRound.remaining} ชิ้น กรุณาลดจำนวนสินค้า`,
+      });
+      document
+        .getElementById("topup-round-selector")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return true;
+    }
 
     if (profileLoadState === "loading") {
       toast.info("กำลังโหลดข้อมูลโปรไฟล์", {
@@ -610,14 +619,22 @@ function QueueContent() {
           selectedProduct.maxPerUserPerDay -
             (dailyBookingCounts[selectedProduct.id] ?? 0)
         )
-      : 2;
+      : Number.POSITIVE_INFINITY;
+  const remainingRoundQuota = requiresTopupRound
+    ? selectedRound?.remaining ?? 1
+    : Number.POSITIVE_INFINITY;
+  const remainingStock =
+    selectedProduct?.stockEnabled
+      ? Math.max(0, selectedProduct.stock)
+      : Number.POSITIVE_INFINITY;
   const quantityLimit = selectedProduct
     ? Math.max(
         1,
         Math.min(
-          2,
-          remainingDailyQuota || 1,
-          selectedProduct.stockEnabled ? selectedProduct.stock : 2
+          100000,
+          remainingDailyQuota,
+          remainingRoundQuota,
+          remainingStock
         )
       )
     : 1;
@@ -633,7 +650,10 @@ function QueueContent() {
     (!requiresTopupRound ||
       (selectedRound !== null &&
         selectedRound.status !== "full" &&
-        selectedRound.status !== "closed")) &&
+        selectedRound.status !== "closed" &&
+        selectedRound.remaining >= quantity)) &&
+    quantity >= 1 &&
+    quantity <= quantityLimit &&
     profileLoadState !== "loading" &&
     /^\d{10}$/.test(phone) &&
     recipientFirstName.trim() !== "" &&
@@ -1089,6 +1109,7 @@ function QueueContent() {
                           : ""
                       );
                       setSelectedRoundCode("");
+                      setQuantity(1);
                     }}
                     disabled={!selectedProduct}
                     className="w-full rounded-xl border border-brand-green-100 bg-brand-paper py-2.5 px-3.5 text-sm font-semibold outline-none focus:border-brand-green focus:ring-4 focus:ring-brand-green/20 text-brand-ink disabled:opacity-60 cursor-pointer"
@@ -1200,7 +1221,10 @@ function QueueContent() {
                                 value={round.code}
                                 checked={selected}
                                 disabled={disabled}
-                                onChange={() => setSelectedRoundCode(round.code)}
+                                onChange={() => {
+                                  setSelectedRoundCode(round.code);
+                                  setQuantity(1);
+                                }}
                                 className="mt-0.5 h-4 w-4 accent-[var(--brand-green)]"
                               />
                               <div className="min-w-0 flex-1">
@@ -1213,9 +1237,7 @@ function QueueContent() {
                                 <span
                                   className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] font-black ring-1 ${statusClass}`}
                                 >
-                                  {statusLabel}
-                                  {round.status === "near_full" &&
-                                    ` · เหลือ ${round.remaining}`}
+                                  {statusLabel} · เหลือ {round.remaining} ชิ้น
                                 </span>
                               </div>
                             </div>
@@ -1323,7 +1345,13 @@ function QueueContent() {
                       จำนวนสินค้า
                     </label>
                     <p className="mt-1 text-[10.5px] font-bold text-brand-ink-soft">
-                      เลือกได้สูงสุด 2 ชิ้นต่อรายการ โดยไม่เปลี่ยนจำนวนที่รับต่อรอบ
+                      {requiresTopupRound && !selectedRound
+                        ? "กรุณาเลือกรอบเติมก่อน ระบบจะคำนวณจำนวนที่จองได้ให้"
+                        : selectedRound
+                          ? `รอบนี้เหลือ ${selectedRound.remaining} ชิ้น เลือกได้สูงสุด ${quantityLimit} ชิ้น`
+                          : Number.isFinite(quantityLimit)
+                            ? `เลือกได้สูงสุด ${quantityLimit} ชิ้นตามสต็อกและโควตาของบัญชี`
+                            : "เลือกจำนวนสินค้าที่ต้องการจอง"}
                     </p>
                   </div>
                   <div className="flex items-center justify-between gap-5 sm:justify-end">

@@ -17,18 +17,18 @@ model User {
   updatedAt       DateTime  @updatedAt
   username        String?   @unique
   displayUsername String?   @db.Text
-  memberNo        Int?      @unique  // เลขสมาชิกแบบรันนิ่ง (UID = OMTC-xxxxx)
+  memberNo        Int?      @unique // เลขสมาชิกแบบรันนิ่ง (UID = OMTC-xxxxx)
   role            String?   @db.Text
   phone           String?   @db.Text
   firstName       String?   @db.VarChar(120) // ชื่อจริง สำหรับข้อมูลผู้รับสินค้า
   lastName        String?   @db.VarChar(120) // นามสกุล สำหรับข้อมูลผู้รับสินค้า
-  addressLine     String?   @db.Text         // บ้านเลขที่/หมู่/ถนน/รายละเอียดที่อยู่
+  addressLine     String?   @db.Text // บ้านเลขที่/หมู่/ถนน/รายละเอียดที่อยู่
   subdistrict     String?   @db.VarChar(120) // ตำบล/แขวง
   district        String?   @db.VarChar(120) // อำเภอ/เขต
   province        String?   @db.VarChar(120)
   postalCode      String?   @db.VarChar(10)
-  shopName        String?   @db.Text  // ชื่อร้านปัจจุบัน (สำหรับตัวแทน)
-  lineId          String?   @db.Text  // ไอดีไลน์ปัจจุบันที่ใช้เติม Coins
+  shopName        String?   @db.Text // ชื่อร้านปัจจุบัน (สำหรับตัวแทน)
+  lineId          String?   @db.Text // ไอดีไลน์ปัจจุบันที่ใช้เติม Coins
   accounts        Account[]
   sessions        Session[]
 
@@ -83,46 +83,53 @@ model Verification {
 }
 
 model Config {
-  id                 Int    @id @default(autoincrement())
-  logo               String @db.MediumText
-  title              String @db.Text
-  description        String @db.Text
-  keywords           String @db.Text
-  agentLink          String @db.Text
-  contactLine        String @db.Text
-  phone              String @db.Text
-  qrcodenormal       String @db.MediumText
-  qrcodeagent        String @db.MediumText
-  qrcodevip          String @default("") @db.MediumText
-  qrcodesupport      String @db.MediumText
-  warningMessage     String @db.Text
-  agentPrivileges    String? @db.Text
-  vipPrivileges      String? @db.Text   // รายละเอียดสิทธิพิเศษสำหรับสมาชิก VIP
-  lineGroupNormal    String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (ลูกค้าทั่วไป)
-  lineGroupAgent     String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (ตัวแทน)
-  lineGroupVip       String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (VIP)
+  id                          Int     @id @default(autoincrement())
+  logo                        String  @db.MediumText
+  title                       String  @db.Text
+  description                 String  @db.Text
+  keywords                    String  @db.Text
+  agentLink                   String  @db.Text
+  vipLink                     String? @db.Text
+  contactLine                 String  @db.Text
+  phone                       String  @db.Text
+  qrcodenormal                String  @db.MediumText
+  qrcodeagent                 String  @db.MediumText
+  qrcodevip                   String  @default("") @db.MediumText
+  qrcodesupport               String  @db.MediumText
+  warningMessage              String  @db.Text
+  agentPrivileges             String? @db.Text
+  vipPrivileges               String? @db.Text // รายละเอียดสิทธิพิเศษสำหรับสมาชิก VIP
+  lineGroupNormal             String? @db.Text // ลิงก์เข้ากลุ่ม LINE (ลูกค้าทั่วไป)
+  lineGroupAgent              String? @db.Text // ลิงก์เข้ากลุ่ม LINE (ตัวแทน)
+  lineGroupVip                String? @db.Text // ลิงก์เข้ากลุ่ม LINE (VIP)
   lineGroupAgentLockedMessage String? @db.Text // ข้อความเมื่อบัญชียังไม่มีสิทธิ์กลุ่มตัวแทน
   lineGroupVipLockedMessage   String? @db.Text // ข้อความเมื่อบัญชียังไม่มีสิทธิ์กลุ่ม VIP
-  welcomeTitle       String? @db.Text   // หัวข้อ panel สมัคร เช่น "ยินดีต้อนรับสู่ครอบครัว..."
-  welcomeAgentDesc   String? @db.Text   // คำอธิบายบทบาทตัวแทน
-  welcomeMemberDesc  String? @db.Text   // คำอธิบายบทบาทลูกค้าทั่วไป
-  howItWorks         Json?              // ขั้นตอนการใช้งาน [{title, desc} x4]
-  termsContent       String? @db.MediumText  // ข้อกำหนดเงื่อนไขการใช้บริการ (HTML)
-  privacyContent     String? @db.MediumText  // นโยบายความเป็นส่วนตัว (HTML)
-  reviewLink         String? @db.Text   // ลิงก์ "ดูรีวิวลูกค้า" (แถบ trust ในหน้าแรก)
-  announceEnabled    Boolean @default(false)  // เปิด/ปิด ประกาศแจ้งเตือน
-  announceBanner     String? @db.MediumText   // รูป Banner ของประกาศ (URL)
-  announceBadge      String? @db.Text   // ป้าย badge เช่น "ประกาศสำคัญ"
-  announceTitle      String? @db.Text   // หัวข้อประกาศ
-  announceContent    String? @db.MediumText   // รายละเอียดประกาศ (HTML)
-  marqueeText        String? @db.Text   // ข้อความวิ่ง marquee (หน้าประวัติการสั่งซื้อ)
-  footerDescription  String? @db.Text   // คำอธิบายใต้แบรนด์ใน footer
-  footerLinks        Json?              // ลิงก์แนะนำ [{label, url}]
-  footerServices     Json?              // ลิงก์การบริการ [{label, url}]
-  footerLineUrl      String? @db.Text   // ลิงก์ LINE ใน footer
-  footerFacebook     String? @db.Text   // ลิงก์ Facebook ใน footer
-  footerCopyright    String? @db.Text   // ข้อความลิขสิทธิ์ท้าย footer
+  welcomeTitle                String? @db.Text // หัวข้อ panel สมัคร เช่น "ยินดีต้อนรับสู่ครอบครัว..."
+  welcomeAgentDesc            String? @db.Text // คำอธิบายบทบาทตัวแทน
+  welcomeVipDesc              String? @db.Text // คำอธิบายบทบาท VIP
+  welcomeMemberDesc           String? @db.Text // คำอธิบายบทบาทลูกค้าทั่วไป
+  agentSignupTitle            String? @db.Text
+  agentSignupDescription      String? @db.Text
+  vipSignupTitle              String? @db.Text
+  vipSignupDescription        String? @db.Text
+  howItWorks                  Json? // ขั้นตอนการใช้งาน [{title, desc} x4]
+  termsContent                String? @db.MediumText // ข้อกำหนดเงื่อนไขการใช้บริการ (HTML)
+  privacyContent              String? @db.MediumText // นโยบายความเป็นส่วนตัว (HTML)
+  reviewLink                  String? @db.Text // ลิงก์ "ดูรีวิวลูกค้า" (แถบ trust ในหน้าแรก)
+  announceEnabled             Boolean @default(false) // เปิด/ปิด ประกาศแจ้งเตือน
+  announceBanner              String? @db.MediumText // รูป Banner ของประกาศ (URL)
+  announceBadge               String? @db.Text // ป้าย badge เช่น "ประกาศสำคัญ"
+  announceTitle               String? @db.Text // หัวข้อประกาศ
+  announceContent             String? @db.MediumText // รายละเอียดประกาศ (HTML)
+  marqueeText                 String? @db.Text // ข้อความวิ่ง marquee (หน้าประวัติการสั่งซื้อ)
+  footerDescription           String? @db.Text // คำอธิบายใต้แบรนด์ใน footer
+  footerLinks                 Json? // ลิงก์แนะนำ [{label, url}]
+  footerServices              Json? // ลิงก์การบริการ [{label, url}]
+  footerLineUrl               String? @db.Text // ลิงก์ LINE ใน footer
+  footerFacebook              String? @db.Text // ลิงก์ Facebook ใน footer
+  footerCopyright             String? @db.Text // ข้อความลิขสิทธิ์ท้าย footer
 }
+
 model banners {
   id        Int      @id @default(autoincrement())
   image     String   @db.MediumText
@@ -138,9 +145,9 @@ model banners {
 ///  - timeValue : ตัวเลข (เช่น 5 ชั่วโมง, 2 วัน)
 model reviews {
   id        Int      @id @default(autoincrement())
-  userId    String?  @db.VarChar(64)        // ผู้รีวิว (null = แอดมินสร้างเอง)
-  status    String   @default("approved")   // pending | approved | rejected
-  avatar    String?  @db.MediumText        // URL รูป avatar (optional — fallback ใช้ initial)
+  userId    String?  @db.VarChar(64) // ผู้รีวิว (null = แอดมินสร้างเอง)
+  status    String   @default("approved") // pending | approved | rejected
+  avatar    String?  @db.MediumText // URL รูป avatar (optional — fallback ใช้ initial)
   name      String   @db.VarChar(120)
   detail    String?  @db.VarChar(200)
   review    String   @db.Text
@@ -159,38 +166,38 @@ model reviews {
 ///  - bookingCode  : MB-DDMMYYYY-XXXX | AG-... | ADM-... (random 4 digits)
 ///  - status       : "รอชำระเงิน" | "ชำระแล้ว" | "ยกเลิก" | "สำเร็จ"
 model bookings {
-  id          Int      @id @default(autoincrement())
-  bookingCode String   @unique @db.VarChar(50)
-  productId   Int?
-  productCode String?  @db.VarChar(100)
-  productName String   @db.VarChar(255)
-  userId      String?  @db.VarChar(36)
-  username    String   @db.VarChar(255)
-  phone       String   @db.VarChar(30)
-  recipientFirstName String? @db.VarChar(120) // snapshot ชื่อผู้รับ ณ เวลาจอง
-  recipientLastName  String? @db.VarChar(120) // snapshot นามสกุลผู้รับ ณ เวลาจอง
-  addressLine String? @db.Text                // snapshot รายละเอียดที่อยู่ ณ เวลาจอง
-  subdistrict String? @db.VarChar(120)        // snapshot ตำบล/แขวง
-  district    String? @db.VarChar(120)        // snapshot อำเภอ/เขต
-  province    String? @db.VarChar(120)        // snapshot จังหวัด
-  postalCode  String? @db.VarChar(10)         // snapshot รหัสไปรษณีย์
-  content     String?  @db.VarChar(500)
-  quantity    Int      @default(1)
-  unitPrice   Decimal? @db.Decimal(15, 2)
-  price       Decimal  @db.Decimal(15, 2)
-  cost        Decimal? @db.Decimal(15, 2) // Snapshot ต้นทุนสินค้าตอนสร้างออเดอร์ และแก้เป็นต้นทุนจริงได้ก่อนกดสำเร็จ
-  status      String   @default("รอตรวจสอบ") @db.VarChar(30)
-  bookingDate DateTime
-  bookingTime String?  @db.VarChar(50)  // legacy snapshot ช่วงเวลาเปิดรับจอง
-  bookingWindowStart String? @db.VarChar(5)
-  bookingWindowEnd   String? @db.VarChar(5)
-  topupRoundCode     String? @db.VarChar(80)
-  topupRoundName     String? @db.VarChar(120)
-  topupRoundStart    String? @db.VarChar(5)
-  topupRoundEnd      String? @db.VarChar(5)
+  id                 Int      @id @default(autoincrement())
+  bookingCode        String   @unique @db.VarChar(50)
+  productId          Int?
+  productCode        String?  @db.VarChar(100)
+  productName        String   @db.VarChar(255)
+  userId             String?  @db.VarChar(36)
+  username           String   @db.VarChar(255)
+  phone              String   @db.VarChar(30)
+  recipientFirstName String?  @db.VarChar(120) // snapshot ชื่อผู้รับ ณ เวลาจอง
+  recipientLastName  String?  @db.VarChar(120) // snapshot นามสกุลผู้รับ ณ เวลาจอง
+  addressLine        String?  @db.Text // snapshot รายละเอียดที่อยู่ ณ เวลาจอง
+  subdistrict        String?  @db.VarChar(120) // snapshot ตำบล/แขวง
+  district           String?  @db.VarChar(120) // snapshot อำเภอ/เขต
+  province           String?  @db.VarChar(120) // snapshot จังหวัด
+  postalCode         String?  @db.VarChar(10) // snapshot รหัสไปรษณีย์
+  content            String?  @db.VarChar(500)
+  quantity           Int      @default(1)
+  unitPrice          Decimal? @db.Decimal(15, 2)
+  price              Decimal  @db.Decimal(15, 2)
+  cost               Decimal? @db.Decimal(15, 2) // Snapshot ต้นทุนสินค้าตอนสร้างออเดอร์ และแก้เป็นต้นทุนจริงได้ก่อนกดสำเร็จ
+  status             String   @default("รอตรวจสอบ") @db.VarChar(30)
+  bookingDate        DateTime
+  bookingTime        String?  @db.VarChar(50) // legacy snapshot ช่วงเวลาเปิดรับจอง
+  bookingWindowStart String?  @db.VarChar(5)
+  bookingWindowEnd   String?  @db.VarChar(5)
+  topupRoundCode     String?  @db.VarChar(80)
+  topupRoundName     String?  @db.VarChar(120)
+  topupRoundStart    String?  @db.VarChar(5)
+  topupRoundEnd      String?  @db.VarChar(5)
   topupRoundCapacity Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -242,35 +249,36 @@ model audit_logs {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
 model products {
-  id          Int     @id @default(autoincrement())
-  image       String  @db.MediumText
-  name        String  @db.VarChar(255)
-  description String  @db.Text
+  id          Int    @id @default(autoincrement())
+  image       String @db.MediumText
+  name        String @db.VarChar(255)
+  description String @db.Text
 
   // ─── ราคา ───
-  price       Decimal @db.Decimal(10, 2)  // ราคาทั่วไป
-  cost        Decimal @default(0) @db.Decimal(10, 2)  // ต้นทุนสินค้า
-  agentPrice  Decimal @db.Decimal(10, 2)  // ราคา Agent
+  price      Decimal @db.Decimal(10, 2) // ราคาทั่วไป
+  cost       Decimal @default(0) @db.Decimal(10, 2) // ต้นทุนสินค้า
+  agentPrice Decimal @db.Decimal(10, 2) // ราคา Agent
 
   // ─── สต็อก ───
-  stockEnabled Boolean @default(false)    // toggle "ระบบสต็อก"
-  stock        Int     @default(0)        // จำนวนสต็อก
+  stockEnabled Boolean @default(false) // toggle "ระบบสต็อก"
+  stock        Int     @default(0) // จำนวนสต็อก
 
   // ─── จำกัดจองต่อคน/วัน (เฉพาะสินค้านี้) ───
-  maxPerUserPerDay Int @default(0)        // 0 = ไม่จำกัด
+  maxPerUserPerDay Int @default(0) // 0 = ไม่จำกัด
 
   // ─── ตารางขาย (JSON arrays — see helper types) ───
-  saleDates   Json    // string[]                     เช่น ["2026-05-19", "2026-05-14"]
-  timeSlots   Json    // Array<{start:string,end:string}>  เช่น [{start:"17:10",end:"18:08"}]
+  saleDates     Json // string[]                     เช่น ["2026-05-19", "2026-05-14"]
+  timeSlots     Json // Array<{start:string,end:string}>  เช่น [{start:"17:10",end:"18:08"}]
   saleSchedules Json? // [{date,bookingStart,bookingEnd,rounds:[{code,name,start,end,capacity,enabled,sortOrder}]}]
 
   // ─── ส่วนลดผู้มีสิทธิ์พิเศษ ───
-  discountEligibleUsernames Json                       // string[]      เช่น ["peak", "riu", "john"] — ไม่จำกัดจำนวน
+  discountEligibleUsernames Json // string[]      เช่น ["peak", "riu", "john"] — ไม่จำกัดจำนวน
   discountAmount            Decimal @default(0) @db.Decimal(10, 2)
 
   // ─── อื่น ๆ ───
-  note      String?  @db.Text                          // หมายเหตุ (optional)
+  note      String?  @db.Text // หมายเหตุ (optional)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
