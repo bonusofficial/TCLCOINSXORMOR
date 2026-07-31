@@ -230,29 +230,54 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       }
       const quantity = body.quantity ?? 1;
 
-      const delivery = {
-        recipientFirstName: body.recipientFirstName?.trim() ?? "",
-        recipientLastName: body.recipientLastName?.trim() ?? "",
+      const recipientFirstName = body.recipientFirstName?.trim() ?? "";
+      const recipientLastName = body.recipientLastName?.trim() ?? "";
+      const addressInput = {
         addressLine: body.addressLine?.trim() ?? "",
         subdistrict: body.subdistrict?.trim() ?? "",
         district: body.district?.trim() ?? "",
         province: body.province?.trim() ?? "",
         postalCode: body.postalCode?.trim() ?? "",
       };
-      if (
-        !delivery.recipientFirstName ||
-        !delivery.recipientLastName ||
-        !delivery.addressLine ||
-        !delivery.subdistrict ||
-        !delivery.district ||
-        !delivery.province ||
-        !/^\d{5}$/.test(delivery.postalCode)
-      ) {
+      const usesLegacyNoAddressMarker =
+        ["-", "ไม่ระบุ", "ไม่ต้องการระบุ"].includes(addressInput.addressLine) &&
+        !addressInput.subdistrict &&
+        !addressInput.district &&
+        !addressInput.province &&
+        !addressInput.postalCode;
+      const hasAnyAddress =
+        !usesLegacyNoAddressMarker && Object.values(addressInput).some(Boolean);
+      const hasCompleteAddress = Boolean(
+        addressInput.addressLine &&
+          addressInput.subdistrict &&
+          addressInput.district &&
+          addressInput.province &&
+          /^\d{5}$/.test(addressInput.postalCode)
+      );
+
+      if (!recipientFirstName || !recipientLastName) {
         return code(400, {
           ok: false,
-          message: "กรุณากรอกชื่อผู้รับและที่อยู่จัดส่งให้ครบถ้วน",
+          message: "กรุณากรอกชื่อและนามสกุลผู้รับให้ครบถ้วน",
         });
       }
+      if (hasAnyAddress && !hasCompleteAddress) {
+        return code(400, {
+          ok: false,
+          message:
+            "กรุณากรอกที่อยู่ให้ครบถ้วน หรือเลือกไม่ต้องการระบุที่อยู่",
+        });
+      }
+
+      const delivery = {
+        recipientFirstName,
+        recipientLastName,
+        addressLine: hasAnyAddress ? addressInput.addressLine : null,
+        subdistrict: hasAnyAddress ? addressInput.subdistrict : null,
+        district: hasAnyAddress ? addressInput.district : null,
+        province: hasAnyAddress ? addressInput.province : null,
+        postalCode: hasAnyAddress ? addressInput.postalCode : null,
+      };
 
       // โหลดสินค้าเพื่อตรวจสอบความถูกต้องของข้อมูล
       const prod = await prisma.products.findUnique({

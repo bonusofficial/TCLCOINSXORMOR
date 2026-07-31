@@ -8,6 +8,7 @@ type DeliveryAddressBody = {
   phone?: unknown;
   firstName?: unknown;
   lastName?: unknown;
+  omitAddress?: unknown;
   addressLine?: unknown;
   subdistrict?: unknown;
   district?: unknown;
@@ -142,9 +143,8 @@ export async function PUT(request: Request) {
     );
   }
 
-  // โปรไฟล์เก่ายังสามารถบันทึกช่องนี้ว่างได้ แต่ถ้ากรอกที่อยู่ต้องสมบูรณ์
-  // ชื่อ/นามสกุลเก็บแยกจากที่อยู่: ผู้ใช้จึงบันทึกที่อยู่ไว้ก่อนได้
-  // (หน้าจองคิวยังคงบังคับให้ระบุชื่อและนามสกุลผู้รับเสมอ)
+  // ที่อยู่เป็นข้อมูลทางเลือก แต่หากเริ่มกรอกแล้วต้องกรอกให้ครบชุด
+  // รองรับข้อมูลเดิมที่ใช้ "-" แทนการไม่ระบุ โดยแปลงเป็น null ให้สม่ำเสมอ
   const addressValues = {
     addressLine: data.addressLine,
     subdistrict: data.subdistrict,
@@ -153,13 +153,27 @@ export async function PUT(request: Request) {
     postalCode: data.postalCode,
   };
   const hasAnyAddress = Object.values(addressValues).some(Boolean);
+  const hasAddressInput = [
+    body.addressLine,
+    body.subdistrict,
+    body.district,
+    body.province,
+    body.postalCode,
+  ].some((value) => value !== undefined);
+  const usesLegacyNoAddressMarker =
+    ["-", "ไม่ระบุ", "ไม่ต้องการระบุ"].includes(data.addressLine) &&
+    !data.subdistrict &&
+    !data.district &&
+    !data.province &&
+    !data.postalCode;
+  const omitAddress = body.omitAddress === true || usesLegacyNoAddressMarker;
   const completeAddress =
     data.addressLine &&
     data.subdistrict &&
     data.district &&
     data.province &&
     /^\d{5}$/.test(data.postalCode);
-  if (hasAnyAddress && !completeAddress) {
+  if (!omitAddress && hasAnyAddress && !completeAddress) {
     return Response.json(
       { ok: false, message: "กรุณากรอกที่อยู่ให้ครบถ้วน รวมถึงรหัสไปรษณีย์ 5 หลัก" },
       { status: 422 }
@@ -169,22 +183,20 @@ export async function PUT(request: Request) {
   try {
     const before = await readDeliveryAddress(session.user.id);
     let saved: DeliveryAddress | null;
-    const updateData = hasAnyAddress
-      ? {
-          ...(hasPhoneInput && { phone: data.phone }),
-          firstName: data.firstName,
-          lastName: data.lastName,
-          addressLine: data.addressLine,
-          subdistrict: data.subdistrict,
-          district: data.district,
-          province: data.province,
-          postalCode: data.postalCode,
-        }
-      : {
-          ...(hasPhoneInput && { phone: data.phone }),
-          firstName: data.firstName,
-          lastName: data.lastName,
-        };
+    const shouldUpdateAddress = omitAddress || hasAddressInput;
+    const normalizedAddress = {
+      addressLine: omitAddress || !hasAnyAddress ? null : data.addressLine,
+      subdistrict: omitAddress || !hasAnyAddress ? null : data.subdistrict,
+      district: omitAddress || !hasAnyAddress ? null : data.district,
+      province: omitAddress || !hasAnyAddress ? null : data.province,
+      postalCode: omitAddress || !hasAnyAddress ? null : data.postalCode,
+    };
+    const updateData = {
+      ...(hasPhoneInput && { phone: data.phone }),
+      firstName: data.firstName,
+      lastName: data.lastName,
+      ...(shouldUpdateAddress && normalizedAddress),
+    };
     try {
       saved = await prisma.user.update({
         where: { id: session.user.id },
@@ -200,32 +212,32 @@ export async function PUT(request: Request) {
         prismaError
       );
       let affected: number;
-      if (hasAnyAddress && hasPhoneInput) {
+      if (shouldUpdateAddress && hasPhoneInput) {
         affected = await prisma.$executeRaw`
             UPDATE \`user\`
             SET
               \`phone\` = ${data.phone},
               \`firstName\` = ${data.firstName},
               \`lastName\` = ${data.lastName},
-              \`addressLine\` = ${data.addressLine},
-              \`subdistrict\` = ${data.subdistrict},
-              \`district\` = ${data.district},
-              \`province\` = ${data.province},
-              \`postalCode\` = ${data.postalCode},
+              \`addressLine\` = ${normalizedAddress.addressLine},
+              \`subdistrict\` = ${normalizedAddress.subdistrict},
+              \`district\` = ${normalizedAddress.district},
+              \`province\` = ${normalizedAddress.province},
+              \`postalCode\` = ${normalizedAddress.postalCode},
               \`updatedAt\` = NOW()
             WHERE \`id\` = ${session.user.id}
           `;
-      } else if (hasAnyAddress) {
+      } else if (shouldUpdateAddress) {
         affected = await prisma.$executeRaw`
             UPDATE \`user\`
             SET
               \`firstName\` = ${data.firstName},
               \`lastName\` = ${data.lastName},
-              \`addressLine\` = ${data.addressLine},
-              \`subdistrict\` = ${data.subdistrict},
-              \`district\` = ${data.district},
-              \`province\` = ${data.province},
-              \`postalCode\` = ${data.postalCode},
+              \`addressLine\` = ${normalizedAddress.addressLine},
+              \`subdistrict\` = ${normalizedAddress.subdistrict},
+              \`district\` = ${normalizedAddress.district},
+              \`province\` = ${normalizedAddress.province},
+              \`postalCode\` = ${normalizedAddress.postalCode},
               \`updatedAt\` = NOW()
             WHERE \`id\` = ${session.user.id}
           `;

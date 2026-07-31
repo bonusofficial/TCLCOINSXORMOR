@@ -31,7 +31,10 @@ import {
 } from "lucide-react";
 import Navbar, { formatDisplayID } from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
-import ThaiAddressFields, { type ThaiAddress } from "@/components/ThaiAddressFields";
+import ThaiAddressFields, {
+  hasThaiAddressValue,
+  type ThaiAddress,
+} from "@/components/ThaiAddressFields";
 import { useConfig } from "@/lib/contexts/PublicDataContext";
 import { copyToClipboard, normalizePhoneInput } from "@/lib/utils";
 
@@ -145,6 +148,7 @@ export default function ProfilePage() {
     province: "",
     postalCode: "",
   });
+  const [omitAddress, setOmitAddress] = useState(true);
   // ข้อมูลร้าน (สำหรับตัวแทน) — ชื่อร้านปัจจุบัน + ไอดีไลน์ที่ใช้เติม Coins
   const [shopName, setShopName] = useState("");
   const [lineId, setLineId] = useState("");
@@ -170,13 +174,15 @@ export default function ProfilePage() {
       setUsername(user.displayUsername?.trim() ? user.displayUsername : user.username ?? "");
       setFirstName(user.firstName ?? "");
       setLastName(user.lastName ?? "");
-      setAddress({
+      const nextAddress = {
         addressLine: user.addressLine ?? "",
         subdistrict: user.subdistrict ?? "",
         district: user.district ?? "",
         province: user.province ?? "",
         postalCode: user.postalCode ?? "",
-      });
+      };
+      setAddress(nextAddress);
+      setOmitAddress(!hasThaiAddressValue(nextAddress));
       setShopName(user.shopName ?? "");
       setLineId(user.lineId ?? "");
     }, 0);
@@ -203,13 +209,15 @@ export default function ProfilePage() {
 
         setFirstName(payload.data.firstName ?? "");
         setLastName(payload.data.lastName ?? "");
-        setAddress({
+        const nextAddress = {
           addressLine: payload.data.addressLine ?? "",
           subdistrict: payload.data.subdistrict ?? "",
           district: payload.data.district ?? "",
           province: payload.data.province ?? "",
           postalCode: payload.data.postalCode ?? "",
-        });
+        };
+        setAddress(nextAddress);
+        setOmitAddress(!hasThaiAddressValue(nextAddress));
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -452,13 +460,15 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
+          phone,
           firstName,
           lastName,
-          addressLine: address.addressLine,
-          subdistrict: address.subdistrict,
-          district: address.district,
-          province: address.province,
-          postalCode: address.postalCode,
+          omitAddress,
+          addressLine: omitAddress ? "" : address.addressLine,
+          subdistrict: omitAddress ? "" : address.subdistrict,
+          district: omitAddress ? "" : address.district,
+          province: omitAddress ? "" : address.province,
+          postalCode: omitAddress ? "" : address.postalCode,
         }),
       });
       const addressPayload = (await addressResponse.json().catch(() => null)) as
@@ -469,13 +479,15 @@ export default function ProfilePage() {
       }
       setFirstName(addressPayload.data.firstName ?? "");
       setLastName(addressPayload.data.lastName ?? "");
-      setAddress({
+      const savedAddress = {
         addressLine: addressPayload.data.addressLine ?? "",
         subdistrict: addressPayload.data.subdistrict ?? "",
         district: addressPayload.data.district ?? "",
         province: addressPayload.data.province ?? "",
         postalCode: addressPayload.data.postalCode ?? "",
-      });
+      };
+      setAddress(savedAddress);
+      setOmitAddress(!hasThaiAddressValue(savedAddress));
 
       // เปลี่ยนชื่อผู้ใช้ → ย้ายสิทธิ์ส่วนลดพิเศษให้ตามชื่อใหม่อัตโนมัติ (ไม่บล็อกการบันทึกหลัก)
       if (
@@ -975,9 +987,16 @@ export default function ProfilePage() {
           <div className="mt-6 border-t border-brand-green-100/60 pt-5">
             <h3 className="font-display font-black text-base text-brand-ink">ที่อยู่สำหรับรับสินค้า</h3>
             <p className="mt-1 mb-4 text-[11.5px] font-bold text-brand-ink-soft">
-              เลือกจังหวัด อำเภอ/เขต และตำบล/แขวง แล้วระบบจะระบุรหัสไปรษณีย์ให้โดยอัตโนมัติ
+              ที่อยู่เป็นข้อมูลทางเลือก หากต้องการระบุ ระบบจะช่วยเลือกรหัสไปรษณีย์ให้อัตโนมัติ
             </p>
-            <ThaiAddressFields value={address} onChange={setAddress} idPrefix="profile-address" />
+            <ThaiAddressFields
+              value={address}
+              onChange={setAddress}
+              allowOmit
+              omitted={omitAddress}
+              onOmittedChange={setOmitAddress}
+              idPrefix="profile-address"
+            />
           </div>
 
           <div className="flex justify-end mt-6 border-t border-brand-green-100/60 pt-4">

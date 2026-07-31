@@ -20,7 +20,11 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
-import ThaiAddressFields, { type ThaiAddress } from "@/components/ThaiAddressFields";
+import ThaiAddressFields, {
+  hasThaiAddressValue,
+  isCompleteThaiAddress,
+  type ThaiAddress,
+} from "@/components/ThaiAddressFields";
 import { publicApi } from "@/lib/eden";
 import {
   useConfig,
@@ -82,14 +86,18 @@ type BookingNotice = {
 } | null;
 
 function hasCompleteRecipientProfile(profile: BookingProfile) {
+  const profileAddress = {
+    addressLine: profile.addressLine,
+    subdistrict: profile.subdistrict,
+    district: profile.district,
+    province: profile.province,
+    postalCode: profile.postalCode,
+  };
   return Boolean(
     profile.firstName?.trim() &&
-    profile.lastName?.trim() &&
-    profile.addressLine?.trim() &&
-    profile.subdistrict?.trim() &&
-    profile.district?.trim() &&
-    profile.province?.trim() &&
-    /^\d{5}$/.test(profile.postalCode?.trim() ?? "")
+      profile.lastName?.trim() &&
+      (!hasThaiAddressValue(profileAddress) ||
+        isCompleteThaiAddress(profileAddress))
   );
 }
 
@@ -205,6 +213,7 @@ function QueueContent() {
     province: "",
     postalCode: "",
   });
+  const [omitAddress, setOmitAddress] = useState(true);
   const [notes, setNotes] = useState("");
   const [profileLoadState, setProfileLoadState] = useState<
     "idle" | "loading" | "complete" | "incomplete"
@@ -325,13 +334,15 @@ function QueueContent() {
     setPhone(normalizePhoneInput(profile.phone ?? ""));
     setRecipientFirstName(profile.firstName ?? "");
     setRecipientLastName(profile.lastName ?? "");
-    setAddress({
+    const profileAddress = {
       addressLine: profile.addressLine ?? "",
       subdistrict: profile.subdistrict ?? "",
       district: profile.district ?? "",
       province: profile.province ?? "",
       postalCode: profile.postalCode ?? "",
-    });
+    };
+    setAddress(profileAddress);
+    setOmitAddress(!hasThaiAddressValue(profileAddress));
     setProfileLoadState(
       hasCompleteRecipientProfile(profile) ? "complete" : "incomplete"
     );
@@ -519,18 +530,20 @@ function QueueContent() {
       return true;
     }
 
-    if (
-      !recipientFirstName.trim() ||
-      !recipientLastName.trim() ||
-      !address.addressLine.trim() ||
-      !address.subdistrict ||
-      !address.district ||
-      !address.province ||
-      !/^\d{5}$/.test(address.postalCode)
-    ) {
-      toast.warning("กรุณากรอกชื่อและที่อยู่ให้ครบถ้วน", {
+    if (!recipientFirstName.trim() || !recipientLastName.trim()) {
+      toast.warning("กรุณากรอกชื่อผู้รับให้ครบถ้วน", {
+        description: "ต้องระบุชื่อและนามสกุลจริงก่อนยืนยันการจอง",
+      });
+      document
+        .getElementById("booking-recipient-details")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return true;
+    }
+
+    if (!omitAddress && !isCompleteThaiAddress(address)) {
+      toast.warning("กรุณากรอกที่อยู่ให้ครบถ้วน", {
         description:
-          "ต้องระบุชื่อ–นามสกุลจริง ที่อยู่ จังหวัด อำเภอ/เขต ตำบล/แขวง และรหัสไปรษณีย์",
+          "กรอกจังหวัด อำเภอ/เขต ตำบล/แขวง และรหัสไปรษณีย์ หรือเลือกไม่ต้องการระบุที่อยู่",
       });
       document
         .getElementById("booking-recipient-details")
@@ -658,11 +671,7 @@ function QueueContent() {
     /^\d{10}$/.test(phone) &&
     recipientFirstName.trim() !== "" &&
     recipientLastName.trim() !== "" &&
-    address.addressLine.trim() !== "" &&
-    address.subdistrict !== "" &&
-    address.district !== "" &&
-    address.province !== "" &&
-    /^\d{5}$/.test(address.postalCode) &&
+    (omitAddress || isCompleteThaiAddress(address)) &&
     !selectedQuotaMessage;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -687,11 +696,11 @@ function QueueContent() {
         phone: phone.trim(),
         recipientFirstName: recipientFirstName.trim(),
         recipientLastName: recipientLastName.trim(),
-        addressLine: address.addressLine.trim(),
-        subdistrict: address.subdistrict,
-        district: address.district,
-        province: address.province,
-        postalCode: address.postalCode,
+        addressLine: omitAddress ? undefined : address.addressLine.trim(),
+        subdistrict: omitAddress ? undefined : address.subdistrict,
+        district: omitAddress ? undefined : address.district,
+        province: omitAddress ? undefined : address.province,
+        postalCode: omitAddress ? undefined : address.postalCode,
         topupRoundCode: selectedRoundCode || undefined,
         content: notes.trim() || undefined,
         quantity,
@@ -737,11 +746,12 @@ function QueueContent() {
                 phone: phone.trim(),
                 firstName: recipientFirstName.trim(),
                 lastName: recipientLastName.trim(),
-                addressLine: address.addressLine.trim(),
-                subdistrict: address.subdistrict,
-                district: address.district,
-                province: address.province,
-                postalCode: address.postalCode,
+                omitAddress,
+                addressLine: omitAddress ? "" : address.addressLine.trim(),
+                subdistrict: omitAddress ? "" : address.subdistrict,
+                district: omitAddress ? "" : address.district,
+                province: omitAddress ? "" : address.province,
+                postalCode: omitAddress ? "" : address.postalCode,
               }),
             }
           );
@@ -1081,7 +1091,19 @@ function QueueContent() {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form
+            onSubmit={handleSubmit}
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                event.target instanceof HTMLInputElement &&
+                event.currentTarget.contains(event.target)
+              ) {
+                event.preventDefault();
+              }
+            }}
+            className="space-y-5"
+          >
             {/* Step 1: ช่วงเวลาเปิดรับจองและรอบเติม */}
             <section className="bg-brand-surface border-l-4 border-l-brand-green border border-brand-green-100 rounded-2xl p-5">
               <h3 className="font-display font-black text-base text-brand-ink mb-1">
@@ -1435,7 +1457,7 @@ function QueueContent() {
                       : "ระบบจะบันทึกข้อมูลนี้ไว้กับรายการจอง เพื่อให้ที่อยู่ของออเดอร์เก่าไม่เปลี่ยนตามโปรไฟล์ภายหลัง"}
                   </p>
                   <p className="mt-2 rounded-xl border border-brand-green-100 bg-brand-green/10 px-3 py-2.5 text-[10.5px] font-extrabold leading-relaxed text-brand-ink">
-                    ข้อมูลชื่อและที่อยู่ใช้สำหรับจัดทำเอกสารทางบัญชีและภาษีของร้าน กรุณาตรวจสอบให้ถูกต้องก่อนยืนยันการจอง
+                    ชื่อผู้รับใช้สำหรับจัดทำเอกสารของร้าน ส่วนที่อยู่เป็นข้อมูลทางเลือก กรุณาตรวจสอบข้อมูลก่อนยืนยันการจอง
                   </p>
                 </div>
                 {profileLoadState === "loading" && (
@@ -1450,10 +1472,10 @@ function QueueContent() {
                       <AlertOctagon className="mt-0.5 h-4.5 w-4.5 flex-shrink-0 text-amber-500" />
                       <div>
                         <p className="text-xs font-black text-amber-500">
-                          โปรไฟล์ยังไม่มีชื่อ–นามสกุลจริงหรือที่อยู่ครบถ้วน
+                          โปรไฟล์ยังไม่มีชื่อ–นามสกุลจริง หรือมีที่อยู่ไม่ครบถ้วน
                         </p>
                         <p className="mt-1 text-[10.5px] font-bold leading-relaxed text-brand-ink-soft">
-                          กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบก่อนยืนยันการจอง
+                          กรุณากรอกชื่อให้ครบ และเลือกระบุหรือไม่ระบุที่อยู่ก่อนยืนยันการจอง
                         </p>
                       </div>
                     </div>
@@ -1515,7 +1537,10 @@ function QueueContent() {
                   <ThaiAddressFields
                     value={address}
                     onChange={setAddress}
-                    required
+                    required={!omitAddress}
+                    allowOmit
+                    omitted={omitAddress}
+                    onOmittedChange={setOmitAddress}
                     disabled={profileLoadState === "loading"}
                     idPrefix="booking-address"
                   />
