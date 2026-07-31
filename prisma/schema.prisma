@@ -97,6 +97,7 @@ model Config {
   qrcodesupport      String @db.MediumText
   warningMessage     String @db.Text
   agentPrivileges    String? @db.Text
+  vipPrivileges      String? @db.Text   // รายละเอียดสิทธิพิเศษสำหรับสมาชิก VIP
   lineGroupNormal    String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (ลูกค้าทั่วไป)
   lineGroupAgent     String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (ตัวแทน)
   lineGroupVip       String? @db.Text   // ลิงก์เข้ากลุ่ม LINE (VIP)

@@ -92,6 +92,13 @@ const ALLOWED_UPLOAD_TYPES = new Set([
   "image/gif",
 ]);
 
+const DEFAULT_VIP_PRIVILEGES = [
+  "สมาชิกยศ VIP ทุกบัญชีรับราคา VIP อัตโนมัติ",
+  "ราคา VIP คำนวณจากราคา Agent หักส่วนลดพิเศษที่กำหนดไว้",
+  "ระบบจะแสดงราคาพิเศษให้อัตโนมัติในหน้าจอง",
+  "รหัสการจองของสมาชิก VIP จะขึ้นต้นด้วย VIP-",
+].join("\n");
+
 type UploadResponse =
   | {
       ok: true;
@@ -703,6 +710,7 @@ export default function SettingsPage() {
   );
   const [marqueeText, setMarqueeText] = useState("");
   const [agentPrivileges, setAgentPrivileges] = useState("");
+  const [vipPrivileges, setVipPrivileges] = useState(DEFAULT_VIP_PRIVILEGES);
   // เนื้อหาเว็บที่แก้ไขได้ (config ใหม่)
   const [lineGroupNormal, setLineGroupNormal] = useState("");
   const [lineGroupAgent, setLineGroupAgent] = useState("");
@@ -808,6 +816,7 @@ export default function SettingsPage() {
         setWarning(c.warningMessage);
         setMarqueeText(c.marqueeText ?? "");
         setAgentPrivileges(c.agentPrivileges ?? "");
+        setVipPrivileges(c.vipPrivileges?.trim() || DEFAULT_VIP_PRIVILEGES);
         setLineGroupNormal(c.lineGroupNormal ?? "");
         setLineGroupAgent(c.lineGroupAgent ?? "");
         setLineGroupVip(c.lineGroupVip ?? "");
@@ -859,6 +868,7 @@ export default function SettingsPage() {
         warningMessage: warning,
         marqueeText,
         agentPrivileges: agentPrivileges,
+        vipPrivileges,
         lineGroupNormal,
         lineGroupAgent,
         lineGroupVip,
@@ -1317,6 +1327,26 @@ export default function SettingsPage() {
                   onChange={(e) => setAgentPrivileges(e.target.value)}
                   className={textareaCls}
                   placeholder="พิมพ์รายละเอียดสิทธิพิเศษของตัวแทนจำหน่าย..."
+                />
+              </section>
+
+              {/* VIP Privileges */}
+              <section className="bg-brand-surface border border-amber-400/30 rounded-3xl p-6 md:p-7 shadow-sm shadow-amber-400/5">
+                <header className="mb-5">
+                  <h2 className="font-display font-black text-lg text-brand-ink inline-flex items-center gap-2">
+                    <Crown className="h-5 w-5 text-amber-400" />
+                    สิทธิพิเศษ VIP (VIP Privileges)
+                  </h2>
+                  <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
+                    ข้อความนี้จะแสดงเฉพาะบัญชียศ VIP ในเมนู “สิทธิพิเศษสำหรับ VIP” โดยขึ้นหนึ่งรายการต่อหนึ่งบรรทัด
+                  </p>
+                </header>
+                <textarea
+                  rows={6}
+                  value={vipPrivileges}
+                  onChange={(e) => setVipPrivileges(e.target.value)}
+                  className={textareaCls}
+                  placeholder="พิมพ์รายละเอียดสิทธิพิเศษของสมาชิก VIP บรรทัดละหนึ่งรายการ..."
                 />
               </section>
 

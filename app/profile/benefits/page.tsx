@@ -160,17 +160,21 @@ export default function AgentBenefitsPage() {
     );
   }
 
-  const benefitsList = isVip
-    ? [
-        "สมาชิกยศ VIP ทุกบัญชีรับราคา VIP อัตโนมัติ",
-        "ราคา VIP คำนวณจากราคา Agent หักส่วนลดพิเศษที่กำหนดไว้",
-        "ระบบจะแสดงราคาพิเศษให้อัตโนมัติในหน้าจอง",
-        "รหัสการจองของสมาชิก VIP จะขึ้นต้นด้วย VIP-",
-      ]
-    : (config?.agentPrivileges ?? "")
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0);
+  const defaultVipPrivileges = [
+    "สมาชิกยศ VIP ทุกบัญชีรับราคา VIP อัตโนมัติ",
+    "ราคา VIP คำนวณจากราคา Agent หักส่วนลดพิเศษที่กำหนดไว้",
+    "ระบบจะแสดงราคาพิเศษให้อัตโนมัติในหน้าจอง",
+    "รหัสการจองของสมาชิก VIP จะขึ้นต้นด้วย VIP-",
+  ];
+  const configuredPrivileges = isVip
+    ? config?.vipPrivileges
+    : config?.agentPrivileges;
+  const benefitsList = (configuredPrivileges ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const displayedBenefits =
+    isVip && benefitsList.length === 0 ? defaultVipPrivileges : benefitsList;
 
   return (
     <div className="min-h-screen bg-brand-paper font-sans text-brand-ink flex flex-col">
@@ -230,7 +234,7 @@ export default function AgentBenefitsPage() {
 
           <div className="relative space-y-6">
 
-            {benefitsList.length === 0 ? (
+            {displayedBenefits.length === 0 ? (
               <div className="py-10 text-center space-y-2">
                 <Coins className="h-10 h-10 text-brand-ink-soft/40 mx-auto" />
                 <p className="text-sm font-bold text-brand-ink-soft">
@@ -242,7 +246,7 @@ export default function AgentBenefitsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {benefitsList.map((benefit, i) => {
+                {displayedBenefits.map((benefit, i) => {
                   // Custom highlights for lines that look like headers or key points
                   const isHeader = benefit.startsWith("★") || benefit.startsWith("●") || benefit.startsWith("#");
                   const cleanText = isHeader ? benefit.substring(1).trim() : benefit;

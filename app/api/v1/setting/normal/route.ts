@@ -21,6 +21,7 @@ const NormalSettingBody = t.Object({
   qrcodesupport: t.String(),
   warningMessage: t.String(),
   agentPrivileges: t.Optional(t.String()),
+  vipPrivileges: t.Optional(t.String()),
   lineGroupNormal: t.Optional(t.String()),
   lineGroupAgent: t.Optional(t.String()),
   lineGroupVip: t.Optional(t.String()),
@@ -80,6 +81,7 @@ const app = new Elysia({ prefix: "/api/v1/setting/normal" })
             qrcodesupport: "",
             warningMessage: "",
             agentPrivileges: "",
+            vipPrivileges: "",
             lineGroupNormal: "",
             lineGroupAgent: "",
             lineGroupVip: "",
@@ -120,6 +122,7 @@ const app = new Elysia({ prefix: "/api/v1/setting/normal" })
       const payload = {
         ...body,
         agentPrivileges: body.agentPrivileges !== undefined ? body.agentPrivileges : undefined,
+        vipPrivileges: body.vipPrivileges !== undefined ? body.vipPrivileges : undefined,
       };
 
       const saved = existing
@@ -139,6 +142,7 @@ const app = new Elysia({ prefix: "/api/v1/setting/normal" })
                qrcodesupport: body.qrcodesupport,
                warningMessage: body.warningMessage,
                agentPrivileges: body.agentPrivileges ?? "",
+               vipPrivileges: body.vipPrivileges ?? "",
                lineGroupNormal: body.lineGroupNormal ?? "",
                lineGroupAgent: body.lineGroupAgent ?? "",
                lineGroupVip: body.lineGroupVip ?? "",

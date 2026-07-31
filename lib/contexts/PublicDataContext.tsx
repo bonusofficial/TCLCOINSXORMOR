@@ -29,6 +29,7 @@ export interface PublicConfig {
   qrcodesupport: string;
   warningMessage: string;
   agentPrivileges: string;
+  vipPrivileges: string;
   lineGroupNormal: string;
   lineGroupAgent: string;
   lineGroupVip: string;
@@ -255,6 +256,7 @@ const DEFAULT_CONFIG: PublicConfig = {
   qrcodesupport: "",
   warningMessage: "",
   agentPrivileges: "",
+  vipPrivileges: "",
   lineGroupNormal: "",
   lineGroupAgent: "",
   lineGroupVip: "",
