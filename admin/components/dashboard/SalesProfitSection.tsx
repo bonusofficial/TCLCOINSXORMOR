@@ -52,6 +52,12 @@ interface SalesRow {
   recipientFirstName: string | null;
   recipientLastName: string | null;
   phone: string;
+  addressLine: string | null;
+  subdistrict: string | null;
+  district: string | null;
+  province: string | null;
+  postalCode: string | null;
+  content: string | null;
   customerRole: CustomerRole;
   salePrice: string;
   cost: string;
@@ -126,6 +132,17 @@ const fullName = (row: SalesRow) =>
     .map((value) => value?.trim())
     .filter(Boolean)
     .join(" ") || "ไม่ระบุชื่อจริง";
+
+const deliveryAddress = (row: SalesRow) =>
+  [
+    row.addressLine,
+    row.subdistrict && `ตำบล/แขวง ${row.subdistrict}`,
+    row.district && `อำเภอ/เขต ${row.district}`,
+    row.province,
+    row.postalCode,
+  ]
+    .filter(Boolean)
+    .join(" ") || "ไม่ระบุที่อยู่";
 
 const THAI_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 const monthKey = (s: string) => {
@@ -292,6 +309,8 @@ export default function SalesProfitSection() {
       "ชื่อ–นามสกุลจริง",
       "Username",
       "เบอร์โทรศัพท์",
+      "ที่อยู่ Snapshot",
+      "หมายเหตุของลูกค้า",
       "ยศลูกค้า",
       "รหัสจอง",
     ].map(q).join(","));
@@ -315,6 +334,8 @@ export default function SalesProfitSection() {
         fullName(r),
         r.username,
         r.phone,
+        deliveryAddress(r),
+        r.content?.trim() || "—",
         ROLE_META[r.customerRole].label,
         r.bookingCode,
       ].map(q).join(","));
@@ -519,7 +540,7 @@ export default function SalesProfitSection() {
             <Table className="min-w-[1180px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="py-3 px-4 whitespace-nowrap">วันที่–เวลาจอง</TableHead>
+                  <TableHead className="py-3 px-4 whitespace-nowrap">ลูกค้ากดจองเมื่อ</TableHead>
                   <TableHead className="py-3 px-3">สินค้า</TableHead>
                   <TableHead className="py-3 px-3 whitespace-nowrap">รอบเติมที่เลือก</TableHead>
                   <TableHead className="py-3 px-3 text-right whitespace-nowrap">ราคาขาย</TableHead>
@@ -599,6 +620,14 @@ export default function SalesProfitSection() {
                           <RoleIcon className="h-3 w-3" strokeWidth={2.5} />
                           {role.label}
                         </span>
+                        <span className="mt-1 block max-w-[280px] whitespace-normal text-[10px] font-semibold leading-relaxed text-brand-ink-soft/75">
+                          ที่อยู่: {deliveryAddress(r)}
+                        </span>
+                        {r.content?.trim() && (
+                          <span className="mt-0.5 block max-w-[280px] whitespace-normal text-[10px] font-semibold leading-relaxed text-brand-ink-soft/75">
+                            หมายเหตุ: {r.content.trim()}
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

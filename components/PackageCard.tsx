@@ -1,4 +1,4 @@
-import { Coins, TriangleAlert, Trophy, Medal, Sparkles, Flame, Rocket, Clock } from "lucide-react";
+import { Coins, TriangleAlert, Trophy, Medal, Sparkles, Flame, Rocket, Clock, Crown } from "lucide-react";
 import { PublicProduct as QueueProduct } from "@/lib/contexts/PublicDataContext";
 import { UserRole } from "@/lib/booking";
 import { getProductAvailability, getEffectivePrice, fmt, fmtThaiDate, useNowTick } from "@/lib/product-utils";
@@ -54,21 +54,19 @@ export function PackageCard({
   idx,
   product: p,
   userRole,
-  username,
   maxQueueCount = 0,
   onSelect,
 }: {
   idx: number;
   product: QueueProduct;
   userRole: UserRole;
-  username: string | null;
   /** จำนวนคิวสูงสุดในบรรดาสินค้าทั้งหมด — ใช้คำนวณ % แถบความนิยมแบบสัมพัทธ์ */
   maxQueueCount?: number;
   onSelect: () => void;
 }) {
   useNowTick(); // re-render ตามเวลา
   const avail = getProductAvailability(p);
-  const price = getEffectivePrice(p, userRole, username);
+  const price = getEffectivePrice(p, userRole);
 
   const sellingPrice = price.amount;
 
@@ -211,6 +209,12 @@ export function PackageCard({
 
       {/* Pricing block */}
       <div className="mb-4">
+        {price.hasVipDiscount && (
+          <span className="mb-1.5 inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10.5px] font-black text-amber-400">
+            <Crown className="h-3 w-3" strokeWidth={2.6} />
+            ราคา VIP ของคุณ
+          </span>
+        )}
         <div className="flex items-baseline gap-1.5">
           <span className="font-display font-black text-2xl text-brand-green">
             {fmt(sellingPrice)}

@@ -109,17 +109,32 @@ function getQuotaExceededMessage(
 }
 
 function getApiErrorMessage(error: unknown, fallback: string) {
+  const readableText = (value: unknown, depth = 0): string | null => {
+    if (depth > 4 || value == null) return null;
+    if (typeof value === "string") {
+      const text = value.trim();
+      return text && text !== "[object Object]" ? text : null;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const text = readableText(item, depth + 1);
+        if (text) return text;
+      }
+      return null;
+    }
+    if (typeof value !== "object") return null;
+
+    const record = value as Record<string, unknown>;
+    for (const key of ["message", "error", "summary", "detail", "description", "value"]) {
+      const text = readableText(record[key], depth + 1);
+      if (text) return text;
+    }
+    return null;
+  };
+
   const value = (error as { value?: unknown } | null)?.value;
-
-  if (value && typeof value === "object") {
-    const message = (value as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) return message;
-  }
-
-  if (typeof value === "string" && value.trim()) return value;
-
-  const message = (error as { message?: unknown } | null)?.message;
-  if (typeof message === "string" && message.trim()) return message;
+  const message = readableText(value) ?? readableText(error);
+  if (message) return message;
 
   return fallback;
 }
@@ -296,13 +311,9 @@ function QueueContent() {
   const effectivePrice = useMemo(
     () =>
       selectedProduct
-        ? getEffectivePrice(
-            selectedProduct,
-            userRole,
-            user?.username || user?.displayUsername || null
-          )
+        ? getEffectivePrice(selectedProduct, userRole)
         : null,
-    [selectedProduct, userRole, user?.displayUsername, user?.username]
+    [selectedProduct, userRole]
   );
 
   const dailyBookingCounts =
@@ -1008,7 +1019,6 @@ function QueueContent() {
                 idx={i + 1}
                 product={p}
                 userRole={userRole}
-                username={user?.username || user?.displayUsername || null}
                 maxQueueCount={maxQueueCount}
                 onSelect={() => handlePickProduct(p)}
               />
@@ -1253,11 +1263,7 @@ function QueueContent() {
                       .filter((p) => getProductAvailability(p).status === "open")
                       .sort(sortByMostBooked)
                       .map((p) => {
-                        const optionPrice = getEffectivePrice(
-                          p,
-                          userRole,
-                          user?.username || user?.displayUsername || null
-                        ).amount;
+                        const optionPrice = getEffectivePrice(p, userRole).amount;
                         return (
                           <option
                             key={p.id}

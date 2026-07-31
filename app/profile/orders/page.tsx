@@ -242,15 +242,20 @@ export default function OrdersHistoryPage() {
             : ""
         }`
       : "ไม่กำหนดรอบเติม";
+    const deliveryAddress = formatDeliveryAddress(b) || "-";
+    const unitPrice = Number(b.unitPrice ?? b.price) || 0;
 
     const textToCopy = `รหัสจอง: #${b.bookingCode}
 ชื่อผู้จอง: ${bookingName}
 Username: ${usernameAndMemberId}
 เบอร์โทรศัพท์: ${b.phone || "-"}
+ที่อยู่จัดส่ง: ${deliveryAddress}
 สินค้า: ${b.productName}
 จำนวน: ${b.quantity || 1} ชิ้น
+ราคาต่อชิ้น: ${fmt(unitPrice)} บาท
 ยอดชำระ: ${fmt(b.price)} บาท
 วันที่จองสินค้า: ${datePart}
+วันที่และเวลาที่ลูกค้ากดจอง: ${formatPressedAt(b.createdAt)}
 ช่วงเวลาเปิดรับจอง: ${bookingWindow} น.
 รอบเติม: ${refillRound}
 ยศสมาชิก: ${roleLabel}
@@ -698,7 +703,7 @@ Username: ${usernameAndMemberId}
                       <span className="text-[11px] font-bold text-brand-ink-soft/90 flex items-center gap-1.5">
                         <span className="h-1 w-1 bg-zinc-300 rounded-full" />
                         <Calendar className="h-3 w-3 text-brand-ink-soft" />
-                        จองเมื่อ {formatPressedAt(b.createdAt)}
+                        ลูกค้ากดจองเมื่อ {formatPressedAt(b.createdAt)}
                       </span>
                     </div>
 
@@ -763,6 +768,11 @@ Username: ${usernameAndMemberId}
                         <Calendar className="h-3.5 w-3.5 text-brand-green" />
                         <span>วันที่จอง:</span>
                         <span className="text-brand-ink font-black">{formatThaiDateFull(b.bookingDate)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-brand-green-50/50 py-1 px-3 rounded-full border border-brand-green-100/50">
+                        <Clock className="h-3.5 w-3.5 text-brand-green" />
+                        <span>ลูกค้ากดจองเมื่อ:</span>
+                        <span className="text-brand-ink font-black">{formatPressedAt(b.createdAt)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 bg-brand-green-50/50 py-1 px-3 rounded-full border border-brand-green-100/50">
                         <Clock className="h-3.5 w-3.5 text-brand-green" />

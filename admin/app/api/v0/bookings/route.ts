@@ -231,18 +231,8 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       const role = ((user as { role?: string | null }).role ?? "member").toLowerCase();
       const isAgent = role === "agent" || role === "admin";
       const accountUsername = (user as { username?: string | null }).username ?? null;
-      const matchUsername = (accountUsername ?? body.username ?? "")
-        .toLowerCase()
-        .trim();
-      const discountUsers = toArr(prod.discountEligibleUsernames)
-        .filter((u): u is string => typeof u === "string")
-        .map((u) => u.toLowerCase());
-      const discountAmt = Number(prod.discountAmount);
-      const hasVipDiscount =
-        role === "vip" &&
-        discountAmt > 0 &&
-        matchUsername !== "" &&
-        discountUsers.includes(matchUsername);
+      const discountAmt = Math.max(0, Number(prod.discountAmount) || 0);
+      const hasVipDiscount = role === "vip";
       const base =
         isAgent || hasVipDiscount
           ? Number(prod.agentPrice)

@@ -771,7 +771,7 @@ export default function BookingsPage() {
 
   // Handle Export to Excel (CSV with UTF-8 BOM for Thai character compatibility)
   const handleExport = () => {
-    const headers = ["รหัสการจอง", "ชื่อลูกค้า", "ผู้รับสินค้า", "เบอร์โทรศัพท์", "ที่อยู่จัดส่ง", "ชื่อสินค้า/บริการ", "จำนวน", "ราคาต่อชิ้น", "ยอดรวม", "ต้นทุนจริง", "สถานะ", "วันที่เปิดรับจอง", "ช่วงเวลาเปิดรับจอง", "รหัสรอบเติม", "ชื่อรอบเติม", "เวลารอบเติม", "หมายเหตุลูกค้า", "วันที่สั่งซื้อ"];
+    const headers = ["รหัสการจอง", "ชื่อลูกค้า", "ผู้รับสินค้า", "เบอร์โทรศัพท์", "ที่อยู่จัดส่ง", "ชื่อสินค้า/บริการ", "จำนวน", "ราคาต่อชิ้น", "ยอดรวม", "ต้นทุนจริง", "สถานะ", "วันที่เปิดรับจอง", "ช่วงเวลาเปิดรับจอง", "รหัสรอบเติม", "ชื่อรอบเติม", "เวลารอบเติม", "หมายเหตุลูกค้า", "วันที่และเวลาที่ลูกค้ากดจอง"];
     const rows = filtered.map(b => [
       b.bookingCode,
       b.username,
@@ -1237,7 +1237,7 @@ export default function BookingsPage() {
                   <TableHead className="py-3 px-3">สินค้า</TableHead>
                   <TableHead className="py-3 px-3 text-right whitespace-nowrap">ราคา</TableHead>
                   <TableHead className="py-3 px-3 text-center">สถานะ</TableHead>
-                  <TableHead className="py-3 px-3 whitespace-nowrap">จองเมื่อ</TableHead>
+                  <TableHead className="py-3 px-3 whitespace-nowrap">ลูกค้ากดจองเมื่อ</TableHead>
                   <TableHead className="py-3 px-4 text-right">จัดการ</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1392,6 +1392,8 @@ export default function BookingsPage() {
                                   ข้อมูลเวลา Snapshot
                                 </div>
                                 <p className="mt-1.5 text-xs font-bold leading-relaxed text-brand-ink">
+                                  ลูกค้ากดจองเมื่อ: {formatBookingDateTime(b.createdAt)}
+                                  <br />
                                   เปิดรับ:{" "}
                                   {b.bookingWindowStart && b.bookingWindowEnd
                                     ? `${b.bookingWindowStart}–${b.bookingWindowEnd} น.`
@@ -1482,7 +1484,7 @@ export default function BookingsPage() {
                     </span>
                     <span className="text-brand-ink-soft font-bold inline-flex items-center gap-1">
                       <CalendarDays className="h-3 w-3" />
-                      {formatBookingDateTime(b.createdAt)}
+                      กดจองเมื่อ {formatBookingDateTime(b.createdAt)}
                     </span>
                   </div>
                   <button
@@ -1519,6 +1521,8 @@ export default function BookingsPage() {
                         </p>
                       </div>
                       <div className="border-t border-brand-green-100/70 pt-2 text-[11px] font-bold text-brand-ink">
+                        ลูกค้ากดจองเมื่อ: {formatBookingDateTime(b.createdAt)}
+                        <br />
                         เปิดรับ:{" "}
                         {b.bookingWindowStart && b.bookingWindowEnd
                           ? `${b.bookingWindowStart}–${b.bookingWindowEnd} น.`

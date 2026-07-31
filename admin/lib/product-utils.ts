@@ -128,21 +128,18 @@ export function getProductAvailability(p: QueueProduct): {
   };
 }
 
-export function getEffectivePrice(p: QueueProduct, role: UserRole, username: string | null): {
+export function getEffectivePrice(p: QueueProduct, role: UserRole): {
   amount: number;
   isAgent: boolean;
   hasVipDiscount: boolean;
 } {
   const isAgent = role === "agent" || role === "admin";
-  const u = (username ?? "").toLowerCase().trim();
-  // ราคา VIP = ราคา Agent - ส่วนลดพิเศษ เฉพาะบัญชียศ VIP ที่ถูกเลือกไว้
-  const hasVipDiscount =
-    role === "vip" &&
-    Number(p.discountAmount) > 0 &&
-    u !== "" &&
-    p.discountEligibleUsernames.map((x) => x.toLowerCase()).includes(u);
+  // สมาชิกยศ VIP ทุกบัญชีได้ราคา VIP อัตโนมัติ
+  // ราคา VIP = ราคา Agent - ส่วนลดพิเศษของสินค้า
+  const hasVipDiscount = role === "vip";
+  const discountAmount = Math.max(0, Number(p.discountAmount) || 0);
   const base =
     isAgent || hasVipDiscount ? Number(p.agentPrice) : Number(p.price);
-  const finalPrice = hasVipDiscount ? Math.max(0, base - Number(p.discountAmount)) : base;
+  const finalPrice = hasVipDiscount ? Math.max(0, base - discountAmount) : base;
   return { amount: finalPrice, isAgent, hasVipDiscount };
 }

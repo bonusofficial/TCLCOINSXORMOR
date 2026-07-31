@@ -878,7 +878,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                   className={inputCls}
                 />
                 <p className="mt-1 text-[9.5px] font-bold text-brand-ink-soft">
-                  VIP ที่เลือกไว้จะลดเพิ่มจากราคานี้
+                  สมาชิก VIP ทุกบัญชีจะลดเพิ่มจากราคานี้อัตโนมัติ
                 </p>
               </div>
             </div>
@@ -1318,7 +1318,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             <div className="bg-brand-paper/40 p-4 border border-brand-green-100 rounded-2xl">
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5 text-brand-green" />
-                สมาชิกยศ VIP ที่ได้รับส่วนลดพิเศษ
+                รายชื่อ VIP เดิม (ไม่ใช้จำกัดสิทธิ์แล้ว)
                 <span className="text-brand-ink-soft font-bold">
                   (ไม่จำกัดจำนวน)
                 </span>
@@ -1354,7 +1354,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                 })}
                 {selectedUsernames.length === 0 && (
                   <span className="text-xs text-brand-ink-soft/60 font-bold py-1 select-none">
-                    ยังไม่ได้เลือก VIP (สมาชิกทั่วไปใช้ราคาขายปกติ)
+                    ไม่ต้องเลือกรายชื่อ — สมาชิก VIP ทุกบัญชีได้รับราคา VIP
                   </span>
                 )}
               </div>
@@ -1419,7 +1419,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             <div>
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
                 <Percent className="h-3.5 w-3.5 text-brand-gold" />
-                ส่วนลด VIP จากราคา Agent (บาท)
+                ส่วนลด VIP ทุกบัญชีจากราคา Agent (บาท)
               </label>
               <input
                 type="number"

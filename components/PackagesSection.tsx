@@ -11,13 +11,11 @@ import { Skeleton } from "@/components/ui/Skeleton";
 interface PackagesSectionProps {
   onSelectPackage: (productId: number) => void;
   userRole?: UserRole;
-  username?: string | null;
 }
 
 export default function PackagesSection({
   onSelectPackage,
   userRole = "member",
-  username = null,
 }: PackagesSectionProps) {
   const [activeTab, setActiveTab] = useState<"popular" | "recommended">("popular");
   
@@ -141,7 +139,6 @@ export default function PackagesSection({
                 idx={rank}
                 product={product}
                 userRole={userRole}
-                username={username}
                 maxQueueCount={maxQueueCount}
                 onSelect={() => onSelectPackage(product.id)}
               />

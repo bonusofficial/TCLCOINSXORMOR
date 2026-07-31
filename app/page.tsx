@@ -118,7 +118,6 @@ export default function Home() {
       <PackagesSection
         onSelectPackage={handleSelectPackage}
         userRole={userRole}
-        username={sessionUser?.username ?? null}
       />
 
       {/* SYSTEM STATS */}
