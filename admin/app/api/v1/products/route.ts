@@ -8,6 +8,10 @@ import {
   errorPlugin,
   loggerPlugin,
 } from "@/lib/server/middleware";
+import {
+  loadRoundAvailability,
+  withRoundAvailability,
+} from "@/lib/server/product-round-availability";
 
 const app = new Elysia({ prefix: "/api/v1/products" })
   .use(loggerPlugin)
@@ -21,10 +25,18 @@ const app = new Elysia({ prefix: "/api/v1/products" })
       const items = await prisma.products.findMany({
         orderBy: { createdAt: "desc" },
       });
+      const roundAvailability = await loadRoundAvailability(
+        items.map((item) => item.id)
+      );
       return {
         ok: true as const,
         data: items.map((p) => ({
           ...p,
+          saleSchedules: withRoundAvailability(
+            p.id,
+            p.saleSchedules,
+            roundAvailability
+          ),
           price: p.price.toString(),
           cost: p.cost.toString(),
           agentPrice: p.agentPrice.toString(),

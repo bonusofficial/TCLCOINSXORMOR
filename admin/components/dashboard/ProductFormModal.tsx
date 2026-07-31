@@ -56,12 +56,17 @@ const textareaCls = `${inputCls} resize-none`;
 
 function CapacityStepper({
   value,
+  bookedCount = 0,
   onChange,
 }: {
   value: number;
+  bookedCount?: number;
   onChange: (value: number) => void;
 }) {
   const [draft, setDraft] = useState(String(value));
+  const used = Math.max(0, Math.floor(Number(bookedCount) || 0));
+  const minimum = Math.max(1, used);
+  const remaining = Math.max(0, value - used);
 
   useEffect(() => {
     setDraft(String(value));
@@ -70,7 +75,9 @@ function CapacityStepper({
   const commit = (rawValue: string) => {
     const parsed = Number(rawValue);
     const next =
-      Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 1;
+      Number.isFinite(parsed) && parsed >= minimum
+        ? Math.floor(parsed)
+        : minimum;
     setDraft(String(next));
     onChange(next);
   };
@@ -78,53 +85,67 @@ function CapacityStepper({
   const adjust = (amount: number) => {
     const parsed = Number(draft);
     const current =
-      Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : value;
-    const next = Math.max(1, current + amount);
+      Number.isFinite(parsed) && parsed >= minimum ? Math.floor(parsed) : value;
+    const next = Math.max(minimum, current + amount);
     setDraft(String(next));
     onChange(next);
   };
 
   return (
-    <div className="mt-1 grid grid-cols-[2.5rem_minmax(4.5rem,1fr)_2.5rem] overflow-hidden rounded-xl border border-brand-green-100 bg-brand-paper transition focus-within:border-brand-green focus-within:ring-4 focus-within:ring-brand-green/20">
-      <button
-        type="button"
-        onClick={() => adjust(-1)}
-        disabled={(Number(draft) || value) <= 1}
-        aria-label="ลดจำนวนที่รับต่อรอบ"
-        className="flex h-10 items-center justify-center border-r border-brand-green-100 text-brand-ink-soft transition hover:bg-brand-green-50 hover:text-brand-green disabled:cursor-not-allowed disabled:opacity-35 cursor-pointer"
+    <div className="mt-1 space-y-1.5">
+      <div className="grid grid-cols-[2.5rem_minmax(4.5rem,1fr)_2.5rem] overflow-hidden rounded-xl border border-brand-green-100 bg-brand-paper transition focus-within:border-brand-green focus-within:ring-4 focus-within:ring-brand-green/20">
+        <button
+          type="button"
+          onClick={() => adjust(-1)}
+          disabled={(Number(draft) || value) <= minimum}
+          aria-label="ลดโควตารวมต่อรอบ"
+          className="flex h-10 items-center justify-center border-r border-brand-green-100 text-brand-ink-soft transition hover:bg-brand-green-50 hover:text-brand-green disabled:cursor-not-allowed disabled:opacity-35 cursor-pointer"
+        >
+          <Minus className="h-4 w-4" strokeWidth={3} />
+        </button>
+        <input
+          type="number"
+          min={minimum}
+          step={1}
+          inputMode="numeric"
+          value={draft}
+          onChange={(event) => {
+            const rawValue = event.target.value;
+            setDraft(rawValue);
+            const parsed = Number(rawValue);
+            if (
+              rawValue !== "" &&
+              Number.isInteger(parsed) &&
+              parsed >= minimum
+            ) {
+              onChange(parsed);
+            }
+          }}
+          onBlur={() => commit(draft)}
+          aria-label="โควตารวมต่อรอบ"
+          className="h-10 min-w-0 appearance-none border-0 bg-transparent px-2 text-center text-sm font-black text-brand-ink outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
+        <button
+          type="button"
+          onClick={() => adjust(1)}
+          aria-label="เพิ่มโควตารวมต่อรอบ"
+          className="flex h-10 items-center justify-center border-l border-brand-green-100 text-brand-green transition hover:bg-brand-green-50 cursor-pointer"
+        >
+          <Plus className="h-4 w-4" strokeWidth={3} />
+        </button>
+      </div>
+      <div
+        className={`flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-[10px] font-black ${
+          remaining === 0
+            ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
+            : "border-brand-green/25 bg-brand-green/10 text-brand-green"
+        }`}
       >
-        <Minus className="h-4 w-4" strokeWidth={3} />
-      </button>
-      <input
-        type="number"
-        min={1}
-        step={1}
-        inputMode="numeric"
-        value={draft}
-        onChange={(event) => {
-          const rawValue = event.target.value;
-          setDraft(rawValue);
-          const parsed = Number(rawValue);
-          if (
-            rawValue !== "" &&
-            Number.isInteger(parsed) &&
-            parsed >= 1
-          ) {
-            onChange(parsed);
-          }
-        }}
-        onBlur={() => commit(draft)}
-        aria-label="จำนวนที่รับต่อรอบ"
-        className="h-10 min-w-0 appearance-none border-0 bg-transparent px-2 text-center text-sm font-black text-brand-ink outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-      />
-      <button
-        type="button"
-        onClick={() => adjust(1)}
-        aria-label="เพิ่มจำนวนที่รับต่อรอบ"
-        className="flex h-10 items-center justify-center border-l border-brand-green-100 text-brand-green transition hover:bg-brand-green-50 cursor-pointer"
-      >
-        <Plus className="h-4 w-4" strokeWidth={3} />
-      </button>
+        <span>คงเหลือ {remaining} ชิ้น</span>
+        <span className="text-brand-ink-soft">
+          จองแล้ว {used} / โควตารวม {value}
+        </span>
+      </div>
     </div>
   );
 }
@@ -633,12 +654,16 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
           end: schedule.bookingEnd,
         })),
         saleSchedules: saleSchedules.map((schedule) => ({
-          ...schedule,
+          date: schedule.date,
+          bookingStart: schedule.bookingStart,
+          bookingEnd: schedule.bookingEnd,
           rounds: schedule.rounds.map((round, index) => ({
-            ...round,
             code: round.code.trim(),
             name: round.name.trim(),
+            start: round.start,
+            end: round.end,
             capacity: Math.max(1, Number(round.capacity) || 1),
+            enabled: round.enabled,
             sortOrder: index,
           })),
         })),
@@ -1246,9 +1271,10 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                         </div>
                         <div className="mt-2 flex flex-wrap items-end gap-2">
                           <div className="min-w-40 flex-1 text-[10px] font-extrabold text-brand-ink-soft">
-                            จำนวนที่รับต่อรอบ
+                            โควตารวมต่อรอบ
                             <CapacityStepper
                               value={round.capacity}
+                              bookedCount={round.bookedCount}
                               onChange={(capacity) =>
                                 updateRound(scheduleIndex, roundIndex, {
                                   capacity,

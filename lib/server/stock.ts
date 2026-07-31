@@ -1,4 +1,14 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+
+type ProductStockClient = Pick<Prisma.TransactionClient, "products">;
+
+export class ProductStockUnavailableError extends Error {
+  constructor() {
+    super("สินค้าคงเหลือไม่เพียงพอ");
+    this.name = "ProductStockUnavailableError";
+  }
+}
 
 /**
  * "active" status = ยังกินสต็อกอยู่
@@ -16,19 +26,33 @@ export function isActiveStatus(status: string): boolean {
  */
 export async function adjustProductStock(
   productId: number | null | undefined,
-  delta: number
+  delta: number,
+  db: ProductStockClient = prisma
 ): Promise<void> {
   if (!productId || delta === 0) return;
-  const product = await prisma.products.findUnique({
+  const product = await db.products.findUnique({
     where: { id: productId },
-    select: { id: true, stockEnabled: true, stock: true },
+    select: { id: true, stockEnabled: true },
   });
   if (!product || !product.stockEnabled) return;
-  const next = Math.max(0, product.stock + delta);
-  await prisma.products.update({
-    where: { id: product.id },
-    data: { stock: next },
+  if (delta > 0) {
+    await db.products.updateMany({
+      where: { id: product.id, stockEnabled: true },
+      data: { stock: { increment: delta } },
+    });
+    return;
+  }
+
+  const quantity = Math.abs(delta);
+  const updated = await db.products.updateMany({
+    where: {
+      id: product.id,
+      stockEnabled: true,
+      stock: { gte: quantity },
+    },
+    data: { stock: { decrement: quantity } },
   });
+  if (updated.count === 0) throw new ProductStockUnavailableError();
 }
 
 /**

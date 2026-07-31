@@ -544,17 +544,33 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
       if (before.userId !== user.id) {
         return code(403, { ok: false, message: "ไม่มีสิทธิ์ในการจัดการการจองนี้" });
       }
-      if (before.status !== "รอตรวจสอบ") {
+      if (before.status !== "รอตรวจสอบ" && before.status !== "รอชำระเงิน") {
         return code(400, { ok: false, message: "ไม่สามารถยกเลิกการจองนี้ได้เนื่องจากอยู่ระหว่างดำเนินการหรือสำเร็จแล้ว" });
       }
 
-      const saved = await prisma.bookings.update({
-        where: { id },
-        data: { status: "ยกเลิก" },
+      const saved = await prisma.$transaction(async (tx) => {
+        const updated = await tx.bookings.updateMany({
+          where: {
+            id,
+            userId: user.id,
+            status: { in: ["รอตรวจสอบ", "รอชำระเงิน"] },
+          },
+          data: { status: "ยกเลิก" },
+        });
+        if (updated.count === 0) return null;
+        await adjustProductStock(
+          before.productId,
+          before.quantity,
+          tx
+        );
+        return tx.bookings.findUnique({ where: { id } });
       });
-
-      // คืนสต็อกตามจำนวนสินค้า ส่วนจำนวนว่างของรอบคำนวณใหม่จาก booking ที่ยังไม่ถูกยกเลิก
-      await adjustProductStock(before.productId, before.quantity);
+      if (!saved) {
+        return code(409, {
+          ok: false,
+          message: "สถานะการจองเปลี่ยนไปแล้ว กรุณารีเฟรชแล้วลองใหม่",
+        });
+      }
 
       logAudit({
         action: "BOOKING_CANCEL",

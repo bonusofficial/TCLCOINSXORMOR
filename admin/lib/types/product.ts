@@ -20,6 +20,10 @@ export interface TopupRound {
   capacity: number;
   enabled: boolean;
   sortOrder: number;
+  /** ยอดที่จองจริงของวัน/รอบนี้ ไม่นับรายการที่ยกเลิก (response only) */
+  bookedCount?: number;
+  /** จำนวนที่ยังจองได้ ณ ตอนโหลดข้อมูล (response only) */
+  remaining?: number;
 }
 
 export interface SaleSchedule {

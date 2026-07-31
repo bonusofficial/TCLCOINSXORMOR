@@ -13,6 +13,7 @@ import { logAudit } from "@/lib/server/audit";
 import {
   adjustProductStock,
   isActiveStatus,
+  ProductStockUnavailableError,
   stockDeltaOnStatusChange,
 } from "@/lib/server/stock";
 
@@ -120,9 +121,12 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
               )) * before.quantity;
       }
 
-      const saved = await prisma.bookings.update({
-        where: { id: params.id },
-        data: {
+      let transactionResult;
+      try {
+        transactionResult = await prisma.$transaction(async (tx) => {
+          const updated = await tx.bookings.updateMany({
+            where: { id: params.id, status: before.status },
+            data: {
           ...(body.status !== undefined ? { status: body.status } : {}),
           ...(body.phone !== undefined ? { phone: body.phone.trim() } : {}),
           ...(body.recipientFirstName !== undefined
@@ -149,14 +153,36 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
           ...(body.content !== undefined ? { content: body.content } : {}),
           ...(body.price !== undefined ? { price: body.price } : {}),
           ...(costSnapshot !== undefined ? { cost: costSnapshot } : {}),
-        },
-      });
-
-      const delta =
-        stockDeltaOnStatusChange(before.status, saved.status) * saved.quantity;
-      if (delta !== 0) {
-        await adjustProductStock(saved.productId, delta);
+            },
+          });
+          if (updated.count === 0) return null;
+          const saved = await tx.bookings.findUniqueOrThrow({
+            where: { id: params.id },
+          });
+          const delta =
+            stockDeltaOnStatusChange(before.status, saved.status) *
+            saved.quantity;
+          if (delta !== 0) {
+            await adjustProductStock(saved.productId, delta, tx);
+          }
+          return { saved, delta };
+        });
+      } catch (error) {
+        if (error instanceof ProductStockUnavailableError) {
+          return code(409, {
+            ok: false,
+            message: "สต็อกสินค้าไม่เพียงพอ ไม่สามารถนำรายการที่ยกเลิกกลับมาได้",
+          });
+        }
+        throw error;
       }
+      if (!transactionResult) {
+        return code(409, {
+          ok: false,
+          message: "สถานะรายการเปลี่ยนไปแล้ว กรุณารีเฟรชแล้วลองใหม่",
+        });
+      }
+      const { saved, delta } = transactionResult;
 
       logAudit({
         action: "BOOKING_UPDATE",
@@ -206,11 +232,22 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       if (!before)
         return code(404, { ok: false, message: "ไม่พบการจอง" });
 
-      await prisma.bookings.delete({ where: { id: params.id } });
-
       const wasActive = isActiveStatus(before.status);
-      if (wasActive) {
-        await adjustProductStock(before.productId, before.quantity);
+      const deleted = await prisma.$transaction(async (tx) => {
+        const result = await tx.bookings.deleteMany({
+          where: { id: params.id, status: before.status },
+        });
+        if (result.count === 0) return false;
+        if (wasActive) {
+          await adjustProductStock(before.productId, before.quantity, tx);
+        }
+        return true;
+      });
+      if (!deleted) {
+        return code(409, {
+          ok: false,
+          message: "สถานะรายการเปลี่ยนไปแล้ว กรุณารีเฟรชแล้วลองใหม่",
+        });
       }
 
       logAudit({

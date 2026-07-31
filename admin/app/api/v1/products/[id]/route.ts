@@ -8,6 +8,10 @@ import {
   errorPlugin,
   loggerPlugin,
 } from "@/lib/server/middleware";
+import {
+  loadRoundAvailability,
+  withRoundAvailability,
+} from "@/lib/server/product-round-availability";
 
 const Params = t.Object({
   id: t.Numeric({ minimum: 1 }),
@@ -26,10 +30,16 @@ const app = new Elysia({ prefix: "/api/v1/products" })
         where: { id: params.id },
       });
       if (!item) return status(404, { ok: false, message: "ไม่พบสินค้า" });
+      const roundAvailability = await loadRoundAvailability([item.id]);
       return {
         ok: true as const,
         data: {
           ...item,
+          saleSchedules: withRoundAvailability(
+            item.id,
+            item.saleSchedules,
+            roundAvailability
+          ),
           price: item.price.toString(),
           cost: item.cost.toString(),
           agentPrice: item.agentPrice.toString(),
