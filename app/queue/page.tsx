@@ -23,6 +23,7 @@ import AuthModal from "@/components/AuthModal";
 import ThaiAddressFields, {
   hasThaiAddressValue,
   isCompleteThaiAddress,
+  isThaiAddressOmissionMarker,
   type ThaiAddress,
 } from "@/components/ThaiAddressFields";
 import { publicApi } from "@/lib/eden";
@@ -97,6 +98,7 @@ function hasCompleteRecipientProfile(profile: BookingProfile) {
     profile.firstName?.trim() &&
       profile.lastName?.trim() &&
       (!hasThaiAddressValue(profileAddress) ||
+        isThaiAddressOmissionMarker(profileAddress) ||
         isCompleteThaiAddress(profileAddress))
   );
 }
@@ -213,11 +215,11 @@ function QueueContent() {
     province: "",
     postalCode: "",
   });
-  const [omitAddress, setOmitAddress] = useState(true);
   const [notes, setNotes] = useState("");
   const [profileLoadState, setProfileLoadState] = useState<
     "idle" | "loading" | "complete" | "incomplete"
   >("idle");
+  const [saveToProfile, setSaveToProfile] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [redirectingToOrders, setRedirectingToOrders] = useState(false);
   const [dailyBookingCountState, setDailyBookingCountState] = useState<{
@@ -323,6 +325,9 @@ function QueueContent() {
         : null,
     [selectedProduct, userRole]
   );
+  const addressIsMarker = isThaiAddressOmissionMarker(address);
+  const addressLocationNotRequired =
+    !hasThaiAddressValue(address) || addressIsMarker;
 
   const dailyBookingCounts =
     dailyBookingCountState && dailyBookingCountState.userId === user?.id
@@ -341,7 +346,6 @@ function QueueContent() {
       postalCode: profile.postalCode ?? "",
     };
     setAddress(profileAddress);
-    setOmitAddress(!hasThaiAddressValue(profileAddress));
     setProfileLoadState(
       hasCompleteRecipientProfile(profile) ? "complete" : "incomplete"
     );
@@ -351,6 +355,7 @@ function QueueContent() {
     if (!user?.id) return;
 
     setProfileLoadState("loading");
+    setSaveToProfile(false);
     try {
       const response = await fetch("/api/v1/profile/delivery-address", {
         credentials: "include",
@@ -538,10 +543,13 @@ function QueueContent() {
       return true;
     }
 
-    if (!omitAddress && !isCompleteThaiAddress(address)) {
+    if (
+      !addressLocationNotRequired &&
+      !isCompleteThaiAddress(address)
+    ) {
       toast.warning("กรุณากรอกที่อยู่ให้ครบถ้วน", {
         description:
-          "กรอกจังหวัด อำเภอ/เขต ตำบล/แขวง และรหัสไปรษณีย์ หรือเลือกไม่ต้องการระบุที่อยู่",
+          "กรอกจังหวัด อำเภอ/เขต ตำบล/แขวง และรหัสไปรษณีย์ หรือเว้นว่าง/ใส่ “-” หากไม่ต้องการระบุที่อยู่",
       });
       document
         .getElementById("booking-recipient-details")
@@ -669,7 +677,8 @@ function QueueContent() {
     /^\d{10}$/.test(phone) &&
     recipientFirstName.trim() !== "" &&
     recipientLastName.trim() !== "" &&
-    (omitAddress || isCompleteThaiAddress(address)) &&
+    (addressLocationNotRequired ||
+      isCompleteThaiAddress(address)) &&
     !selectedQuotaMessage;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -694,11 +703,15 @@ function QueueContent() {
         phone: phone.trim(),
         recipientFirstName: recipientFirstName.trim(),
         recipientLastName: recipientLastName.trim(),
-        addressLine: omitAddress ? undefined : address.addressLine.trim(),
-        subdistrict: omitAddress ? undefined : address.subdistrict,
-        district: omitAddress ? undefined : address.district,
-        province: omitAddress ? undefined : address.province,
-        postalCode: omitAddress ? undefined : address.postalCode,
+        addressLine: address.addressLine.trim() || undefined,
+        subdistrict: addressLocationNotRequired
+          ? undefined
+          : address.subdistrict,
+        district: addressLocationNotRequired ? undefined : address.district,
+        province: addressLocationNotRequired ? undefined : address.province,
+        postalCode: addressLocationNotRequired
+          ? undefined
+          : address.postalCode,
         topupRoundCode: selectedRoundCode || undefined,
         content: notes.trim() || undefined,
         quantity,
@@ -731,8 +744,68 @@ function QueueContent() {
       }
       const booking = data.data;
       setBookingNotice(null);
-      setProfileLoadState("complete");
-      toast.success("จองคิวและอัปเดตข้อมูลโปรไฟล์สำเร็จ!", { id: tId });
+      let profileSaveError: string | null = null;
+      if (saveToProfile) {
+        try {
+          const profileResponse = await fetch(
+            "/api/v1/profile/delivery-address",
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                phone: phone.trim(),
+                firstName: recipientFirstName.trim(),
+                lastName: recipientLastName.trim(),
+                addressLine: address.addressLine.trim(),
+                subdistrict: addressLocationNotRequired
+                  ? ""
+                  : address.subdistrict,
+                district: addressLocationNotRequired ? "" : address.district,
+                province: addressLocationNotRequired ? "" : address.province,
+                postalCode: addressLocationNotRequired
+                  ? ""
+                  : address.postalCode,
+              }),
+            }
+          );
+          const profilePayload = (await profileResponse
+            .json()
+            .catch(() => null)) as
+            | { ok?: boolean; message?: string; data?: BookingProfile }
+            | null;
+          if (
+            !profileResponse.ok ||
+            !profilePayload?.ok ||
+            !profilePayload.data
+          ) {
+            throw new Error(
+              profilePayload?.message ?? "ไม่สามารถบันทึกข้อมูลลงโปรไฟล์ได้"
+            );
+          }
+          setProfileLoadState("complete");
+          setSaveToProfile(false);
+        } catch (error) {
+          profileSaveError =
+            error instanceof Error
+              ? error.message
+              : "ไม่สามารถบันทึกข้อมูลลงโปรไฟล์ได้";
+        }
+      }
+
+      if (profileSaveError) {
+        toast.warning("จองสำเร็จ แต่บันทึกโปรไฟล์ไม่สำเร็จ", {
+          id: tId,
+          description: profileSaveError,
+        });
+      } else {
+        toast.success(
+          saveToProfile
+            ? "จองและบันทึกข้อมูลโปรไฟล์สำเร็จ!"
+            : "จองคิวสำเร็จ!",
+          { id: tId }
+        );
+      }
       setResult({
         code: booking.bookingCode,
         productName: booking.productName,
@@ -1393,10 +1466,10 @@ function QueueContent() {
                     ข้อมูลผู้รับสินค้า
                   </h4>
                   <p className="mt-1 text-[11px] font-bold text-brand-ink-soft">
-                    ดึงข้อมูลจากโปรไฟล์แล้ว เมื่อจองสำเร็จ ชื่อ–นามสกุล เบอร์ และที่อยู่ที่ยืนยันจะอัปเดตกลับไปยังโปรไฟล์อัตโนมัติ
+                    ดึงข้อมูลจากโปรไฟล์แล้ว คุณสามารถแก้ชื่อ–นามสกุล ที่อยู่ และเบอร์สำหรับรายการนี้ได้โดยไม่เปลี่ยนข้อมูลในโปรไฟล์
                   </p>
                   <p className="mt-2 rounded-xl border border-brand-green-100 bg-brand-green/10 px-3 py-2.5 text-[10.5px] font-extrabold leading-relaxed text-brand-ink">
-                    ออเดอร์นี้จะเก็บข้อมูลเป็น Snapshot แยกไว้ ข้อมูลออเดอร์เก่าจึงไม่เปลี่ยนเมื่อแก้โปรไฟล์ภายหลัง
+                    ข้อมูลชื่อและที่อยู่ใช้สำหรับจัดทำเอกสารทางบัญชีและภาษีของร้าน กรุณาตรวจสอบให้ถูกต้องก่อนยืนยันการจอง
                   </p>
                 </div>
                 {profileLoadState === "loading" && (
@@ -1414,7 +1487,7 @@ function QueueContent() {
                           โปรไฟล์ยังไม่มีชื่อ–นามสกุลจริง หรือมีที่อยู่ไม่ครบถ้วน
                         </p>
                         <p className="mt-1 text-[10.5px] font-bold leading-relaxed text-brand-ink-soft">
-                          กรุณากรอกชื่อให้ครบ และเลือกระบุหรือไม่ระบุที่อยู่ก่อนยืนยันการจอง
+                          กรุณากรอกชื่อให้ครบ หากไม่ต้องการระบุที่อยู่สามารถเว้นว่างหรือใส่ “-” ได้
                         </p>
                       </div>
                     </div>
@@ -1458,14 +1531,33 @@ function QueueContent() {
                   <ThaiAddressFields
                     value={address}
                     onChange={setAddress}
-                    required={!omitAddress}
-                    allowOmit
-                    omitted={omitAddress}
-                    onOmittedChange={setOmitAddress}
+                    required={!addressLocationNotRequired}
                     disabled={profileLoadState === "loading"}
                     idPrefix="booking-address"
                   />
                 </div>
+                <label
+                  className={`mt-4 flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition ${
+                    saveToProfile
+                      ? "border-brand-green bg-brand-green/10"
+                      : "border-brand-green/40 bg-brand-surface hover:bg-brand-green/5"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={saveToProfile}
+                    onChange={(event) => setSaveToProfile(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-brand-green"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-black text-brand-ink">
+                      บันทึกข้อมูลนี้ไว้ในโปรไฟล์สำหรับการจองครั้งถัดไป
+                    </span>
+                    <span className="mt-1 block text-[10px] font-bold leading-relaxed text-brand-ink-soft">
+                      หากไม่ติ๊ก ข้อมูลที่แก้จะใช้เฉพาะออเดอร์นี้และไม่เปลี่ยนโปรไฟล์
+                    </span>
+                  </span>
+                </label>
               </div>
 
               {/* Notes */}

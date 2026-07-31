@@ -239,14 +239,13 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         province: body.province?.trim() ?? "",
         postalCode: body.postalCode?.trim() ?? "",
       };
-      const usesLegacyNoAddressMarker =
+      const usesNoAddressMarker =
         ["-", "ไม่ระบุ", "ไม่ต้องการระบุ"].includes(addressInput.addressLine) &&
         !addressInput.subdistrict &&
         !addressInput.district &&
         !addressInput.province &&
         !addressInput.postalCode;
-      const hasAnyAddress =
-        !usesLegacyNoAddressMarker && Object.values(addressInput).some(Boolean);
+      const hasAnyAddress = Object.values(addressInput).some(Boolean);
       const hasCompleteAddress = Boolean(
         addressInput.addressLine &&
           addressInput.subdistrict &&
@@ -261,11 +260,15 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
           message: "กรุณากรอกชื่อและนามสกุลผู้รับให้ครบถ้วน",
         });
       }
-      if (hasAnyAddress && !hasCompleteAddress) {
+      if (
+        hasAnyAddress &&
+        !usesNoAddressMarker &&
+        !hasCompleteAddress
+      ) {
         return code(400, {
           ok: false,
           message:
-            "กรุณากรอกที่อยู่ให้ครบถ้วน หรือเลือกไม่ต้องการระบุที่อยู่",
+            "กรุณากรอกที่อยู่ให้ครบถ้วน หรือเว้นว่าง/ใส่ - หากไม่ต้องการระบุที่อยู่",
         });
       }
 
@@ -273,10 +276,10 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
         recipientFirstName,
         recipientLastName,
         addressLine: hasAnyAddress ? addressInput.addressLine : null,
-        subdistrict: hasAnyAddress ? addressInput.subdistrict : null,
-        district: hasAnyAddress ? addressInput.district : null,
-        province: hasAnyAddress ? addressInput.province : null,
-        postalCode: hasAnyAddress ? addressInput.postalCode : null,
+        subdistrict: hasCompleteAddress ? addressInput.subdistrict : null,
+        district: hasCompleteAddress ? addressInput.district : null,
+        province: hasCompleteAddress ? addressInput.province : null,
+        postalCode: hasCompleteAddress ? addressInput.postalCode : null,
       };
 
       // โหลดสินค้าเพื่อตรวจสอบความถูกต้องของข้อมูล
@@ -484,22 +487,6 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
               bookingCode = generateBookingCode(user.role as string | null);
             }
 
-            // ข้อมูลที่ผู้ใช้ยืนยันในหน้าจองคือข้อมูลโปรไฟล์ล่าสุดเสมอ
-            // ส่วน bookings ด้านล่างยังเก็บเป็น snapshot แยก จึงไม่เปลี่ยนตามภายหลัง
-            await tx.user.update({
-              where: { id: user.id },
-              data: {
-                phone: body.phone,
-                firstName: delivery.recipientFirstName,
-                lastName: delivery.recipientLastName,
-                addressLine: delivery.addressLine,
-                subdistrict: delivery.subdistrict,
-                district: delivery.district,
-                province: delivery.province,
-                postalCode: delivery.postalCode,
-              },
-            });
-
             return tx.bookings.create({
               data: {
                 bookingCode,
@@ -558,7 +545,6 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
           topupRoundCode: saved.topupRoundCode,
           topupRoundName: saved.topupRoundName,
           topupRoundTime: `${saved.topupRoundStart}-${saved.topupRoundEnd}`,
-          profileSynced: true,
           stockDelta,
         },
         payload: body,

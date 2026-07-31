@@ -41,13 +41,21 @@ export function hasThaiAddressValue(
     value.province,
     value.postalCode,
   ].some((part) => Boolean(part?.trim()));
-  if (
-    !hasLocationValue &&
-    ["-", "ไม่ระบุ", "ไม่ต้องการระบุ"].includes(addressLine)
-  ) {
-    return false;
-  }
   return Boolean(addressLine || hasLocationValue);
+}
+
+export function isThaiAddressOmissionMarker(
+  value: Partial<Record<keyof ThaiAddress, string | null | undefined>>
+) {
+  return Boolean(
+    ["-", "ไม่ระบุ", "ไม่ต้องการระบุ"].includes(
+      value.addressLine?.trim() ?? ""
+    ) &&
+      !value.subdistrict?.trim() &&
+      !value.district?.trim() &&
+      !value.province?.trim() &&
+      !value.postalCode?.trim()
+  );
 }
 
 export function isCompleteThaiAddress(
@@ -85,6 +93,7 @@ export default function ThaiAddressFields({
   idPrefix = "address",
   className = "",
 }: ThaiAddressFieldsProps) {
+  const usesOmissionMarker = isThaiAddressOmissionMarker(value);
   const provinces = useMemo(
     () => distinct(addressData.map((row) => row.province)),
     []
@@ -223,6 +232,11 @@ export default function ThaiAddressFields({
               placeholder="บ้านเลขที่ หมู่ ซอย ถนน อาคาร หรือรายละเอียดเพิ่มเติม"
               className={`${inputClassName} resize-y`}
             />
+            {usesOmissionMarker && (
+              <p className="mt-2 rounded-lg border border-brand-green/25 bg-brand-green/10 px-3 py-2 text-[10.5px] font-bold text-brand-ink-soft">
+                ใช้ “-” แทนที่อยู่แล้ว ไม่ต้องเลือกจังหวัด อำเภอ/เขต ตำบล/แขวง และรหัสไปรษณีย์
+              </p>
+            )}
           </div>
 
           <div>

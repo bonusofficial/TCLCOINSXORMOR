@@ -144,7 +144,7 @@ export async function PUT(request: Request) {
   }
 
   // ที่อยู่เป็นข้อมูลทางเลือก แต่หากเริ่มกรอกแล้วต้องกรอกให้ครบชุด
-  // รองรับข้อมูลเดิมที่ใช้ "-" แทนการไม่ระบุ โดยแปลงเป็น null ให้สม่ำเสมอ
+  // ค่า "-" เป็นการไม่ระบุที่อยู่แบบตั้งใจ จึงเก็บไว้เพื่อดึงกลับครั้งถัดไป
   const addressValues = {
     addressLine: data.addressLine,
     subdistrict: data.subdistrict,
@@ -160,20 +160,25 @@ export async function PUT(request: Request) {
     body.province,
     body.postalCode,
   ].some((value) => value !== undefined);
-  const usesLegacyNoAddressMarker =
+  const usesNoAddressMarker =
     ["-", "ไม่ระบุ", "ไม่ต้องการระบุ"].includes(data.addressLine) &&
     !data.subdistrict &&
     !data.district &&
     !data.province &&
     !data.postalCode;
-  const omitAddress = body.omitAddress === true || usesLegacyNoAddressMarker;
+  const omitAddress = body.omitAddress === true;
   const completeAddress =
     data.addressLine &&
     data.subdistrict &&
     data.district &&
     data.province &&
     /^\d{5}$/.test(data.postalCode);
-  if (!omitAddress && hasAnyAddress && !completeAddress) {
+  if (
+    !omitAddress &&
+    hasAnyAddress &&
+    !usesNoAddressMarker &&
+    !completeAddress
+  ) {
     return Response.json(
       { ok: false, message: "กรุณากรอกที่อยู่ให้ครบถ้วน รวมถึงรหัสไปรษณีย์ 5 หลัก" },
       { status: 422 }
@@ -186,10 +191,22 @@ export async function PUT(request: Request) {
     const shouldUpdateAddress = omitAddress || hasAddressInput;
     const normalizedAddress = {
       addressLine: omitAddress || !hasAnyAddress ? null : data.addressLine,
-      subdistrict: omitAddress || !hasAnyAddress ? null : data.subdistrict,
-      district: omitAddress || !hasAnyAddress ? null : data.district,
-      province: omitAddress || !hasAnyAddress ? null : data.province,
-      postalCode: omitAddress || !hasAnyAddress ? null : data.postalCode,
+      subdistrict:
+        omitAddress || usesNoAddressMarker || !hasAnyAddress
+          ? null
+          : data.subdistrict,
+      district:
+        omitAddress || usesNoAddressMarker || !hasAnyAddress
+          ? null
+          : data.district,
+      province:
+        omitAddress || usesNoAddressMarker || !hasAnyAddress
+          ? null
+          : data.province,
+      postalCode:
+        omitAddress || usesNoAddressMarker || !hasAnyAddress
+          ? null
+          : data.postalCode,
     };
     const updateData = {
       ...(hasPhoneInput && { phone: data.phone }),
