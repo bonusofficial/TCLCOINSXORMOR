@@ -218,7 +218,6 @@ function QueueContent() {
   const [profileLoadState, setProfileLoadState] = useState<
     "idle" | "loading" | "complete" | "incomplete"
   >("idle");
-  const [saveToProfile, setSaveToProfile] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [redirectingToOrders, setRedirectingToOrders] = useState(false);
   const [dailyBookingCountState, setDailyBookingCountState] = useState<{
@@ -352,7 +351,6 @@ function QueueContent() {
     if (!user?.id) return;
 
     setProfileLoadState("loading");
-    setSaveToProfile(false);
     try {
       const response = await fetch("/api/v1/profile/delivery-address", {
         credentials: "include",
@@ -733,65 +731,8 @@ function QueueContent() {
       }
       const booking = data.data;
       setBookingNotice(null);
-      let profileSaveError: string | null = null;
-      if (saveToProfile) {
-        try {
-          const profileResponse = await fetch(
-            "/api/v1/profile/delivery-address",
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({
-                phone: phone.trim(),
-                firstName: recipientFirstName.trim(),
-                lastName: recipientLastName.trim(),
-                omitAddress,
-                addressLine: omitAddress ? "" : address.addressLine.trim(),
-                subdistrict: omitAddress ? "" : address.subdistrict,
-                district: omitAddress ? "" : address.district,
-                province: omitAddress ? "" : address.province,
-                postalCode: omitAddress ? "" : address.postalCode,
-              }),
-            }
-          );
-          const profilePayload = (await profileResponse
-            .json()
-            .catch(() => null)) as
-            | { ok?: boolean; message?: string; data?: BookingProfile }
-            | null;
-          if (
-            !profileResponse.ok ||
-            !profilePayload?.ok ||
-            !profilePayload.data
-          ) {
-            throw new Error(
-              profilePayload?.message ?? "ไม่สามารถบันทึกข้อมูลลงโปรไฟล์ได้"
-            );
-          }
-          setProfileLoadState("complete");
-          setSaveToProfile(false);
-        } catch (error) {
-          profileSaveError =
-            error instanceof Error
-              ? error.message
-              : "ไม่สามารถบันทึกข้อมูลลงโปรไฟล์ได้";
-        }
-      }
-
-      if (profileSaveError) {
-        toast.warning("จองสำเร็จ แต่บันทึกโปรไฟล์ไม่สำเร็จ", {
-          id: tId,
-          description: profileSaveError,
-        });
-      } else {
-        toast.success(
-          saveToProfile
-            ? "จองและบันทึกข้อมูลโปรไฟล์สำเร็จ!"
-            : "จองคิวสำเร็จ!",
-          { id: tId }
-        );
-      }
+      setProfileLoadState("complete");
+      toast.success("จองคิวและอัปเดตข้อมูลโปรไฟล์สำเร็จ!", { id: tId });
       setResult({
         code: booking.bookingCode,
         productName: booking.productName,
@@ -1438,7 +1379,7 @@ function QueueContent() {
                 />
                 <p className="text-[10.5px] font-bold text-brand-ink-soft mt-1.5">
                   {profileLoadState === "complete"
-                    ? "ดึงจากโปรไฟล์แล้ว — แก้ไขช่องนี้ได้เฉพาะรายการจองนี้"
+                    ? "ดึงจากโปรไฟล์แล้ว — หากแก้ไข ระบบจะอัปเดตกลับไปยังโปรไฟล์เมื่อจองสำเร็จ"
                     : "ใช้สำหรับให้แอดมินติดต่อกลับ"}
                 </p>
               </div>
@@ -1452,12 +1393,10 @@ function QueueContent() {
                     ข้อมูลผู้รับสินค้า
                   </h4>
                   <p className="mt-1 text-[11px] font-bold text-brand-ink-soft">
-                    {profileLoadState === "complete"
-                      ? "ดึงข้อมูลจากโปรไฟล์แล้ว คุณสามารถแก้ชื่อ–นามสกุล ที่อยู่ และเบอร์สำหรับรายการนี้ได้โดยไม่เปลี่ยนข้อมูลในโปรไฟล์"
-                      : "ระบบจะบันทึกข้อมูลนี้ไว้กับรายการจอง เพื่อให้ที่อยู่ของออเดอร์เก่าไม่เปลี่ยนตามโปรไฟล์ภายหลัง"}
+                    ดึงข้อมูลจากโปรไฟล์แล้ว เมื่อจองสำเร็จ ชื่อ–นามสกุล เบอร์ และที่อยู่ที่ยืนยันจะอัปเดตกลับไปยังโปรไฟล์อัตโนมัติ
                   </p>
                   <p className="mt-2 rounded-xl border border-brand-green-100 bg-brand-green/10 px-3 py-2.5 text-[10.5px] font-extrabold leading-relaxed text-brand-ink">
-                    ชื่อผู้รับใช้สำหรับจัดทำเอกสารของร้าน ส่วนที่อยู่เป็นข้อมูลทางเลือก กรุณาตรวจสอบข้อมูลก่อนยืนยันการจอง
+                    ออเดอร์นี้จะเก็บข้อมูลเป็น Snapshot แยกไว้ ข้อมูลออเดอร์เก่าจึงไม่เปลี่ยนเมื่อแก้โปรไฟล์ภายหลัง
                   </p>
                 </div>
                 {profileLoadState === "loading" && (
@@ -1479,24 +1418,6 @@ function QueueContent() {
                         </p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      aria-pressed={saveToProfile}
-                      onClick={() => setSaveToProfile((current) => !current)}
-                      className={`mt-3 flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-black transition cursor-pointer ${
-                        saveToProfile
-                          ? "border-brand-green bg-brand-green text-white shadow-md shadow-brand-green/20"
-                          : "border-brand-green/40 bg-brand-surface text-brand-green hover:bg-brand-green/10"
-                      }`}
-                    >
-                      <CheckCircle2 className="h-4 w-4" strokeWidth={2.7} />
-                      บันทึกข้อมูลนี้ไว้ในโปรไฟล์สำหรับการจองครั้งถัดไป
-                    </button>
-                    {saveToProfile && (
-                      <p className="mt-2 text-center text-[10px] font-extrabold text-brand-green">
-                        ระบบจะบันทึกลงโปรไฟล์หลังจากจองสำเร็จ
-                      </p>
-                    )}
                   </div>
                 )}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

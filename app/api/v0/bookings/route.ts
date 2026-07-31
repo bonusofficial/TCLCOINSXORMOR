@@ -484,7 +484,23 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
               bookingCode = generateBookingCode(user.role as string | null);
             }
 
-          return tx.bookings.create({
+            // ข้อมูลที่ผู้ใช้ยืนยันในหน้าจองคือข้อมูลโปรไฟล์ล่าสุดเสมอ
+            // ส่วน bookings ด้านล่างยังเก็บเป็น snapshot แยก จึงไม่เปลี่ยนตามภายหลัง
+            await tx.user.update({
+              where: { id: user.id },
+              data: {
+                phone: body.phone,
+                firstName: delivery.recipientFirstName,
+                lastName: delivery.recipientLastName,
+                addressLine: delivery.addressLine,
+                subdistrict: delivery.subdistrict,
+                district: delivery.district,
+                province: delivery.province,
+                postalCode: delivery.postalCode,
+              },
+            });
+
+            return tx.bookings.create({
               data: {
                 bookingCode,
                 productId: prod.id,
@@ -511,7 +527,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
                 topupRoundCapacity: liveRound?.capacity ?? null,
                 status: "รอตรวจสอบ",
               },
-          });
+            });
         });
       } catch (err) {
         if (err instanceof BookingHttpError) {
@@ -542,6 +558,7 @@ const app = new Elysia({ prefix: "/api/v0/bookings" })
           topupRoundCode: saved.topupRoundCode,
           topupRoundName: saved.topupRoundName,
           topupRoundTime: `${saved.topupRoundStart}-${saved.topupRoundEnd}`,
+          profileSynced: true,
           stockDelta,
         },
         payload: body,
