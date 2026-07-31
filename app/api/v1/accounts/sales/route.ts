@@ -51,7 +51,8 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
     async () => {
       const bookings = await prisma.bookings.findMany({
         where: { status: "สำเร็จ" },
-        orderBy: { updatedAt: "desc" },
+        // วันที่ทางบัญชียึดเวลาที่ลูกค้าสร้างออเดอร์ ไม่ใช่เวลาที่แอดมินแก้ไขล่าสุด
+        orderBy: { createdAt: "desc" },
       });
 
       // map productId/productName → ต้นทุน (fallback สำหรับ booking เก่าที่ไม่ผูก productId)
@@ -108,7 +109,7 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
                 0) *
               b.quantity);
         const profit = salePrice - cost;
-        const isToday = b.updatedAt >= startToday;
+        const isToday = b.createdAt >= startToday;
 
         totalSales += salePrice;
         totalCost += cost;
@@ -133,7 +134,7 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
           salePrice: salePrice.toFixed(2),
           cost: cost.toFixed(2),
           profit: profit.toFixed(2),
-          completedAt: b.updatedAt.toISOString(),
+          lastUpdatedAt: b.updatedAt.toISOString(),
           bookedAt: b.createdAt.toISOString(),
           bookingDate: b.bookingDate.toISOString(),
           bookingTime: b.bookingTime,

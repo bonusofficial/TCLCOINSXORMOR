@@ -5,7 +5,7 @@
  *
  * ดึงข้อมูลอัตโนมัติจาก bookings ที่สถานะ "สำเร็จ" (พอแอดมินกดสำเร็จในหน้าจอง → โผล่ที่นี่)
  * คอลัมน์: วันที่ / สินค้า / ราคาขาย / ต้นทุน / กำไร / ลูกค้า
- * กำไร = ราคาขาย − ต้นทุน ·  กำไรวันนี้ = ผลรวมกำไรทุก order ที่สำเร็จวันนี้
+ * กำไร = ราคาขาย − ต้นทุน · วันที่ทางบัญชียึดเวลาที่ลูกค้าสร้าง order
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -62,7 +62,7 @@ interface SalesRow {
   salePrice: string;
   cost: string;
   profit: string;
-  completedAt: string;
+  lastUpdatedAt: string;
   bookedAt: string;
   bookingDate: string;
   bookingTime: string | null;
@@ -186,8 +186,7 @@ export default function SalesProfitSection() {
     setCurrentPage(1);
   }, [dateFilter, selectedSpecificDate, selectedMonth, sortOrder]);
 
-  // หน้าบัญชียึดวันที่ปิดงานจริง เพื่อให้ออเดอร์ที่เพิ่งกด "สำเร็จ"
-  // แสดงในรายรับของวันนั้น แม้วันที่คิวจะเป็นคนละวัน
+  // หน้าบัญชียึดวันที่ลูกค้าสร้างออเดอร์ การแก้ต้นทุน/ข้อมูลภายหลังต้องไม่ย้ายวันบัญชี
   const filtered = useMemo(() => {
     if (dateFilter === "all") return rows;
     const now = new Date();
@@ -197,11 +196,11 @@ export default function SalesProfitSection() {
     startOfWeek.setDate(startOfToday.getDate() + (dow === 0 ? -6 : 1 - dow));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     return rows.filter((r) => {
-      const d = new Date(r.completedAt);
+      const d = new Date(r.bookedAt);
       if (dateFilter === "today" && d < startOfToday) return false;
       if (dateFilter === "this_week" && d < startOfWeek) return false;
       if (dateFilter === "this_month" && d < startOfMonth) return false;
-      if (dateFilter === "month" && selectedMonth && monthKey(r.completedAt) !== selectedMonth) return false;
+      if (dateFilter === "month" && selectedMonth && monthKey(r.bookedAt) !== selectedMonth) return false;
       if (dateFilter === "custom" && selectedSpecificDate) {
         const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         if (ds !== selectedSpecificDate) return false;
@@ -212,8 +211,8 @@ export default function SalesProfitSection() {
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const ta = new Date(a.completedAt).getTime();
-      const tb = new Date(b.completedAt).getTime();
+      const ta = new Date(a.bookedAt).getTime();
+      const tb = new Date(b.bookedAt).getTime();
       return sortOrder === "newest" ? tb - ta : ta - tb;
     });
   }, [filtered, sortOrder]);
@@ -226,7 +225,7 @@ export default function SalesProfitSection() {
   // เดือนที่มีข้อมูล (สำหรับ dropdown)
   const monthOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const r of rows) set.add(monthKey(r.completedAt));
+    for (const r of rows) set.add(monthKey(r.bookedAt));
     return Array.from(set).sort().reverse();
   }, [rows]);
 
@@ -245,7 +244,7 @@ export default function SalesProfitSection() {
   const monthlyBreakdown = useMemo(() => {
     const map = new Map<string, { sales: number; cost: number; profit: number }>();
     for (const r of filtered) {
-      const k = monthKey(r.completedAt);
+      const k = monthKey(r.bookedAt);
       const e = map.get(k) ?? { sales: 0, cost: 0, profit: 0 };
       e.sales += Number(r.salePrice) || 0;
       e.cost += Number(r.cost) || 0;
@@ -296,7 +295,7 @@ export default function SalesProfitSection() {
     out.push(["รายการทั้งหมด"].map(q).join(","));
     out.push([
       "วันที่และเวลาทำรายการจอง",
-      "วันที่และเวลาปิดงานสำเร็จ",
+      "วันที่และเวลาอัปเดตล่าสุด",
       "วันที่เปิดรับจอง",
       "ช่วงเวลาเปิดรับจอง",
       "ชื่อรอบเติม",
@@ -317,7 +316,7 @@ export default function SalesProfitSection() {
     for (const r of sorted) {
       out.push([
         fmtDateTime(r.bookedAt),
-        fmtDateTime(r.completedAt),
+        fmtDateTime(r.lastUpdatedAt),
         fmtDateOnly(r.bookingDate),
         r.bookingWindowStart && r.bookingWindowEnd
           ? `${r.bookingWindowStart}–${r.bookingWindowEnd}`
@@ -518,7 +517,7 @@ export default function SalesProfitSection() {
           <p className="text-xs text-brand-ink-soft font-bold">
             {rows.length === 0
               ? "เมื่อกดสำเร็จในหน้าจองคิว ออเดอร์จะถูกดึงมาคำนวณกำไรที่นี่อัตโนมัติ"
-              : `มีออเดอร์สำเร็จทั้งหมด ${rows.length} รายการ แต่ไม่มีรายการที่ปิดงานในช่วงนี้`}
+              : `มีออเดอร์สำเร็จทั้งหมด ${rows.length} รายการ แต่ไม่มีรายการที่ลูกค้าจองในช่วงนี้`}
           </p>
           {rows.length > 0 && dateFilter !== "all" && (
             <button
@@ -565,7 +564,7 @@ export default function SalesProfitSection() {
                           วันที่เปิดรับ: {fmtDateOnly(r.bookingDate)}
                         </span>
                         <span className="mt-0.5 block text-[10.5px] font-black text-brand-green">
-                          สำเร็จเมื่อ: {fmtDateTime(r.completedAt)} น.
+                          อัปเดตล่าสุด: {fmtDateTime(r.lastUpdatedAt)} น.
                         </span>
                         {(r.bookingWindowStart || r.bookingTime) && (
                           <span className="block text-[10.5px] font-semibold text-brand-ink-soft/70 mt-0.5">

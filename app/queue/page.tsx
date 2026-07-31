@@ -21,6 +21,7 @@ import {
 import Navbar from "@/components/Navbar";
 import AuthModal from "@/components/AuthModal";
 import ThaiAddressFields, {
+  EMPTY_THAI_ADDRESS,
   hasThaiAddressValue,
   isCompleteThaiAddress,
   isThaiAddressOmissionMarker,
@@ -1528,13 +1529,46 @@ function QueueContent() {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <ThaiAddressFields
-                    value={address}
-                    onChange={setAddress}
-                    required={!addressLocationNotRequired}
-                    disabled={profileLoadState === "loading"}
-                    idPrefix="booking-address"
-                  />
+                  <p className="mb-2 text-[12.5px] font-extrabold text-brand-ink">
+                    ต้องการระบุที่อยู่หรือไม่
+                  </p>
+                  <div className="mb-4 flex gap-1 rounded-xl border border-brand-green-100 bg-brand-paper p-1">
+                    <button
+                      type="button"
+                      disabled={profileLoadState === "loading"}
+                      onClick={() => setAddress({ ...EMPTY_THAI_ADDRESS })}
+                      className={`flex-1 rounded-lg py-2.5 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        !addressIsMarker
+                          ? "bg-brand-green text-white shadow-sm shadow-brand-green/30"
+                          : "text-brand-ink-soft hover:text-brand-ink"
+                      }`}
+                    >
+                      ระบุที่อยู่
+                    </button>
+                    <button
+                      type="button"
+                      disabled={profileLoadState === "loading"}
+                      onClick={() =>
+                        setAddress({ ...EMPTY_THAI_ADDRESS, addressLine: "-" })
+                      }
+                      className={`flex-1 rounded-lg py-2.5 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        addressIsMarker
+                          ? "bg-brand-green text-white shadow-sm shadow-brand-green/30"
+                          : "text-brand-ink-soft hover:text-brand-ink"
+                      }`}
+                    >
+                      ไม่ต้องการระบุที่อยู่
+                    </button>
+                  </div>
+                  {!addressIsMarker && (
+                    <ThaiAddressFields
+                      value={address}
+                      onChange={setAddress}
+                      required={!addressLocationNotRequired}
+                      disabled={profileLoadState === "loading"}
+                      idPrefix="booking-address"
+                    />
+                  )}
                 </div>
                 <label
                   className={`mt-4 flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition ${
