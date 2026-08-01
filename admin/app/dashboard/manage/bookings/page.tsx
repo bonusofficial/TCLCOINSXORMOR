@@ -262,6 +262,8 @@ export default function BookingsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [bulkStatusDropdownOpen, setBulkStatusDropdownOpen] = useState(false);
+  const bulkStatusDropdownRef = useRef<HTMLDivElement>(null);
   const [costEditorOpen, setCostEditorOpen] = useState(false);
   const [costDrafts, setCostDrafts] = useState<Record<number, string>>({});
   const [useSharedCost, setUseSharedCost] = useState(false);
@@ -306,6 +308,17 @@ export default function BookingsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!bulkStatusDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (bulkStatusDropdownRef.current && !bulkStatusDropdownRef.current.contains(e.target as Node)) {
+        setBulkStatusDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [bulkStatusDropdownOpen]);
 
   const openEditBooking = (
     booking: Booking,
@@ -700,19 +713,19 @@ export default function BookingsPage() {
     });
   };
 
-  const handleBulkComplete = async () => {
-    const targetStatus: BookingStatus = "สำเร็จ";
+  const handleBulkChangeStatus = async (targetStatus: BookingStatus) => {
+    setBulkStatusDropdownOpen(false);
     const targets = selectedBookings.filter(
       (booking) => booking.status !== targetStatus
     );
     if (targets.length === 0) {
-      toast.info("รายการที่เลือกเป็นสถานะ “สำเร็จ” อยู่แล้ว");
+      toast.info(`รายการที่เลือกเป็นสถานะ "${targetStatus}" อยู่แล้ว`);
       return;
     }
 
     setBulkUpdating(true);
     const tId = toast.loading(
-      `กำลังเปลี่ยน ${targets.length} รายการเป็น “${targetStatus}”...`
+      `กำลังเปลี่ยน ${targets.length} รายการเป็น "${targetStatus}"...`
     );
     const updated: Booking[] = [];
     const failedIds: number[] = [];
@@ -743,7 +756,7 @@ export default function BookingsPage() {
     if (failedIds.length === 0) {
       setSelectedIds(new Set());
       setCostEditorOpen(false);
-      toast.success(`เปลี่ยนสถานะเป็น “${targetStatus}” แล้ว`, {
+      toast.success(`เปลี่ยนสถานะเป็น "${targetStatus}" แล้ว`, {
         id: tId,
         description:
           targetStatus === "สำเร็จ"
@@ -754,7 +767,7 @@ export default function BookingsPage() {
     }
 
     setSelectedIds(new Set(failedIds));
-    toast.error(`เปลี่ยนเป็น “${targetStatus}” บางรายการไม่สำเร็จ`, {
+    toast.error(`เปลี่ยนเป็น "${targetStatus}" บางรายการไม่สำเร็จ`, {
       id: tId,
       description: `สำเร็จ ${updated.length} รายการ, ไม่สำเร็จ ${failedIds.length} รายการ`,
     });
@@ -1004,19 +1017,40 @@ export default function BookingsPage() {
                 <Pencil className="h-4 w-4" strokeWidth={2.5} />
                 แก้ไขต้นทุน
               </button>
-              <button
-                type="button"
-                onClick={handleBulkComplete}
-                disabled={bulkUpdating}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-green px-4 py-2.5 text-sm font-black text-white shadow-md shadow-brand-green/25 hover:bg-brand-green-600 transition cursor-pointer disabled:opacity-60"
-              >
-                {bulkUpdating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Check className="h-4 w-4" strokeWidth={3.2} />
+              <div ref={bulkStatusDropdownRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setBulkStatusDropdownOpen((prev) => !prev)}
+                  disabled={bulkUpdating}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-green px-4 py-2.5 text-sm font-black text-white shadow-md shadow-brand-green/25 hover:bg-brand-green-600 transition cursor-pointer disabled:opacity-60"
+                >
+                  {bulkUpdating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowUpDown className="h-4 w-4" strokeWidth={2.5} />
+                  )}
+                  เปลี่ยนสถานะ
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${bulkStatusDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+                {bulkStatusDropdownOpen && !bulkUpdating && (
+                  <div className="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-brand-green-100 bg-brand-paper shadow-xl overflow-hidden">
+                    {BOOKING_STATUSES.map((s) => {
+                      const sty = statusStyle(s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => handleBulkChangeStatus(s)}
+                          className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-extrabold text-brand-ink hover:bg-brand-green-50 transition"
+                        >
+                          <span>{sty.emoji}</span>
+                          <span>{sty.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-                เปลี่ยนเป็นสำเร็จ
-              </button>
+              </div>
             </div>
           </div>
 
