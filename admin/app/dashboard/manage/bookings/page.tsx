@@ -1043,7 +1043,7 @@ export default function BookingsPage() {
                           onClick={() => handleBulkChangeStatus(s)}
                           className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-extrabold text-brand-ink hover:bg-brand-green-50 transition"
                         >
-                          <span>{sty.emoji}</span>
+                          {getStatusIcon(s, "h-4 w-4")}
                           <span>{sty.label}</span>
                         </button>
                       );
