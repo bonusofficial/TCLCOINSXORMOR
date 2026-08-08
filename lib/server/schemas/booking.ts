@@ -49,6 +49,9 @@ export const BookingAdminUpdateBody = t.Object({
   postalCode: t.Optional(t.String({ pattern: "^\\d{5}$" })),
   content: t.Optional(t.Union([t.String({ maxLength: 500 }), t.Null()])),
   price: t.Optional(t.Number({ minimum: 0 })),
+  // ต้นทุนต่อชิ้นจากหน้าหลังบ้าน เซิร์ฟเวอร์จะคูณ quantity ก่อนบันทึก snapshot
+  unitCost: t.Optional(t.Number({ minimum: 0 })),
+  // คงไว้สำหรับ client เก่าที่ส่งต้นทุนรวมของออเดอร์มาโดยตรง
   cost: t.Optional(t.Number({ minimum: 0 })),
 });
 

@@ -117,6 +117,20 @@ function effectiveBookingCost(booking: Booking) {
   return booking.cost ?? booking.currentProductCost;
 }
 
+function effectiveBookingUnitCost(booking: Booking) {
+  const totalCost = effectiveBookingCost(booking);
+  if (totalCost == null) return null;
+  return String(Number(totalCost) / Math.max(1, booking.quantity || 1));
+}
+
+function totalCostFromUnitCost(unitCost: number, booking: Booking) {
+  return (
+    Math.round(
+      (unitCost * Math.max(1, booking.quantity || 1) + Number.EPSILON) * 100
+    ) / 100
+  );
+}
+
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -336,7 +350,7 @@ export default function BookingsPage() {
       province: booking.province ?? "",
       postalCode: booking.postalCode ?? "",
       content: booking.content ?? "",
-      cost: effectiveBookingCost(booking) ?? "",
+      cost: effectiveBookingUnitCost(booking) ?? "",
     });
   };
 
@@ -412,7 +426,7 @@ export default function BookingsPage() {
           : {}),
         content: editForm.content.trim() || null,
         ...(editForm.cost.trim() !== ""
-          ? { cost: Number(editForm.cost) }
+          ? { unitCost: Number(editForm.cost) }
           : {}),
       });
     setSavingEdit(false);
@@ -676,7 +690,7 @@ export default function BookingsPage() {
         const { data, error } = await bookingsApi.item.api.v1
           .bookings({ id: String(booking.id) })
           .patch({
-            cost: value,
+            unitCost: value,
           });
 
         if (error || !data?.ok) {
@@ -1062,7 +1076,7 @@ export default function BookingsPage() {
                     แก้ไขต้นทุนออเดอร์ที่เลือก
                   </h2>
                   <p className="mt-0.5 text-[11px] font-bold text-brand-ink-soft">
-                    กำไรใหม่คำนวณจากราคาขายลบต้นทุนใหม่อัตโนมัติ
+                    กรอกต้นทุนต่อชิ้น ระบบจะคูณจำนวนสินค้าและคำนวณกำไรให้อัตโนมัติ
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -1080,7 +1094,7 @@ export default function BookingsPage() {
                           setSharedCost(
                             first
                               ? costDrafts[first.id] ||
-                                  effectiveBookingCost(first) ||
+                                  effectiveBookingUnitCost(first) ||
                                   ""
                               : ""
                           );
@@ -1092,7 +1106,7 @@ export default function BookingsPage() {
                   </label>
                   {useSharedCost && (
                     <label className="text-[10.5px] font-black text-brand-ink">
-                      ต้นทุนที่ใช้ร่วมกัน
+                      ต้นทุนต่อชิ้นที่ใช้ร่วมกัน
                       <input
                         type="number"
                         min={0}
@@ -1110,21 +1124,26 @@ export default function BookingsPage() {
               <div className="mt-3 space-y-2">
                 {selectedBookings.map((booking) => {
                   const locked = booking.status === "สำเร็จ";
-                  const existingCost = effectiveBookingCost(booking);
+                  const existingTotalCost = effectiveBookingCost(booking);
+                  const existingUnitCost = effectiveBookingUnitCost(booking);
                   const draft = locked
-                    ? booking.cost ?? ""
+                    ? existingUnitCost ?? ""
                     : useSharedCost
                       ? sharedCost
                       : costDrafts[booking.id] ?? "";
                   const calculationCost =
-                    draft.trim() === "" ? existingCost : draft;
-                  const draftNumber =
+                    draft.trim() === "" ? existingUnitCost : draft;
+                  const draftUnitCost =
                     calculationCost == null || calculationCost.trim() === ""
                       ? null
                       : Number(calculationCost);
+                  const calculatedTotalCost =
+                    draftUnitCost != null && Number.isFinite(draftUnitCost)
+                      ? totalCostFromUnitCost(draftUnitCost, booking)
+                      : null;
                   const profit =
-                    draftNumber != null && Number.isFinite(draftNumber)
-                      ? Number(booking.price) - draftNumber
+                    calculatedTotalCost != null
+                      ? Number(booking.price) - calculatedTotalCost
                       : null;
                   return (
                     <div
@@ -1154,21 +1173,21 @@ export default function BookingsPage() {
                       </div>
                       <div>
                         <div className="text-[10px] font-black text-brand-ink-soft">
-                          ต้นทุนเดิม
+                          ต้นทุนเดิมรวม
                         </div>
                         <div className="mt-1 text-sm font-black text-brand-ink">
-                          {existingCost == null
+                          {existingTotalCost == null
                             ? "ยังไม่ระบุ"
-                            : `฿${Number(existingCost).toLocaleString()}`}
+                            : `฿${Number(existingTotalCost).toLocaleString()}`}
                         </div>
-                        {booking.cost == null && existingCost != null && (
+                        {existingUnitCost != null && (
                           <div className="mt-0.5 text-[9.5px] font-bold text-brand-green">
-                            จากต้นทุนสินค้าปัจจุบัน
+                            ฿{Number(existingUnitCost).toLocaleString()} × {booking.quantity || 1} ชิ้น
                           </div>
                         )}
                       </div>
                       <label className="text-[10px] font-black text-brand-ink-soft">
-                        ต้นทุนใหม่
+                        ต้นทุนใหม่ต่อชิ้น
                         <input
                           type="number"
                           min={0}
@@ -1182,10 +1201,10 @@ export default function BookingsPage() {
                             }))
                           }
                           placeholder={
-                            existingCost == null
-                              ? "กรอกต้นทุนใหม่"
+                            existingUnitCost == null
+                              ? "กรอกต้นทุนต่อชิ้น"
                               : `ไม่แก้ไข (ใช้ ฿${Number(
-                                  existingCost
+                                  existingUnitCost
                                 ).toLocaleString()})`
                           }
                           className="mt-1 block w-full rounded-lg border border-brand-green-100 bg-brand-surface px-2.5 py-2 text-sm font-black text-brand-ink outline-none focus:border-brand-green disabled:cursor-not-allowed disabled:opacity-60"
@@ -1205,6 +1224,14 @@ export default function BookingsPage() {
                                 maximumFractionDigits: 2,
                               })}`}
                         </span>
+                        {calculatedTotalCost != null && (
+                          <span className="mt-0.5 block text-[9.5px] font-bold text-brand-ink-soft">
+                            ต้นทุนรวม ฿{calculatedTotalCost.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        )}
                       </label>
                     </div>
                   );
@@ -1717,7 +1744,7 @@ export default function BookingsPage() {
                 />
               </label>
               <label className="text-xs font-black text-brand-ink">
-                ต้นทุนบัตรเงินสดที่ใช้จริง (แก้ไขได้)
+                ต้นทุนบัตรเงินสดต่อชิ้นที่ใช้จริง (แก้ไขได้)
                 <input
                   type="number"
                   min={0}
@@ -1731,16 +1758,16 @@ export default function BookingsPage() {
                   }
                   placeholder={
                     editingBooking &&
-                    effectiveBookingCost(editingBooking) != null
+                    effectiveBookingUnitCost(editingBooking) != null
                       ? `เว้นว่างเพื่อใช้ ฿${Number(
-                          effectiveBookingCost(editingBooking)
+                          effectiveBookingUnitCost(editingBooking)
                         ).toLocaleString()}`
-                      : "เว้นว่างเพื่อใช้ต้นทุนสินค้า"
+                      : "เว้นว่างเพื่อใช้ต้นทุนสินค้าต่อชิ้น"
                   }
                   className="mt-2 w-full rounded-xl border border-brand-green-100 bg-brand-paper px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-green"
                 />
                 <span className="mt-1 block text-[10px] font-bold text-brand-ink-soft">
-                  ระบบดึงจากต้นทุนสินค้าให้อัตโนมัติ แก้เฉพาะเมื่อใช้ต้นทุนจริงต่างจากเดิม
+                  ระบบจะคูณต้นทุนต่อชิ้นด้วยจำนวน {editingBooking?.quantity || 1} ชิ้นให้อัตโนมัติ
                 </span>
               </label>
               <label className="text-xs font-black text-brand-ink sm:col-span-2">

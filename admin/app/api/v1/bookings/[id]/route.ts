@@ -18,6 +18,30 @@ import {
   stockDeltaOnStatusChange,
 } from "@/lib/server/stock";
 
+function roundCurrency(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Booking.cost เก็บต้นทุนรวมของออเดอร์ แต่มีข้อมูลเก่าบางรายการที่เคยเก็บ
+ * ต้นทุนต่อชิ้นไว้ หากค่าตรงกับต้นทุนสินค้าปัจจุบันให้ปรับเป็นยอดรวมก่อนใช้
+ */
+function normalizeStoredCost(
+  storedCost: number | null,
+  productUnitCost: number | null,
+  quantity: number
+) {
+  if (storedCost == null) return null;
+  if (
+    quantity > 1 &&
+    productUnitCost != null &&
+    Math.abs(storedCost - productUnitCost) < 0.005
+  ) {
+    return roundCurrency(storedCost * quantity);
+  }
+  return storedCost;
+}
+
 function shape(
   b: {
     id: number;
@@ -55,11 +79,16 @@ function shape(
   },
   currentProductCost: number | null = null
 ) {
+  const normalizedCost = normalizeStoredCost(
+    b.cost != null ? Number(b.cost) : null,
+    currentProductCost,
+    b.quantity
+  );
   return {
     ...b,
     unitPrice: b.unitPrice?.toString() ?? b.price.toString(),
     price: b.price.toString(),
-    cost: b.cost != null ? b.cost.toString() : null,
+    cost: normalizedCost != null ? normalizedCost.toFixed(2) : null,
     currentProductCost:
       currentProductCost != null
         ? (currentProductCost * b.quantity).toFixed(2)
@@ -119,17 +148,24 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       }
 
       const nextStatus = body.status ?? before.status;
+      const currentProductUnitCost = await resolveProductCost(
+        before.productId,
+        before.productName
+      );
       let costSnapshot: number | undefined;
-      if (body.cost !== undefined) {
+      if (body.unitCost !== undefined) {
+        costSnapshot = roundCurrency(body.unitCost * before.quantity);
+      } else if (body.cost !== undefined) {
         costSnapshot = body.cost;
       } else if (nextStatus === "สำเร็จ") {
         costSnapshot =
           before.cost != null
-            ? Number(before.cost)
-            : (await resolveProductCost(
-                before.productId,
-                before.productName
-              )) * before.quantity;
+            ? normalizeStoredCost(
+                Number(before.cost),
+                currentProductUnitCost,
+                before.quantity
+              ) ?? 0
+            : roundCurrency(currentProductUnitCost * before.quantity);
       }
 
       let transactionResult;
@@ -203,7 +239,7 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
             : "บันทึกข้อมูลรายการจองแล้ว",
         data: shape(
           saved,
-          await resolveProductCost(saved.productId, saved.productName)
+          currentProductUnitCost
         ),
       };
 
@@ -227,6 +263,7 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
             recipientLastName: saved.recipientLastName,
             cost: saved.cost?.toString() ?? null,
           },
+          requestedUnitCost: body.unitCost ?? null,
           stockDelta: delta,
         },
         payload: { params, body },

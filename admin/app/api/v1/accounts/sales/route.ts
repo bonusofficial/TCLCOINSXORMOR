@@ -11,7 +11,7 @@ import {
  * รายรับ/กำไรจาก order ที่ "สำเร็จ" — ดึงจาก bookings อัตโนมัติ
  * พอแอดมินกด "สำเร็จ" ในหน้าจอง order นั้นจะโผล่ที่นี่ทันที (derived, ไม่ต้องบันทึกซ้ำ)
  *
- * กำไร = ราคาขาย (booking.price) − ต้นทุน (product.cost)
+ * กำไร = ยอดขายรวม (booking.price) − ต้นทุนรวมของทุกชิ้น
  */
 
 /** เริ่มต้น "วันนี้" ตามเวลาไทย (UTC+7) เป็น Date (UTC) — กัน tz ของ server เพี้ยน */
@@ -28,6 +28,26 @@ function bangkokStartOfToday(): Date {
 
 function productNameKey(name: string): string {
   return name.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function roundCurrency(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function totalBookingCost(
+  storedCost: { toString(): string } | null,
+  productUnitCost: number,
+  quantity: number
+) {
+  if (storedCost == null) {
+    return roundCurrency(productUnitCost * quantity);
+  }
+  const snapshot = Number(storedCost);
+  // รองรับ snapshot เก่าที่เคยบันทึกต้นทุนต่อชิ้นแทนต้นทุนรวม
+  if (quantity > 1 && Math.abs(snapshot - productUnitCost) < 0.005) {
+    return roundCurrency(snapshot * quantity);
+  }
+  return snapshot;
 }
 
 type CustomerRole = "member" | "vip" | "agent" | "admin";
@@ -104,13 +124,15 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
         const salePrice = Number(b.price);
         // ใช้ต้นทุนที่ "ล็อกไว้ตอนปิดการขาย" (snapshot) ก่อน — ถ้ายังไม่มี (ออเดอร์เก่า)
         // ค่อย fallback ไปอ่านต้นทุนสดจาก product ตาม productId/ชื่อสินค้า
-        const cost =
-          b.cost != null
-            ? Number(b.cost)
-            : (((b.productId != null ? costMap.get(b.productId) : undefined) ??
-                costByName.get(productNameKey(b.productName)) ??
-                0) *
-              b.quantity);
+        const productUnitCost =
+          (b.productId != null ? costMap.get(b.productId) : undefined) ??
+          costByName.get(productNameKey(b.productName)) ??
+          0;
+        const cost = totalBookingCost(
+          b.cost,
+          productUnitCost,
+          b.quantity
+        );
         const profit = salePrice - cost;
         const isToday = b.createdAt >= startToday;
 
@@ -141,6 +163,7 @@ const app = new Elysia({ prefix: "/api/v1/accounts/sales" })
           content: b.content,
           customerRole: customerRoleFromBookingCode(b.bookingCode),
           salePrice: salePrice.toFixed(2),
+          unitCost: (cost / Math.max(1, b.quantity)).toFixed(2),
           cost: cost.toFixed(2),
           profit: profit.toFixed(2),
           lastUpdatedAt: b.updatedAt.toISOString(),

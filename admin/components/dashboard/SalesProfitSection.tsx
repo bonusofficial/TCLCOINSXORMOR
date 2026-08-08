@@ -60,6 +60,7 @@ interface SalesRow {
   content: string | null;
   customerRole: CustomerRole;
   salePrice: string;
+  unitCost: string;
   cost: string;
   profit: string;
   lastUpdatedAt: string;
@@ -303,7 +304,8 @@ export default function SalesProfitSection() {
       "สินค้า",
       "จำนวน",
       "ราคาขาย",
-      "ต้นทุน",
+      "ต้นทุนต่อชิ้น",
+      "ต้นทุนรวม",
       "กำไร",
       "ชื่อ–นามสกุลจริง",
       "Username",
@@ -328,6 +330,7 @@ export default function SalesProfitSection() {
         r.productName,
         r.quantity,
         r.salePrice,
+        r.unitCost,
         r.cost,
         r.profit,
         fullName(r),
@@ -368,7 +371,7 @@ export default function SalesProfitSection() {
               กำไรจากการขาย
             </h2>
             <p className="text-xs text-brand-ink-soft font-bold mt-0.5">
-              ดึงจาก order ที่ <b className="text-brand-green">สำเร็จ</b> อัตโนมัติ · กำไร = ราคาขาย − ต้นทุน
+              ดึงจาก order ที่ <b className="text-brand-green">สำเร็จ</b> อัตโนมัติ · กำไร = ยอดขายรวม − ต้นทุนรวม
             </p>
           </div>
         </div>
@@ -596,6 +599,9 @@ export default function SalesProfitSection() {
                       </TableCell>
                       <TableCell className="py-3 px-3 text-right whitespace-nowrap font-bold text-rose-400">
                         ฿{fmt(r.cost)}
+                        <span className="mt-0.5 block text-[9.5px] font-semibold text-brand-ink-soft/70">
+                          ฿{fmt(r.unitCost)} × {r.quantity || 1} ชิ้น
+                        </span>
                       </TableCell>
                       <TableCell
                         className={`py-3 px-3 text-right whitespace-nowrap font-black ${

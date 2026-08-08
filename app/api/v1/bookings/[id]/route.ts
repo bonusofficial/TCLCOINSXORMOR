@@ -17,6 +17,25 @@ import {
   stockDeltaOnStatusChange,
 } from "@/lib/server/stock";
 
+function roundCurrency(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function normalizeStoredCost(
+  storedCost: number | null,
+  productUnitCost: number,
+  quantity: number
+) {
+  if (storedCost == null) return null;
+  if (
+    quantity > 1 &&
+    Math.abs(storedCost - productUnitCost) < 0.005
+  ) {
+    return roundCurrency(storedCost * quantity);
+  }
+  return storedCost;
+}
+
 function shape(b: {
   id: number;
   bookingCode: string;
@@ -108,17 +127,24 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
       }
 
       const nextStatus = body.status ?? before.status;
+      const currentProductUnitCost = await resolveProductCost(
+        before.productId,
+        before.productName
+      );
       let costSnapshot: number | undefined;
-      if (body.cost !== undefined) {
+      if (body.unitCost !== undefined) {
+        costSnapshot = roundCurrency(body.unitCost * before.quantity);
+      } else if (body.cost !== undefined) {
         costSnapshot = body.cost;
       } else if (nextStatus === "สำเร็จ") {
         costSnapshot =
           before.cost != null
-            ? Number(before.cost)
-            : (await resolveProductCost(
-                before.productId,
-                before.productName
-              )) * before.quantity;
+            ? normalizeStoredCost(
+                Number(before.cost),
+                currentProductUnitCost,
+                before.quantity
+              ) ?? 0
+            : roundCurrency(currentProductUnitCost * before.quantity);
       }
 
       let transactionResult;
@@ -204,6 +230,7 @@ const app = new Elysia({ prefix: "/api/v1/bookings" })
             recipientLastName: saved.recipientLastName,
             cost: saved.cost?.toString() ?? null,
           },
+          requestedUnitCost: body.unitCost ?? null,
           stockDelta: delta,
         },
         user,

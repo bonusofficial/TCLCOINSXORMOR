@@ -11,6 +11,26 @@ import {
 import { logAudit } from "@/lib/server/audit";
 import { adjustProductStock, hasAvailableStock } from "@/lib/server/stock";
 
+function roundCurrency(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function normalizeStoredCost(
+  storedCost: number | null,
+  productUnitCost: number | null,
+  quantity: number
+) {
+  if (storedCost == null) return null;
+  if (
+    quantity > 1 &&
+    productUnitCost != null &&
+    Math.abs(storedCost - productUnitCost) < 0.005
+  ) {
+    return roundCurrency(storedCost * quantity);
+  }
+  return storedCost;
+}
+
 function shape(
   b: {
     id: number;
@@ -48,14 +68,21 @@ function shape(
   },
   currentProductCost: { toString(): string } | string | number | null = null
 ) {
+  const productUnitCost =
+    currentProductCost != null ? Number(currentProductCost) : null;
+  const normalizedCost = normalizeStoredCost(
+    b.cost != null ? Number(b.cost) : null,
+    productUnitCost,
+    b.quantity
+  );
   return {
     ...b,
     unitPrice: b.unitPrice?.toString() ?? b.price.toString(),
     price: b.price.toString(),
-    cost: b.cost != null ? b.cost.toString() : null,
+    cost: normalizedCost != null ? normalizedCost.toFixed(2) : null,
     currentProductCost:
-      currentProductCost != null
-        ? (Number(currentProductCost) * b.quantity).toFixed(2)
+      productUnitCost != null
+        ? (productUnitCost * b.quantity).toFixed(2)
         : null,
     bookingDate: b.bookingDate.toISOString(),
     createdAt: b.createdAt.toISOString(),
