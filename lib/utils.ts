@@ -1,8 +1,8 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 /** รับเฉพาะตัวเลขและตัดความยาวเบอร์โทรไว้สูงสุด 10 หลัก */
@@ -12,12 +12,12 @@ export function normalizePhoneInput(value: string): string {
 
 export async function copyToClipboard(text: string): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  
+
   if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
     try {
-      void navigator.clipboard.writeText(text).catch((err) => {
-        console.error("Clipboard write failed: ", err);
-      });
+      // ต้องรอให้เขียนสำเร็จจริง มิฉะนั้น UI จะขึ้นว่าสำเร็จทั้งที่คลิปบอร์ด
+      // ยังเป็นข้อความเก่า โดยเฉพาะ Safari และ in-app browser บนมือถือ
+      await navigator.clipboard.writeText(text);
       return true;
     } catch (err) {
       console.error("Clipboard write failed: ", err);
@@ -39,11 +39,13 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     textArea.style.outline = "none";
     textArea.style.boxShadow = "none";
     textArea.style.background = "transparent";
-    
+    textArea.setAttribute("readonly", "");
+
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
-    
+    textArea.setSelectionRange(0, text.length);
+
     const successful = document.execCommand("copy");
     return successful;
   } catch (err) {

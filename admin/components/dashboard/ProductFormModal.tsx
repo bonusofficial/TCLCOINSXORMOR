@@ -857,13 +857,13 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             />
           </div>
 
-          {/* 3. ราคาขาย → ต้นทุน → ราคา Agent */}
+          {/* 3. ราคาทั่วไป → ราคาตัวแทน → ราคา VIP → ต้นทุน */}
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <label className="block text-[12px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1">
                   <Coins className="h-3.5 w-3.5 text-brand-green" />
-                  ราคาทั่วไป/ขาย (฿)
+                  ราคาทั่วไป (฿)
                 </label>
                 <input
                   type="number"
@@ -873,6 +873,38 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                   onChange={(e) => setPrice(e.target.value)}
                   className={inputCls}
                 />
+              </div>
+              <div>
+                <label className="block text-[12px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1">
+                  <Crown className="h-3.5 w-3.5 text-brand-gold" />
+                  ราคาตัวแทน (฿)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={agentPrice}
+                  onChange={(e) => setAgentPrice(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1">
+                  <Crown className="h-3.5 w-3.5 text-brand-gold" />
+                  ราคา VIP (฿)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={calculatedVipPrice}
+                  readOnly
+                  className={`${inputCls} cursor-not-allowed bg-amber-500/5 text-amber-500`}
+                  aria-label="ราคา VIP ที่คำนวณอัตโนมัติ"
+                />
+                <p className="mt-1 text-[9.5px] font-bold text-brand-ink-soft">
+                  คำนวณจากราคาตัวแทนลบส่วนลด VIP
+                </p>
               </div>
               <div>
                 <label className="block text-[12px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1">
@@ -889,23 +921,6 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                   placeholder="ต้นทุนสินค้า"
                 />
               </div>
-              <div>
-                <label className="block text-[12px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1">
-                  <Crown className="h-3.5 w-3.5 text-brand-gold" />
-                  ราคา Agent / ฐานราคา VIP (฿)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={agentPrice}
-                  onChange={(e) => setAgentPrice(e.target.value)}
-                  className={inputCls}
-                />
-                <p className="mt-1 text-[9.5px] font-bold text-brand-ink-soft">
-                  สมาชิก VIP ทุกบัญชีจะลดเพิ่มจากราคานี้อัตโนมัติ
-                </p>
-              </div>
             </div>
 
             {/* อัตราคำนวณกำไร */}
@@ -918,7 +933,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                 {(!isNaN(Number(agentPrice)) && Number(agentPrice) > 0) && (
                   <div className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-brand-gold-deep" />
-                    <span>กำไร Agent: <b className="text-brand-gold-deep text-xs">{calculatedProfitAgent.toLocaleString()} บาท</b></span>
+                    <span>กำไรตัวแทน: <b className="text-brand-gold-deep text-xs">{calculatedProfitAgent.toLocaleString()} บาท</b></span>
                   </div>
                 )}
               </div>
@@ -1445,7 +1460,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
             <div>
               <label className="block text-[12.5px] font-extrabold text-brand-ink mb-2 inline-flex items-center gap-1.5">
                 <Percent className="h-3.5 w-3.5 text-brand-gold" />
-                ส่วนลด VIP ทุกบัญชีจากราคา Agent (บาท)
+                ส่วนลด VIP ทุกบัญชีจากราคาตัวแทน (บาท)
               </label>
               <input
                 type="number"
@@ -1456,7 +1471,7 @@ export function ProductFormModal({ open, initial, onClose, onSaved }: Props) {
                 className={inputCls}
               />
               <div className="mt-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-xs font-bold text-brand-ink-soft">
-                ราคา VIP = ราคา Agent ฿
+                ราคา VIP = ราคาตัวแทน ฿
                 {Number(agentPrice).toLocaleString()} − ส่วนลด ฿
                 {Number(discountAmount).toLocaleString()} ={" "}
                 <b className="text-amber-500">

@@ -148,7 +148,13 @@ function shape(b: {
     postalCode: b.postalCode,
     content: b.content,
     quantity: b.quantity,
-    unitPrice: b.unitPrice?.toString() ?? b.price.toString(),
+    unitPrice:
+      b.unitPrice?.toString() ??
+      String(
+        Math.round(
+          (Number(b.price.toString()) / Math.max(1, b.quantity)) * 100
+        ) / 100
+      ),
     price: b.price.toString(),
     status: b.status,
     bookingDate: b.bookingDate.toISOString(),

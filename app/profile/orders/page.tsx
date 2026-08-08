@@ -229,16 +229,17 @@ export default function OrdersHistoryPage() {
       user?.name ||
       "-";
     const memberId = formatDisplayID(user?.memberNo, b.userId);
-    const usernameAndMemberId =
-      [b.username, memberId].filter(Boolean).join(" / ") || "-";
+    const usernameAndMemberId = Array.from(
+      new Set([b.username, memberId].map((value) => value?.trim()).filter(Boolean))
+    ).join(" / ") || "-";
     const bookingWindow =
       b.bookingWindowStart && b.bookingWindowEnd
-        ? `${b.bookingWindowStart}–${b.bookingWindowEnd}`
+        ? `${b.bookingWindowStart}-${b.bookingWindowEnd}`
         : formatTimeRange(b.bookingTime || "00:00 - 23:59");
     const refillRound = b.topupRoundName
       ? `${b.topupRoundName}${
           b.topupRoundStart && b.topupRoundEnd
-            ? ` เวลา ${b.topupRoundStart}–${b.topupRoundEnd} น.`
+            ? ` เวลา ${b.topupRoundStart}-${b.topupRoundEnd} น.`
             : ""
         }`
       : "ไม่กำหนดรอบเติม";
@@ -353,7 +354,7 @@ Username: ${usernameAndMemberId}
   };
 
   const formatTimeRange = (value: string) =>
-    value.trim().replace(/\s*-\s*/g, "–");
+    value.trim().replace(/\s*-\s*/g, "-");
 
   // Style helper for statuses
   const getStatusBadge = (status: string) => {

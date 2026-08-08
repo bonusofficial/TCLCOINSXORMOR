@@ -110,6 +110,12 @@ function parseProduct(p: Record<string, unknown>): ProductParsed {
 const fmtMoney = (v: string | number) =>
   Number(v).toLocaleString("en-US", { maximumFractionDigits: 2 });
 
+const getVipPrice = (product: ProductParsed) => {
+  const agentPrice = Math.max(0, Number(product.agentPrice) || 0);
+  const vipDiscount = Math.max(0, Number(product.discountAmount) || 0);
+  return Math.max(0, agentPrice - vipDiscount);
+};
+
 const fmtDate = (d: Date) =>
   d.toLocaleDateString("th-TH", {
     day: "numeric",
@@ -372,11 +378,12 @@ export default function ManagePage() {
                 <TableRow>
                   <TableHead className="py-3 px-4 w-20">รูป</TableHead>
                   <TableHead className="py-3 px-3 min-w-[180px]">สินค้า</TableHead>
-                  <TableHead className="py-3 px-3 text-right whitespace-nowrap">ราคา ฿</TableHead>
-                  <TableHead className="py-3 px-3 text-right whitespace-nowrap">Agent ฿</TableHead>
+                  <TableHead className="py-3 px-3 text-right whitespace-nowrap">ราคาทั่วไป</TableHead>
+                  <TableHead className="py-3 px-3 text-right whitespace-nowrap">ราคาตัวแทน</TableHead>
+                  <TableHead className="py-3 px-3 text-right whitespace-nowrap">ราคา VIP</TableHead>
                   <TableHead className="py-3 px-3 text-center">สต็อก</TableHead>
                   <TableHead className="py-3 px-3 text-center whitespace-nowrap">ตารางขาย</TableHead>
-                  <TableHead className="py-3 px-3 text-center">VIP</TableHead>
+                  <TableHead className="py-3 px-3 text-center">บัญชี VIP</TableHead>
                   <TableHead className="py-3 px-3 whitespace-nowrap">เพิ่มเมื่อ</TableHead>
                   <TableHead className="py-3 px-4 text-right">จัดการ</TableHead>
                 </TableRow>
@@ -411,13 +418,17 @@ export default function ManagePage() {
                         </div>
                       )}
                     </TableCell>
-                    {/* ราคา */}
+                    {/* ราคาทั่วไป */}
                     <TableCell className="py-3 px-3 text-right font-extrabold text-brand-green whitespace-nowrap">
-                      {fmtMoney(p.price)}
+                      {fmtMoney(p.price)}฿
                     </TableCell>
-                    {/* Agent */}
+                    {/* ราคาตัวแทน */}
+                    <TableCell className="py-3 px-3 text-right font-bold text-brand-ink whitespace-nowrap">
+                      {fmtMoney(p.agentPrice)}฿
+                    </TableCell>
+                    {/* ราคา VIP */}
                     <TableCell className="py-3 px-3 text-right font-bold text-brand-gold-deep whitespace-nowrap">
-                      {fmtMoney(p.agentPrice)}
+                      {fmtMoney(getVipPrice(p))}฿
                     </TableCell>
                     {/* สต็อก */}
                     <TableCell className="py-3 px-3 text-center">
@@ -546,14 +557,17 @@ export default function ManagePage() {
                     </p>
                   )}
 
-                  {/* Price + meta */}
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-brand-green">
+                  {/* ราคา 3 ระดับ + meta */}
+                  <div className="flex items-center gap-x-2.5 gap-y-1 mt-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1 text-[10.5px] font-extrabold text-brand-green whitespace-nowrap">
                       <Coins className="h-3 w-3" />
-                      {fmtMoney(p.price)}฿
+                      ทั่วไป {fmtMoney(p.price)}฿
                     </span>
-                    <span className="text-[10.5px] font-bold text-brand-gold-deep">
-                      VIP {fmtMoney(p.agentPrice)}฿
+                    <span className="text-[10.5px] font-bold text-brand-ink whitespace-nowrap">
+                      ตัวแทน {fmtMoney(p.agentPrice)}฿
+                    </span>
+                    <span className="text-[10.5px] font-bold text-brand-gold-deep whitespace-nowrap">
+                      VIP {fmtMoney(getVipPrice(p))}฿
                     </span>
                     {p.stockEnabled && (
                       <span
